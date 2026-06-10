@@ -1,72 +1,19 @@
-# Einsatzplanung – App online stellen
-
-Diese Anleitung bringt deine App ins Internet, kostenlos, in ca. 15 Minuten.
-Du brauchst nur einen Browser. Keine Programmierkenntnisse nötig.
-
----
-
-## Was du am Ende hast
-Eine eigene Internetadresse (z.B. `einsatzplanung-firma.vercel.app`), die du
-auf Handy, Tablet und PC öffnen kannst. Auf dem Handy kannst du sie über
-"Zum Startbildschirm hinzufügen" wie eine echte App installieren.
-
----
-
-## Schritt 1 – GitHub-Konto anlegen (5 Min)
-GitHub ist der Ort, an dem dein App-Code liegt.
-
-1. Gehe auf https://github.com
-2. Klicke oben rechts auf **Sign up**
-3. E-Mail, Passwort, Benutzername eingeben – fertig
-4. E-Mail bestätigen
-
-## Schritt 2 – Code hochladen (5 Min)
-1. Auf GitHub oben rechts auf das **+** klicken → **New repository**
-2. Namen vergeben, z.B. `einsatzplanung`
-3. Auf **Create repository** klicken
-4. Auf der nächsten Seite: **uploading an existing file** anklicken
-5. **Den gesamten Inhalt dieses Ordners** per Drag & Drop ins Browserfenster ziehen
-   (alle Dateien und Ordner: `src`, `public`, `package.json`, `index.html`, usw.)
-6. Unten auf **Commit changes** klicken
-
-## Schritt 3 – Bei Vercel veröffentlichen (5 Min)
-Vercel macht aus dem Code die fertige Webseite.
-
-1. Gehe auf https://vercel.com
-2. Klicke auf **Sign up** → **Continue with GitHub** (mit GitHub anmelden)
-3. Nach dem Login: **Add New… → Project**
-4. Dein `einsatzplanung`-Repository auswählen → **Import**
-5. Nichts ändern, einfach auf **Deploy** klicken
-6. 1–2 Minuten warten – fertig!
-
-Vercel zeigt dir dann deine Internetadresse. Diese kannst du teilen und überall öffnen.
-
----
-
-## Auf dem Handy als App installieren
-1. Adresse im Browser öffnen (Safari auf iPhone, Chrome auf Android)
-2. **iPhone:** Teilen-Symbol → "Zum Home-Bildschirm"
-   **Android:** Menü (drei Punkte) → "App installieren" / "Zum Startbildschirm"
-3. Das Icon erscheint wie bei jeder anderen App
-
----
-
-## Wichtig zu wissen
-- **Speicherung:** Die Daten werden aktuell **auf dem jeweiligen Gerät** gespeichert.
-  Das Büro am PC und der Vorarbeiter am Handy sehen also (noch) NICHT automatisch
-  dieselben Daten. Wenn ihr denselben Stand teilen wollt, ist der nächste Schritt
-  eine zentrale Datenbank (z.B. Supabase). Frag einfach danach.
-- **Änderungen:** Wenn der Code später angepasst wird, lädst du die geänderten
-  Dateien wieder bei GitHub hoch – Vercel aktualisiert die Seite automatisch.
-
----
-
-## Lokal auf dem PC testen (optional, für Technik-Interessierte)
-Wenn du Node.js installiert hast (https://nodejs.org):
-
-```
-npm install
-npm run dev
-```
-
-Dann im Browser die angezeigte Adresse (meist http://localhost:5173) öffnen.
+{
+  "name": "einsatzplanung",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.2"
+  }
+}
