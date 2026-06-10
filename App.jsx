@@ -172,23 +172,15 @@ export default function App() {
   if (!session) return <Login onLogin={()=>{}} />;
   if (laden && !bereit) return <Splash text="Daten werden geladen…" />;
 
-  const leer = projekte.length===0 && mitarbeiter.length===0 && fahrzeuge.length===0;
-
   return (
     <>
-      {leer && (
-        <div style={{ background:"#fef9c3", borderBottom:"1.5px solid #fcd34d", padding:"8px 16px", fontSize:13, color:"#92400e", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8, fontFamily:"'Inter',system-ui,sans-serif" }}>
-          <span>Die Datenbank ist noch leer. Du kannst mit Demo-Daten starten oder direkt unter „Verwaltung" eigene anlegen.</span>
-          <button onClick={demoLaden} style={{ background:"#1d4ed8", color:"#fff", border:"none", borderRadius:7, padding:"6px 14px", fontWeight:700, fontSize:12, cursor:"pointer" }}>Demo-Daten laden</button>
-        </div>
-      )}
       <EinsatzplanungInner
         projekte={projekte} setProjekte={setProjekte}
         mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter}
         sonder={sonder} setSonder={setSonder}
         antraege={antraege} setAntraege={setAntraege}
         fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge}
-        onReset={demoLaden}
+        onReset={null}
         onLogout={abmelden}
         userEmail={session.user?.email}
       />

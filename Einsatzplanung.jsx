@@ -1112,7 +1112,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
         {subTabs.map(t=>(
           <button key={t.id} onClick={()=>setSub(t.id)} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13, fontWeight:600, background:sub===t.id?"#1e3a5f":"#fff", color:sub===t.id?"#fff":"#374151" }}>{t.label}</button>
         ))}
-        <button onClick={onReset} style={{ marginLeft:"auto", padding:"7px 14px", borderRadius:8, border:"1.5px solid #fca5a5", background:"#fff", color:"#dc2626", cursor:"pointer", fontSize:12 }}>↺ Demo-Daten zurücksetzen</button>
+        {onReset && <button onClick={onReset} style={{ marginLeft:"auto", padding:"7px 14px", borderRadius:8, border:"1.5px solid #fca5a5", background:"#fff", color:"#dc2626", cursor:"pointer", fontSize:12 }}>↺ Demo-Daten zurücksetzen</button>}
       </div>
 
       {sub==="projekte" && (
@@ -1276,7 +1276,7 @@ export default function EinsatzplanungInner({
         {tab==="projekte"     && <ProjektUebersicht projekte={projekte} fahrzeuge={fahrzeuge} />}
         {tab==="mitarbeiter"  && <MitarbeiterUebersicht mitarbeiter={mitarbeiter} projekte={projekte} />}
         {tab==="fahrzeuge"    && <FahrzeugUebersicht fahrzeuge={fahrzeuge} projekte={projekte} />}
-        {tab==="verwaltung"   && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} onReset={resetDaten} />}
+        {tab==="verwaltung"   && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} onReset={onReset} />}
         {tab==="warnungen"    && <WarnPanel warnungen={warnungen} />}
       </div>
     </div>
