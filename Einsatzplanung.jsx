@@ -49,7 +49,7 @@ const WOCHENTAGE_LANG = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","
 const MONATE = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
 
 // ─── Demodaten ───────────────────────────────────────────────────────────────
-const initMitarbeiter = [
+export const initMitarbeiter = [
   { id:1,  name:"Klaus Weber",    rolle:"Vorarbeiter", team:"Team Alpha", tel:"0171-1111111", fuehrerschein:true,  stapler:true,  schweisser:false, urlaub:12, krank:3 },
   { id:2,  name:"Marco Schulz",   rolle:"Monteur",     team:"Team Alpha", tel:"0172-2222222", fuehrerschein:true,  stapler:false, schweisser:true,  urlaub:15, krank:1 },
   { id:3,  name:"Timo Braun",     rolle:"Monteur",     team:"Team Alpha", tel:"0173-3333333", fuehrerschein:false, stapler:false, schweisser:true,  urlaub:10, krank:0 },
@@ -64,14 +64,14 @@ const initMitarbeiter = [
   { id:12, name:"Lukas Wolf",     rolle:"Monteur",     team:"Team Delta", tel:"0182-2222223", fuehrerschein:true,  stapler:false, schweisser:false, urlaub:7,  krank:2 },
   { id:13, name:"Max Zimmermann", rolle:"Monteur",     team:"Team Delta", tel:"0183-3333334", fuehrerschein:false, stapler:true,  schweisser:true,  urlaub:10, krank:0 },
 ];
-const initFahrzeuge = [
+export const initFahrzeuge = [
   { id:"F1", kz:"MK-AB 100", typ:"Sprinter",    team:"Team Alpha", tuev:"2025-08" },
   { id:"F2", kz:"MK-CD 200", typ:"Transporter", team:"Team Beta",  tuev:"2026-01" },
   { id:"F3", kz:"MK-EF 300", typ:"Pritsche",    team:"Team Gamma", tuev:"2025-11" },
   { id:"F4", kz:"MK-GH 400", typ:"Sprinter",    team:"Team Delta", tuev:"2026-03" },
 ];
 // Projekte jetzt mit echten Datumsangaben (2026)
-const initProjekte = [
+export const initProjekte = [
   { id:"P1", name:"Kranbahn Halle A",   kunde:"Müller Stahl GmbH",    ort:"Dortmund",  dateStart:"2026-05-25", dateEnd:"2026-06-19", team:"Team Alpha", status:"laufend",       fzg:"F1", vorarbeiter:"Klaus Weber",  bemerkung:"Anreise Sonntag, Hotel gebucht" },
   { id:"P2", name:"RBG-Schienen Werk2", kunde:"AutoParts AG",          ort:"Wolfsburg", dateStart:"2026-06-01", dateEnd:"2026-06-26", team:"Team Beta",  status:"bestätigt",     fzg:"F2", vorarbeiter:"Dirk Müller", bemerkung:"Material fehlt – Rücksprache mit Bauleiter" },
   { id:"P3", name:"Montage Kran K12",   kunde:"Chemie Nord GmbH",      ort:"Hamburg",   dateStart:"2026-06-08", dateEnd:"2026-06-19", team:"Team Gamma", status:"geplant",       fzg:"F3", vorarbeiter:"Lars Fischer",bemerkung:"Kunde wartet auf Freigabe" },
@@ -79,7 +79,7 @@ const initProjekte = [
   { id:"P5", name:"Wartung Lager",      kunde:"intern",                ort:"Werkstatt", dateStart:"2026-05-25", dateEnd:"2026-05-29", team:"Team Beta",  status:"abgeschlossen", fzg:"F2", vorarbeiter:"Dirk Müller", bemerkung:"Abgeschlossen" },
 ];
 // Sondereinsätze ebenfalls mit echten Daten
-const initSonder = [
+export const initSonder = [
   { id:"S1", ma:2,  typ:"Urlaub",   dateStart:"2026-06-29", dateEnd:"2026-07-10", bemerkung:"Sommerurlaub" },
   { id:"S2", ma:7,  typ:"Krank",    dateStart:"2026-06-02", dateEnd:"2026-06-05", bemerkung:"" },
   { id:"S3", ma:10, typ:"Schulung", dateStart:"2026-06-22", dateEnd:"2026-06-22", bemerkung:"Schweißerschein Auffrischung" },
@@ -1216,20 +1216,15 @@ function WarnPanel({ warnungen }) {
 }
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
-export default function Einsatzplanung() {
+export default function EinsatzplanungInner({
+  projekte, setProjekte, mitarbeiter, setMitarbeiter,
+  sonder, setSonder, antraege, setAntraege, fahrzeuge, setFahrzeuge,
+  onReset, onLogout, userEmail
+}) {
   const [tab, setTab] = useState("heute");
-  const [projekte, setProjekte] = usePersist("ep_projekte", initProjekte);
-  const [mitarbeiter, setMitarbeiter] = usePersist("ep_mitarbeiter", initMitarbeiter);
-  const [sonder, setSonder] = usePersist("ep_sonder", initSonder);
-  const [antraege, setAntraege] = usePersist("ep_antraege", []);
-  const [fahrzeuge, setFahrzeuge] = usePersist("ep_fahrzeuge", initFahrzeuge);
   const warnungen = useMemo(()=>pruefKonflikte(projekte,sonder,mitarbeiter),[projekte,sonder,mitarbeiter]);
 
-  function resetDaten() {
-    if (!window.confirm("Alle Daten auf die Demo-Werte zurücksetzen? Eigene Eingaben gehen verloren.")) return;
-    ["ep_projekte","ep_mitarbeiter","ep_sonder","ep_antraege","ep_fahrzeuge"].forEach(store.remove);
-    setProjekte(initProjekte); setMitarbeiter(initMitarbeiter); setSonder(initSonder); setAntraege([]); setFahrzeuge(initFahrzeuge);
-  }
+  function resetDaten() { if (onReset) onReset(); }
 
   const tabs = [
     { id:"heute",        label:"📆 Heute" },
@@ -1252,10 +1247,12 @@ export default function Einsatzplanung() {
           <div style={{ fontWeight:800, fontSize:17, letterSpacing:-0.5 }}>Einsatzplanung</div>
           <div style={{ fontSize:11, opacity:0.75 }}>Montagefirma · Teams, Projekte & Fahrzeuge</div>
         </div>
-        <div style={{ marginLeft:"auto", display:"flex", gap:6, flexWrap:"wrap" }}>
+        <div style={{ marginLeft:"auto", display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
           {Object.entries(TEAM_COLORS).map(([t,c])=>(
             <span key={t} style={{ background:c.bg+"44", border:`1px solid ${c.bg}88`, borderRadius:6, padding:"2px 8px", fontSize:10, color:"#fff", fontWeight:600 }}>{t}</span>
           ))}
+          {userEmail && <span style={{ fontSize:11, color:"#fff", opacity:0.85, marginLeft:8 }}>👤 {userEmail}</span>}
+          {onLogout && <button onClick={onLogout} style={{ background:"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"3px 10px", fontSize:11, color:"#fff", fontWeight:600, cursor:"pointer", marginLeft:4 }}>Abmelden</button>}
         </div>
       </div>
 
