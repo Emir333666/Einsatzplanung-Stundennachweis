@@ -101,56 +101,50 @@ export default function App() {
   useEffect(() => { if (session) ladeDaten(); }, [session, ladeDaten]);
 
   // ── Speicher-Funktionen: schreiben in die Cloud, dann neu laden ──
+  // ── Hilfsfunktion: Unterschiede berechnen und gezielt speichern ──
+  async function syncTabelle(tabelle, alt, neu, toDb = (x)=>x, idFeld = "id") {
+    const altIds = new Set(alt.map(x=>x[idFeld]).filter(v=>v!=null));
+    const neuIds = new Set(neu.map(x=>x[idFeld]).filter(v=>v!=null));
+    // Gelöschte: waren in alt, sind nicht mehr in neu
+    const geloescht = [...altIds].filter(id=>!neuIds.has(id));
+    if (geloescht.length) await supabase.from(tabelle).delete().in(idFeld, geloescht);
+    // Neue (ohne id) einfügen
+    const neueOhneId = neu.filter(x=>x[idFeld]==null).map(x=>{ const d=toDb(x); delete d[idFeld]; return d; });
+    if (neueOhneId.length) await supabase.from(tabelle).insert(neueOhneId);
+    // Bestehende (mit id) aktualisieren/einfügen
+    const mitId = neu.filter(x=>x[idFeld]!=null).map(toDb);
+    if (mitId.length) await supabase.from(tabelle).upsert(mitId);
+  }
+
   const setProjekte = async (next) => {
     const arr = typeof next === "function" ? next(projekte) : next;
     setProjekteState(arr);
-    await supabase.from("projekte").upsert(arr.map(toDbProjekt));
-    // gelöschte entfernen
-    const ids = arr.map(x=>x.id);
-    const { data: alle } = await supabase.from("projekte").select("id");
-    const weg = (alle||[]).map(x=>x.id).filter(id=>!ids.includes(id));
-    if (weg.length) await supabase.from("projekte").delete().in("id", weg);
+    await syncTabelle("projekte", projekte, arr, toDbProjekt);
+    ladeDaten();
   };
   const setMitarbeiter = async (next) => {
     const arr = typeof next === "function" ? next(mitarbeiter) : next;
     setMitarbeiterState(arr);
-    // Mitarbeiter ohne id = neu: ohne id-Feld einfügen lassen
-    const mitId = arr.filter(x=>x.id != null);
-    await supabase.from("mitarbeiter").upsert(mitId);
-    const neu = arr.filter(x=>x.id == null);
-    if (neu.length) await supabase.from("mitarbeiter").insert(neu.map(({id,...r})=>r));
-    const ids = mitId.map(x=>x.id);
-    const { data: alle } = await supabase.from("mitarbeiter").select("id");
-    const weg = (alle||[]).map(x=>x.id).filter(id=>!ids.includes(id));
-    if (weg.length && neu.length===0) await supabase.from("mitarbeiter").delete().in("id", weg);
+    await syncTabelle("mitarbeiter", mitarbeiter, arr, (x)=>({...x}));
     ladeDaten();
   };
   const setFahrzeuge = async (next) => {
     const arr = typeof next === "function" ? next(fahrzeuge) : next;
     setFahrzeugeState(arr);
-    await supabase.from("fahrzeuge").upsert(arr);
-    const ids = arr.map(x=>x.id);
-    const { data: alle } = await supabase.from("fahrzeuge").select("id");
-    const weg = (alle||[]).map(x=>x.id).filter(id=>!ids.includes(id));
-    if (weg.length) await supabase.from("fahrzeuge").delete().in("id", weg);
+    await syncTabelle("fahrzeuge", fahrzeuge, arr, (x)=>({...x}));
+    ladeDaten();
   };
   const setSonder = async (next) => {
     const arr = typeof next === "function" ? next(sonder) : next;
     setSonderState(arr);
-    await supabase.from("sonder").upsert(arr.map(toDbSonder));
-    const ids = arr.map(x=>x.id);
-    const { data: alle } = await supabase.from("sonder").select("id");
-    const weg = (alle||[]).map(x=>x.id).filter(id=>!ids.includes(id));
-    if (weg.length) await supabase.from("sonder").delete().in("id", weg);
+    await syncTabelle("sonder", sonder, arr, toDbSonder);
+    ladeDaten();
   };
   const setAntraege = async (next) => {
     const arr = typeof next === "function" ? next(antraege) : next;
     setAntraegeState(arr);
-    await supabase.from("antraege").upsert(arr.map(toDbAntrag));
-    const ids = arr.map(x=>x.id);
-    const { data: alle } = await supabase.from("antraege").select("id");
-    const weg = (alle||[]).map(x=>x.id).filter(id=>!ids.includes(id));
-    if (weg.length) await supabase.from("antraege").delete().in("id", weg);
+    await syncTabelle("antraege", antraege, arr, toDbAntrag);
+    ladeDaten();
   };
 
   // Demo-Daten in leere Cloud laden (einmalig, falls alles leer ist)
