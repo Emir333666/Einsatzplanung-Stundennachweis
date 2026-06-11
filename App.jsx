@@ -125,7 +125,7 @@ export default function App() {
   const setMitarbeiter = async (next) => {
     const arr = typeof next === "function" ? next(mitarbeiter) : next;
     setMitarbeiterState(arr);
-    await syncTabelle("mitarbeiter", mitarbeiter, arr, (x)=>({...x}));
+    await syncTabelle("mitarbeiter", mitarbeiter, arr, (x)=>{ const {created_at, ...rest}=x; return rest; });
     ladeDaten();
   };
   const setFahrzeuge = async (next) => {

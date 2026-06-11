@@ -1029,12 +1029,13 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
 
   // ── Mitarbeiter-Formular ──
   function MitarbeiterForm({ data }) {
-    const [f, setF] = useState(data || { id:null, name:"", rolle:"Monteur", team:teamNamen[0], tel:"", fuehrerschein:false, stapler:false, schweisser:false, urlaub:0, krank:0 });
+    const [f, setF] = useState(data || { id:null, name:"", rolle:"Monteur", team:teamNamen[0], tel:"", email:"", fuehrerschein:false, stapler:false, schweisser:false, urlaub:0, krank:0 });
     const set = (k,v) => setF(p=>({...p,[k]:v}));
     function speichern() {
       if (!f.name) return;
-      if (data) setMitarbeiter(prev => prev.map(m => m.id===data.id ? f : m));
-      else setMitarbeiter(prev => [...prev, { ...f, id: Math.max(0,...prev.map(m=>m.id))+1 }]);
+      const sauber = { ...f, email:(f.email||"").trim().toLowerCase(), urlaub: Number(f.urlaub)||0, krank: Number(f.krank)||0, fuehrerschein: !!f.fuehrerschein, stapler: !!f.stapler, schweisser: !!f.schweisser };
+      if (data) setMitarbeiter(prev => prev.map(m => m.id===data.id ? sauber : m));
+      else setMitarbeiter(prev => [...prev, { ...sauber, id: null }]);
       setModal(null);
     }
     const col = getTeamColor(f.team);
@@ -1042,9 +1043,10 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
       <Modal titel={data?"Mitarbeiter bearbeiten":"Neuer Mitarbeiter"} onClose={()=>setModal(null)} farbe={col.bg}>
         <Feld label="Name"><input style={inpS} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="Vor- und Nachname" /></Feld>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Rolle"><select style={inpS} value={f.rolle} onChange={e=>set("rolle",e.target.value)}><option>Monteur</option><option>Vorarbeiter</option></select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Rolle"><select style={inpS} value={f.rolle} onChange={e=>set("rolle",e.target.value)}><option>Monteur</option><option>Vorarbeiter</option><option>Bauleiter</option></select></Feld></div>
           <div style={{ flex:1 }}><Feld label="Team"><select style={inpS} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
         </div>
+        <Feld label="Login-E-Mail (für App-Zugang)"><input style={inpS} value={f.email||""} onChange={e=>set("email",e.target.value)} placeholder="z.B. max@firma.de – muss zum Supabase-Login passen" /></Feld>
         <Feld label="Telefon"><input style={inpS} value={f.tel} onChange={e=>set("tel",e.target.value)} placeholder="0171-…" /></Feld>
         <Feld label="Qualifikationen">
           <div style={{ display:"flex", gap:16, flexWrap:"wrap", marginTop:4 }}>
@@ -1150,16 +1152,17 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           <button onClick={()=>setModal({art:"ma"})} style={{ ...btnPrimary(), marginBottom:14 }}>+ Neuer Mitarbeiter</button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-              <thead><tr>{["Name","Rolle","Team","Telefon","Quali.","Aktion"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Name","Rolle","Team","Login-E-Mail","Telefon","Quali.","Aktion"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
               <tbody>
                 {mitarbeiter.map(m=>{
                   const col=getTeamColor(m.team);
                   const q=[m.fuehrerschein&&"FS",m.stapler&&"Stapler",m.schweisser&&"Schw."].filter(Boolean).join(", ")||"–";
                   return (
                     <tr key={m.id} style={{ borderBottom:"1px solid #f0f0f0" }}>
-                      <td style={{ ...tdS, fontWeight:m.rolle==="Vorarbeiter"?700:400, borderLeft:`4px solid ${col.bg}` }}>{m.rolle==="Vorarbeiter"?"★ ":""}{m.name}</td>
+                      <td style={{ ...tdS, fontWeight:m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter"?700:400, borderLeft:`4px solid ${col.bg}` }}>{m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter"?"★ ":""}{m.name}</td>
                       <td style={tdS}><Badge color={col.bg}>{m.rolle}</Badge></td>
                       <td style={tdS}>{m.team}</td>
+                      <td style={{ ...tdS, fontSize:11, color:m.email?"#374151":"#d1d5db" }}>{m.email||"– kein Zugang –"}</td>
                       <td style={tdS}>{m.tel}</td>
                       <td style={{ ...tdS, fontSize:11 }}>{q}</td>
                       <td style={{ ...tdS, whiteSpace:"nowrap" }}>
@@ -1215,18 +1218,45 @@ function WarnPanel({ warnungen }) {
   return <div style={{ display:"flex", flexDirection:"column", gap:8 }}>{warnungen.map((w,i)=><div key={i} style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:8, padding:"10px 14px", color:"#92400e", display:"flex", gap:10, fontSize:13 }}><span style={{ fontSize:18 }}>⚠️</span><div><strong style={{ marginRight:6 }}>{w.typ}:</strong>{w.msg}</div></div>)}</div>;
 }
 
+// ─── Rollen & Rechte ──────────────────────────────────────────────────────────
+const ADMIN_EMAILS = ["emircan.g@cc-schienentechnik.de"];
+
+function ermittleRolle(userEmail, mitarbeiter) {
+  const mail = (userEmail||"").trim().toLowerCase();
+  if (ADMIN_EMAILS.includes(mail)) return { rolle:"Admin", ma:null };
+  const ma = mitarbeiter.find(m => (m.email||"").trim().toLowerCase() === mail && mail!=="");
+  if (ma) return { rolle: ma.rolle, ma };
+  return { rolle:"Unbekannt", ma:null };
+}
+
+// Welche Tabs darf welche Rolle sehen?
+function darfTab(rolle, tabId) {
+  if (rolle==="Admin") return true;
+  const rechte = {
+    "Bauleiter":   ["heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge","warnungen"],
+    "Vorarbeiter": ["heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge"],
+    "Monteur":     ["heute","woche","monat","antraege","projekte","mitarbeiter","fahrzeuge"],
+    "Unbekannt":   ["heute","woche","monat"],
+  };
+  return (rechte[rolle]||rechte["Unbekannt"]).includes(tabId);
+}
+
 // ─── APP ─────────────────────────────────────────────────────────────────────
 export default function EinsatzplanungInner({
   projekte, setProjekte, mitarbeiter, setMitarbeiter,
   sonder, setSonder, antraege, setAntraege, fahrzeuge, setFahrzeuge,
   onReset, onLogout, userEmail
 }) {
+  const { rolle: meineRolle, ma: meinMA } = useMemo(()=>ermittleRolle(userEmail, mitarbeiter), [userEmail, mitarbeiter]);
+  const istAdmin = meineRolle==="Admin";
+  const istLeitung = istAdmin || meineRolle==="Bauleiter" || meineRolle==="Vorarbeiter";
+
   const [tab, setTab] = useState("heute");
   const warnungen = useMemo(()=>pruefKonflikte(projekte,sonder,mitarbeiter),[projekte,sonder,mitarbeiter]);
 
   function resetDaten() { if (onReset) onReset(); }
 
-  const tabs = [
+  const alleTabs = [
     { id:"heute",        label:"📆 Heute" },
     { id:"woche",        label:"📅 Woche" },
     { id:"monat",        label:"🗓 Monat" },
@@ -1238,6 +1268,13 @@ export default function EinsatzplanungInner({
     { id:"verwaltung",   label:"⚙️ Verwaltung" },
     { id:"warnungen",    label:`⚠️${warnungen.length>0?` (${warnungen.length})`:""}`},
   ];
+  // Verwaltung nur für Admin
+  const tabs = alleTabs.filter(t => {
+    if (t.id==="verwaltung") return istAdmin;
+    return darfTab(meineRolle, t.id);
+  });
+  // Falls aktueller Tab nicht erlaubt: zurück auf "heute"
+  useEffect(()=>{ if(!tabs.some(t=>t.id===tab)) setTab("heute"); }, [meineRolle]); // eslint-disable-line
 
   return (
     <div style={{ fontFamily:"'Inter', system-ui, sans-serif", minHeight:"100vh", background:"#f8fafc" }}>
@@ -1252,6 +1289,7 @@ export default function EinsatzplanungInner({
             <span key={t} style={{ background:c.bg+"44", border:`1px solid ${c.bg}88`, borderRadius:6, padding:"2px 8px", fontSize:10, color:"#fff", fontWeight:600 }}>{t}</span>
           ))}
           {userEmail && <span style={{ fontSize:11, color:"#fff", opacity:0.85, marginLeft:8 }}>👤 {userEmail}</span>}
+          <span style={{ background:istAdmin?"#16a34a":"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"2px 9px", fontSize:10, color:"#fff", fontWeight:700, marginLeft:2 }}>{meineRolle}</span>
           {onLogout && <button onClick={onLogout} style={{ background:"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"3px 10px", fontSize:11, color:"#fff", fontWeight:600, cursor:"pointer", marginLeft:4 }}>Abmelden</button>}
         </div>
       </div>
@@ -1268,16 +1306,26 @@ export default function EinsatzplanungInner({
       </div>
 
       <div style={{ padding:"18px 14px", maxWidth:1400, margin:"0 auto" }}>
-        {tab==="heute"        && <Tagesansicht   mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} />}
-        {tab==="woche"        && <Wochenansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
-        {tab==="monat"        && <Monatsansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
-        {tab==="stundenzettel"&& <Stundenzettel  mitarbeiter={mitarbeiter} projekte={projekte} />}
-        {tab==="antraege"     && <Antraege mitarbeiter={mitarbeiter} antraege={antraege} setAntraege={setAntraege} setSonder={setSonder} />}
-        {tab==="projekte"     && <ProjektUebersicht projekte={projekte} fahrzeuge={fahrzeuge} />}
-        {tab==="mitarbeiter"  && <MitarbeiterUebersicht mitarbeiter={mitarbeiter} projekte={projekte} />}
-        {tab==="fahrzeuge"    && <FahrzeugUebersicht fahrzeuge={fahrzeuge} projekte={projekte} />}
-        {tab==="verwaltung"   && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} onReset={onReset} />}
-        {tab==="warnungen"    && <WarnPanel warnungen={warnungen} />}
+        {meinMA && !istAdmin && (
+          <div style={{ background:"#eff6ff", border:"1.5px solid #bfdbfe", borderRadius:8, padding:"8px 14px", marginBottom:14, fontSize:12, color:"#1e40af" }}>
+            👋 Angemeldet als <strong>{meinMA.name}</strong> · {meinMA.team} · Rolle: <strong>{meineRolle}</strong>
+          </div>
+        )}
+        {meineRolle==="Unbekannt" && (
+          <div style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:13, color:"#92400e" }}>
+            ⚠️ Dein Login ist noch keinem Mitarbeiter zugeordnet. Bitte den Administrator, deine E-Mail (<strong>{userEmail}</strong>) in der Mitarbeiter-Verwaltung einzutragen. Bis dahin siehst du nur die Übersichten.
+          </div>
+        )}
+        {tab==="heute"        && darfTab(meineRolle,"heute")        && <Tagesansicht   mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} />}
+        {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
+        {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
+        {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={mitarbeiter} projekte={projekte} />}
+        {tab==="antraege"     && darfTab(meineRolle,"antraege")     && <Antraege mitarbeiter={mitarbeiter} antraege={antraege} setAntraege={setAntraege} setSonder={setSonder} />}
+        {tab==="projekte"     && darfTab(meineRolle,"projekte")     && <ProjektUebersicht projekte={projekte} fahrzeuge={fahrzeuge} />}
+        {tab==="mitarbeiter"  && darfTab(meineRolle,"mitarbeiter")  && <MitarbeiterUebersicht mitarbeiter={mitarbeiter} projekte={projekte} />}
+        {tab==="fahrzeuge"    && darfTab(meineRolle,"fahrzeuge")    && <FahrzeugUebersicht fahrzeuge={fahrzeuge} projekte={projekte} />}
+        {tab==="verwaltung"   && istAdmin                          && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} onReset={onReset} />}
+        {tab==="warnungen"    && darfTab(meineRolle,"warnungen")    && <WarnPanel warnungen={warnungen} />}
       </div>
     </div>
   );
