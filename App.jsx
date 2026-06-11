@@ -63,12 +63,12 @@ function Login({ onLogin }) {
   }
 
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#1e3a5f 0%,#1d4ed8 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Inter',system-ui,sans-serif", padding:16 }}>
-      <form onSubmit={anmelden} style={{ background:"#fff", borderRadius:16, padding:"32px 28px", width:"100%", maxWidth:380, boxShadow:"0 10px 40px #0003" }}>
+    <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#1e293b 0%,#334155 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Inter',system-ui,sans-serif", padding:16 }}>
+      <form onSubmit={anmelden} style={{ background:"#fff", borderRadius:16, padding:"32px 28px", width:"100%", maxWidth:380, boxShadow:"0 10px 40px #0004" }}>
         <div style={{ textAlign:"center", marginBottom:24 }}>
-          <div style={{ fontSize:40 }}>🏗</div>
-          <div style={{ fontWeight:800, fontSize:22, color:"#1e3a5f", marginTop:6 }}>Einsatzplanung</div>
-          <div style={{ fontSize:13, color:"#9ca3af", marginTop:2 }}>Bitte anmelden</div>
+          <div style={{ display:"inline-flex", alignItems:"center", justifyContent:"center", width:60, height:60, borderRadius:14, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", fontSize:32, boxShadow:"0 4px 12px #ea580c55" }}>🦊</div>
+          <div style={{ fontWeight:800, fontSize:26, color:"#1e293b", marginTop:10, letterSpacing:-0.5 }}>Baufox</div>
+          <div style={{ fontSize:12, color:"#94a3b8", marginTop:2, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>Montage-Steuerung</div>
         </div>
         <div style={{ marginBottom:14 }}>
           <div style={{ fontSize:11, color:"#6b7280", fontWeight:600, marginBottom:5, textTransform:"uppercase" }}>E-Mail</div>
@@ -81,7 +81,7 @@ function Login({ onLogin }) {
             style={{ width:"100%", padding:"11px 12px", borderRadius:9, border:"1.5px solid #e5e7eb", fontSize:14, boxSizing:"border-box" }} placeholder="••••••••" />
         </div>
         {fehler && <div style={{ background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"9px 12px", fontSize:13, marginBottom:14 }}>{fehler}</div>}
-        <button type="submit" disabled={laden} style={{ width:"100%", padding:"12px", borderRadius:9, background:"#1d4ed8", color:"#fff", border:"none", fontWeight:700, fontSize:15, cursor:"pointer", opacity:laden?0.6:1 }}>
+        <button type="submit" disabled={laden} style={{ width:"100%", padding:"12px", borderRadius:9, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", fontWeight:700, fontSize:15, cursor:"pointer", opacity:laden?0.6:1 }}>
           {laden ? "Anmelden…" : "Anmelden"}
         </button>
       </form>

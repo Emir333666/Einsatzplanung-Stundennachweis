@@ -1551,11 +1551,11 @@ export default function EinsatzplanungInner({
 
   return (
     <div style={{ fontFamily:"'Inter', system-ui, sans-serif", minHeight:"100vh", background:"#f8fafc" }}>
-      <div style={{ background:"linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%)", padding:"16px 20px", color:"#fff", display:"flex", alignItems:"center", gap:14 }}>
-        <div style={{ background:"#fff2", borderRadius:10, padding:"6px 10px", fontSize:20 }}>🏗</div>
+      <div style={{ background:"linear-gradient(135deg, #1e293b 0%, #334155 100%)", padding:"16px 20px", color:"#fff", display:"flex", alignItems:"center", gap:14 }}>
+        <div style={{ background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", borderRadius:10, padding:"6px 10px", fontSize:20, boxShadow:"0 2px 8px #ea580c55" }}>🦊</div>
         <div>
-          <div style={{ fontWeight:800, fontSize:17, letterSpacing:-0.5 }}>Einsatzplanung</div>
-          <div style={{ fontSize:11, opacity:0.75 }}>Montagefirma · Teams, Projekte & Fahrzeuge</div>
+          <div style={{ fontWeight:800, fontSize:18, letterSpacing:-0.5 }}>Baufox</div>
+          <div style={{ fontSize:11, opacity:0.7, textTransform:"uppercase", letterSpacing:1 }}>Montage-Steuerung</div>
         </div>
         <div style={{ marginLeft:"auto", display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
           {Object.entries(TEAM_COLORS).map(([t,c])=>(
@@ -1571,8 +1571,8 @@ export default function EinsatzplanungInner({
         {tabs.map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)} style={{
             padding:"11px 14px", border:"none", background:"none", cursor:"pointer", fontSize:12,
-            fontWeight:tab===t.id?700:500, color:tab===t.id?"#1d4ed8":"#6b7280",
-            borderBottom:tab===t.id?"2.5px solid #1d4ed8":"2.5px solid transparent",
+            fontWeight:tab===t.id?700:500, color:tab===t.id?"#ea580c":"#6b7280",
+            borderBottom:tab===t.id?"2.5px solid #ea580c":"2.5px solid transparent",
             whiteSpace:"nowrap", transition:"all 0.15s"
           }}>{t.label}</button>
         ))}
