@@ -1354,7 +1354,8 @@ function KennzahlKarte({ wert, label, farbe, icon, onClick }) {
   );
 }
 
-function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnungen, unterkuenfte, setTab }) {
+function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnungen, unterkuenfte, setTab, T }) {
+  const tw = (T && T.text) || "#1e3a5f";
   const heute = new Date();
   const d = parseDate(isoDate(heute));
 
@@ -1399,7 +1400,7 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
       </div>
 
       {/* Handlungsbedarf */}
-      <div style={{ fontWeight:700, fontSize:14, color:"#1e3a5f", marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>⚡ Handlungsbedarf</div>
+      <div style={{ fontWeight:700, fontSize:14, color:tw, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>⚡ Handlungsbedarf</div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:12, marginBottom:24 }}>
 
         {/* Offene Anträge */}
@@ -1459,7 +1460,7 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
       </div>
 
       {/* Heute auf Baustelle */}
-      <div style={{ fontWeight:700, fontSize:14, color:"#1e3a5f", marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>🏗 Heute aktiv</div>
+      <div style={{ fontWeight:700, fontSize:14, color:tw, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>🏗 Heute aktiv</div>
       {aktiveProjekte.length===0 ? (
         <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:20, textAlign:"center", color:"#9ca3af" }}>Heute sind keine Projekte aktiv</div>
       ) : (
@@ -1523,6 +1524,11 @@ export default function EinsatzplanungInner({
   const istLeitung = istAdmin || meineRolle==="Bauleiter" || meineRolle==="Vorarbeiter";
 
   const [tab, setTab] = useState(istAdmin ? "dashboard" : "heute");
+  const [dunkel, setDunkel] = useState(()=>{ try { return localStorage.getItem("baufox-theme")==="dunkel"; } catch(e){ return false; } });
+  useEffect(()=>{ try { localStorage.setItem("baufox-theme", dunkel?"dunkel":"hell"); } catch(e){} }, [dunkel]);
+  const T = dunkel
+    ? { bg:"#0f172a", panel:"#1e293b", panel2:"#334155", text:"#e2e8f0", textMut:"#94a3b8", border:"#334155", tabBar:"#1e293b" }
+    : { bg:"#f8fafc", panel:"#ffffff", panel2:"#f9fafb", text:"#1e293b", textMut:"#6b7280", border:"#e5e7eb", tabBar:"#ffffff" };
   const warnungen = useMemo(()=>pruefKonflikte(projekte,sonder,mitarbeiter),[projekte,sonder,mitarbeiter]);
 
   function resetDaten() { if (onReset) onReset(); }
@@ -1550,7 +1556,7 @@ export default function EinsatzplanungInner({
   useEffect(()=>{ if(!tabs.some(t=>t.id===tab)) setTab("heute"); }, [meineRolle]); // eslint-disable-line
 
   return (
-    <div style={{ fontFamily:"'Inter', system-ui, sans-serif", minHeight:"100vh", background:"#f8fafc" }}>
+    <div style={{ fontFamily:"'Inter', system-ui, sans-serif", minHeight:"100vh", background:T.bg, color:T.text, transition:"background 0.2s" }}>
       <div style={{ background:"linear-gradient(135deg, #1e293b 0%, #334155 100%)", padding:"16px 20px", color:"#fff", display:"flex", alignItems:"center", gap:14 }}>
         <div style={{ background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", borderRadius:10, padding:"6px 10px", fontSize:20, boxShadow:"0 2px 8px #ea580c55" }}>🦊</div>
         <div>
@@ -1563,15 +1569,16 @@ export default function EinsatzplanungInner({
           ))}
           {userEmail && <span style={{ fontSize:11, color:"#fff", opacity:0.85, marginLeft:8 }}>👤 {userEmail}</span>}
           <span style={{ background:istAdmin?"#16a34a":"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"2px 9px", fontSize:10, color:"#fff", fontWeight:700, marginLeft:2 }}>{meineRolle}</span>
+          <button onClick={()=>setDunkel(d=>!d)} title={dunkel?"Helles Design":"Dunkles Design"} style={{ background:"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"3px 9px", fontSize:13, color:"#fff", cursor:"pointer", marginLeft:4 }}>{dunkel?"☀️":"🌙"}</button>
           {onLogout && <button onClick={onLogout} style={{ background:"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"3px 10px", fontSize:11, color:"#fff", fontWeight:600, cursor:"pointer", marginLeft:4 }}>Abmelden</button>}
         </div>
       </div>
 
-      <div style={{ background:"#fff", borderBottom:"1.5px solid #e5e7eb", display:"flex", overflowX:"auto", padding:"0 12px" }}>
+      <div style={{ background:T.tabBar, borderBottom:`1.5px solid ${T.border}`, display:"flex", overflowX:"auto", padding:"0 12px" }}>
         {tabs.map(t=>(
           <button key={t.id} onClick={()=>setTab(t.id)} style={{
             padding:"11px 14px", border:"none", background:"none", cursor:"pointer", fontSize:12,
-            fontWeight:tab===t.id?700:500, color:tab===t.id?"#ea580c":"#6b7280",
+            fontWeight:tab===t.id?700:500, color:tab===t.id?"#ea580c":T.textMut,
             borderBottom:tab===t.id?"2.5px solid #ea580c":"2.5px solid transparent",
             whiteSpace:"nowrap", transition:"all 0.15s"
           }}>{t.label}</button>
@@ -1589,7 +1596,7 @@ export default function EinsatzplanungInner({
             ⚠️ Dein Login ist noch keinem Mitarbeiter zugeordnet. Bitte den Administrator, deine E-Mail (<strong>{userEmail}</strong>) in der Mitarbeiter-Verwaltung einzutragen. Bis dahin siehst du nur die Übersichten.
           </div>
         )}
-        {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} antraege={antraege} warnungen={warnungen} unterkuenfte={unterkuenfte} setTab={setTab} />}
+        {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} antraege={antraege} warnungen={warnungen} unterkuenfte={unterkuenfte} setTab={setTab} T={T} />}
         {tab==="heute"        && darfTab(meineRolle,"heute")        && <Tagesansicht   mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} />}
         {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
         {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
