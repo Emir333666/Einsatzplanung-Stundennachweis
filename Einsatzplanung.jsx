@@ -696,7 +696,7 @@ function ProjektUebersicht({ projekte, fahrzeuge }) {
         return (
           <div key={p.id} style={{ border:`1.5px solid ${col.bg}`, borderRadius:10, overflow:"hidden", boxShadow:"0 1px 4px #0001" }}>
             <div style={{ background:col.bg, color:"#fff", padding:"8px 14px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <span style={{ fontWeight:700, fontSize:14 }}>{p.name}</span>
+              <span style={{ fontWeight:700, fontSize:14 }}>{p.name}{p.nummer?` · ${p.nummer}`:""}</span>
               <span style={{ background:sc+"33", color:sc==="#374151"?"#fff":sc, border:`1px solid ${sc}`, borderRadius:99, padding:"1px 10px", fontSize:11, fontWeight:700 }}>{p.status}</span>
             </div>
             <div style={{ padding:"10px 14px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"6px 20px", fontSize:12 }}>
@@ -707,6 +707,10 @@ function ProjektUebersicht({ projekte, fahrzeuge }) {
               <Info label="Team" value={p.team} />
               <Info label="Vorarbeiter" value={p.vorarbeiter||"–"} />
               <Info label="Fahrzeug" value={fzg?`${fzg.kz} (${fzg.typ})`:"–"} />
+              {p.ansprechpartner && <Info label="Ansprechpartner" value={p.ansprechpartner} />}
+              {p.auftragssumme && <Info label="Auftragssumme" value={Number(p.auftragssumme).toLocaleString("de-DE")+" €"} />}
+              {p.planStunden && <Info label="Geplante Stunden" value={p.planStunden+" h"} />}
+              {p.beschreibung && <div style={{ gridColumn:"1/-1", marginTop:2, fontSize:11, color:"#6b7280" }}>{p.beschreibung}</div>}
               {p.bemerkung&&<div style={{ gridColumn:"1/-1", marginTop:4, padding:"6px 10px", background:"#fef9c3", borderRadius:6, color:"#92400e", fontSize:11 }}>💬 {p.bemerkung}</div>}
             </div>
           </div>
@@ -1009,7 +1013,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
   const [modal, setModal] = useState(null); // { art, data }
 
   const teamNamen = Object.keys(TEAM_COLORS);
-  const vorarbeiterNamen = mitarbeiter.filter(m=>m.rolle==="Vorarbeiter").map(m=>m.name);
+  const vorarbeiterNamen = mitarbeiter.filter(m=>m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter").map(m=>m.name);
 
   function neueId(prefix, liste) {
     let n = 1;
@@ -1019,7 +1023,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
 
   // ── Projekt-Formular ──
   function ProjektForm({ data }) {
-    const [f, setF] = useState(data || { id:"", name:"", kunde:"", ort:"", dateStart:isoDate(new Date()), dateEnd:isoDate(new Date()), team:teamNamen[0], status:"geplant", fzg:"", vorarbeiter:"", bemerkung:"" });
+    const [f, setF] = useState(data || { id:"", name:"", nummer:"", kunde:"", auftraggeber:"", ansprechpartner:"", apTel:"", apEmail:"", ort:"", land:"", dateStart:isoDate(new Date()), dateEnd:isoDate(new Date()), team:teamNamen[0], status:"geplant", fzg:"", vorarbeiter:"", auftragssumme:"", planStunden:"", planKosten:"", beschreibung:"", bemerkung:"" });
     const set = (k,v) => setF(p=>({...p,[k]:v}));
     function speichern() {
       if (!f.name) return;
@@ -1030,10 +1034,22 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     const col = getTeamColor(f.team);
     return (
       <Modal titel={data?"Projekt bearbeiten":"Neues Projekt"} onClose={()=>setModal(null)} farbe={col.bg}>
-        <Feld label="Projektname"><input style={inpS} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Kranbahn Halle B" /></Feld>
+        <div style={{ display:"flex", gap:12 }}>
+          <div style={{ flex:2 }}><Feld label="Projektname"><input style={inpS} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Kranbahn Halle B" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Projektnummer"><input style={inpS} value={f.nummer||""} onChange={e=>set("nummer",e.target.value)} placeholder="P-2026-001" /></Feld></div>
+        </div>
         <div style={{ display:"flex", gap:12 }}>
           <div style={{ flex:1 }}><Feld label="Kunde"><input style={inpS} value={f.kunde} onChange={e=>set("kunde",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Auftraggeber"><input style={inpS} value={f.auftraggeber||""} onChange={e=>set("auftraggeber",e.target.value)} /></Feld></div>
+        </div>
+        <div style={{ display:"flex", gap:12 }}>
+          <div style={{ flex:1 }}><Feld label="Ansprechpartner Kunde"><input style={inpS} value={f.ansprechpartner||""} onChange={e=>set("ansprechpartner",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Telefon AP"><input style={inpS} value={f.apTel||""} onChange={e=>set("apTel",e.target.value)} /></Feld></div>
+        </div>
+        <Feld label="E-Mail Ansprechpartner"><input style={inpS} value={f.apEmail||""} onChange={e=>set("apEmail",e.target.value)} /></Feld>
+        <div style={{ display:"flex", gap:12 }}>
           <div style={{ flex:1 }}><Feld label="Ort"><input style={inpS} value={f.ort} onChange={e=>set("ort",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Land"><input style={inpS} value={f.land||""} onChange={e=>set("land",e.target.value)} placeholder="Deutschland" /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12 }}>
           <div style={{ flex:1 }}><Feld label="Start"><input type="date" style={inpS} value={f.dateStart} onChange={e=>set("dateStart",e.target.value)} /></Feld></div>
@@ -1047,6 +1063,12 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           <div style={{ flex:1 }}><Feld label="Vorarbeiter"><select style={inpS} value={f.vorarbeiter} onChange={e=>set("vorarbeiter",e.target.value)}><option value="">–</option>{vorarbeiterNamen.map(v=><option key={v}>{v}</option>)}</select></Feld></div>
           <div style={{ flex:1 }}><Feld label="Fahrzeug"><select style={inpS} value={f.fzg} onChange={e=>set("fzg",e.target.value)}><option value="">–</option>{fahrzeuge.map(fz=><option key={fz.id} value={fz.id}>{fz.kz}</option>)}</select></Feld></div>
         </div>
+        <div style={{ display:"flex", gap:12 }}>
+          <div style={{ flex:1 }}><Feld label="Auftragssumme (€)"><input type="number" style={inpS} value={f.auftragssumme||""} onChange={e=>set("auftragssumme",e.target.value)} placeholder="0" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Geplante Stunden"><input type="number" style={inpS} value={f.planStunden||""} onChange={e=>set("planStunden",e.target.value)} placeholder="0" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Geplante Kosten (€)"><input type="number" style={inpS} value={f.planKosten||""} onChange={e=>set("planKosten",e.target.value)} placeholder="0" /></Feld></div>
+        </div>
+        <Feld label="Beschreibung der Arbeiten"><input style={inpS} value={f.beschreibung||""} onChange={e=>set("beschreibung",e.target.value)} placeholder="Kurzbeschreibung" /></Feld>
         <Feld label="Bemerkung"><input style={inpS} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} placeholder="z.B. Anreise Sonntag, Hotel gebucht" /></Feld>
         <div style={{ display:"flex", gap:10, marginTop:6 }}>
           <button onClick={speichern} style={btnPrimary(col.bg)}>💾 Speichern</button>
