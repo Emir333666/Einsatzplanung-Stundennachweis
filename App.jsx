@@ -121,6 +121,7 @@ export default function App() {
   const [stunden, setStundenState] = useState([]);
   const [unterkuenfte, setUnterkuenfteState] = useState([]);
   const [berichte, setBerichteState] = useState([]);
+  const [werkzeuge, setWerkzeugeState] = useState([]);
 
   // Session prüfen
   useEffect(() => {
@@ -132,7 +133,7 @@ export default function App() {
   // Daten aus der Cloud laden, sobald eingeloggt
   const ladeDaten = useCallback(async () => {
     setLaden(true);
-    const [p, m, f, s, a, st, u, tb] = await Promise.all([
+    const [p, m, f, s, a, st, u, tb, wz] = await Promise.all([
       supabase.from("projekte").select("*"),
       supabase.from("mitarbeiter").select("*"),
       supabase.from("fahrzeuge").select("*"),
@@ -141,6 +142,7 @@ export default function App() {
       supabase.from("stunden").select("*"),
       supabase.from("unterkuenfte").select("*"),
       supabase.from("tagesberichte").select("*"),
+      supabase.from("werkzeuge").select("*"),
     ]);
     setProjekteState((p.data||[]).map(toAppProjekt));
     setMitarbeiterState(m.data||[]);
@@ -150,6 +152,7 @@ export default function App() {
     setStundenState((st.data||[]).map(toAppStunde));
     setUnterkuenfteState((u.data||[]).map(toAppUnterkunft));
     setBerichteState((tb.data||[]).map(toAppBericht));
+    setWerkzeugeState((wz.data||[]).map(toAppWerkzeug));
     setLaden(false);
     setBereit(true);
   }, []);
@@ -220,6 +223,12 @@ export default function App() {
     await syncTabelle("tagesberichte", berichte, arr, toDbBericht);
     ladeDaten();
   };
+  const setWerkzeuge = async (next) => {
+    const arr = typeof next === "function" ? next(werkzeuge) : next;
+    setWerkzeugeState(arr);
+    await syncTabelle("werkzeuge", werkzeuge, arr, toDbWerkzeug);
+    ladeDaten();
+  };
 
   // Demo-Daten in leere Cloud laden (einmalig, falls alles leer ist)
   async function demoLaden() {
@@ -251,6 +260,7 @@ export default function App() {
         stunden={stunden} setStunden={setStunden}
         unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte}
         berichte={berichte} setBerichte={setBerichte}
+        werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge}
         onReset={null}
         onLogout={abmelden}
         userEmail={session.user?.email}

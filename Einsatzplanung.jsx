@@ -1109,7 +1109,7 @@ function btnPrimary(farbe="#1d4ed8") { return { padding:"10px 20px", borderRadiu
 const btnGhost = { padding:"10px 16px", borderRadius:8, background:"#f3f4f6", color:"#374151", border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13 };
 
 // ─── VERWALTUNG (Stammdaten anlegen/bearbeiten/löschen) ───────────────────────
-function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrzeuge, setFahrzeuge, unterkuenfte, setUnterkuenfte, onReset }) {
+function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrzeuge, setFahrzeuge, unterkuenfte, setUnterkuenfte, werkzeuge, setWerkzeuge, onReset }) {
   const [sub, setSub] = useState("projekte");
   const [modal, setModal] = useState(null); // { art, data }
 
@@ -1287,11 +1287,46 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     );
   }
 
+  // ── Werkzeug-Formular ──
+  function WerkzeugForm({ data }) {
+    const [f, setF] = useState(data || { id:"", name:"", typ:"", seriennummer:"", zustand:"gut", zugeordnetMa:"", team:"", pruefDatum:"", bemerkung:"" });
+    const set = (k,v) => setF(p=>({...p,[k]:v}));
+    function speichern() {
+      if (!f.name) return;
+      if (data) setWerkzeuge(prev => prev.map(x => x.id===data.id ? f : x));
+      else setWerkzeuge(prev => [...prev, { ...f, id:neueId("W",prev) }]);
+      setModal(null);
+    }
+    return (
+      <Modal titel={data?"Werkzeug bearbeiten":"Neues Werkzeug"} onClose={()=>setModal(null)} farbe="#475569">
+        <Feld label="Bezeichnung"><input style={inpS} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Schweißgerät Fronius" /></Feld>
+        <div style={{ display:"flex", gap:12 }}>
+          <div style={{ flex:1 }}><Feld label="Typ"><input style={inpS} value={f.typ} onChange={e=>set("typ",e.target.value)} placeholder="Schweißgerät, Bohrmaschine…" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Seriennummer"><input style={inpS} value={f.seriennummer} onChange={e=>set("seriennummer",e.target.value)} /></Feld></div>
+        </div>
+        <div style={{ display:"flex", gap:12 }}>
+          <div style={{ flex:1 }}><Feld label="Zustand"><select style={inpS} value={f.zustand} onChange={e=>set("zustand",e.target.value)}><option>gut</option><option>gebraucht</option><option>defekt</option><option>in Reparatur</option></select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Prüftermin (z.B. DGUV)"><input type="date" style={inpS} value={f.pruefDatum||""} onChange={e=>set("pruefDatum",e.target.value)} /></Feld></div>
+        </div>
+        <div style={{ display:"flex", gap:12 }}>
+          <div style={{ flex:1 }}><Feld label="Zugeordneter Mitarbeiter"><select style={inpS} value={f.zugeordnetMa||""} onChange={e=>set("zugeordnetMa",e.target.value)}><option value="">–</option>{mitarbeiter.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Oder Team"><select style={inpS} value={f.team||""} onChange={e=>set("team",e.target.value)}><option value="">–</option>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
+        </div>
+        <Feld label="Bemerkung"><input style={inpS} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} /></Feld>
+        <div style={{ display:"flex", gap:10, marginTop:6 }}>
+          <button onClick={speichern} style={btnPrimary("#475569")}>💾 Speichern</button>
+          <button onClick={()=>setModal(null)} style={btnGhost}>Abbrechen</button>
+        </div>
+      </Modal>
+    );
+  }
+
   function loeschen(art, id) {
     if (art==="projekt") setProjekte(prev => prev.filter(p=>p.id!==id));
     if (art==="ma")      setMitarbeiter(prev => prev.filter(m=>m.id!==id));
     if (art==="fzg")     setFahrzeuge(prev => prev.filter(f=>f.id!==id));
     if (art==="unterkunft") setUnterkuenfte(prev => prev.filter(u=>u.id!==id));
+    if (art==="werkzeug") setWerkzeuge(prev => prev.filter(w=>w.id!==id));
   }
 
   const subTabs = [
@@ -1299,6 +1334,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     { id:"mitarbeiter", label:`👷 Mitarbeiter (${mitarbeiter.length})` },
     { id:"fahrzeuge", label:`🚐 Fahrzeuge (${fahrzeuge.length})` },
     { id:"unterkuenfte", label:`🏨 Unterkünfte (${(unterkuenfte||[]).length})` },
+    { id:"werkzeuge", label:`🔧 Werkzeuge (${(werkzeuge||[]).length})` },
   ];
 
   return (
@@ -1430,10 +1466,41 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
         </>
       )}
 
+      {sub==="werkzeuge" && (
+        <>
+          <button onClick={()=>setModal({art:"werkzeug"})} style={{ ...btnPrimary("#475569"), marginBottom:14 }}>+ Neues Werkzeug</button>
+          <div style={{ overflowX:"auto" }}>
+            <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
+              <thead><tr>{["Bezeichnung","Typ","Seriennr.","Zustand","Zugeordnet","Prüftermin","Aktion"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+              <tbody>
+                {(werkzeuge||[]).map(w=>{
+                  const ma=mitarbeiter.find(m=>m.id===w.zugeordnetMa);
+                  return (
+                    <tr key={w.id} style={{ borderBottom:"1px solid #f0f0f0" }}>
+                      <td style={{ ...tdS, fontWeight:600, borderLeft:"4px solid #475569" }}>🔧 {w.name}</td>
+                      <td style={tdS}>{w.typ||"–"}</td>
+                      <td style={tdS}>{w.seriennummer||"–"}</td>
+                      <td style={tdS}>{w.zustand||"–"}</td>
+                      <td style={tdS}>{ma?ma.name:(w.team||"–")}</td>
+                      <td style={tdS}>{w.pruefDatum?fmtDateShort(parseDate(w.pruefDatum)):"–"}</td>
+                      <td style={{ ...tdS, whiteSpace:"nowrap" }}>
+                        <button onClick={()=>setModal({art:"werkzeug",data:w})} style={{ ...btnGhost, padding:"4px 10px", marginRight:5 }}>✏️</button>
+                        <button onClick={()=>loeschen("werkzeug",w.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:"#fff", color:"#dc2626", cursor:"pointer" }}>🗑</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
       {modal?.art==="projekt" && <ProjektForm data={modal.data} />}
       {modal?.art==="ma"      && <MitarbeiterForm data={modal.data} />}
       {modal?.art==="fzg"     && <FahrzeugForm data={modal.data} />}
       {modal?.art==="unterkunft" && <UnterkunftForm data={modal.data} />}
+      {modal?.art==="werkzeug" && <WerkzeugForm data={modal.data} />}
     </div>
   );
 }
@@ -1452,6 +1519,52 @@ function KennzahlKarte({ wert, label, farbe, icon, onClick }) {
         <span style={{ fontSize:30, fontWeight:800, color:farbe }}>{wert}</span>
       </div>
       <div style={{ fontSize:12, color:"#6b7280", marginTop:4, fontWeight:600 }}>{label}</div>
+    </div>
+  );
+}
+
+// ─── WERKZEUG-ÜBERSICHT ───────────────────────────────────────────────────────
+function WerkzeugUebersicht({ werkzeuge, mitarbeiter }) {
+  const heute = new Date(); heute.setHours(0,0,0,0);
+  function pruefStatus(w) {
+    if (!w.pruefDatum) return { farbe:"#9ca3af", text:"kein Prüftermin" };
+    const d = parseDate(w.pruefDatum);
+    const tage = Math.round((d-heute)/86400000);
+    if (tage < 0)  return { farbe:"#dc2626", text:`Prüfung überfällig (${fmtDate(d)})` };
+    if (tage <= 30) return { farbe:"#d97706", text:`Prüfung fällig in ${tage} Tagen` };
+    return { farbe:"#16a34a", text:`geprüft bis ${fmtDate(d)}` };
+  }
+  const faellig = (werkzeuge||[]).filter(w=>{ const s=pruefStatus(w); return s.farbe!=="#16a34a" && s.farbe!=="#9ca3af"; });
+  if (!werkzeuge || werkzeuge.length===0) {
+    return <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Werkzeuge angelegt. Lege welche unter „Verwaltung → Werkzeuge" an.</div>;
+  }
+  return (
+    <div>
+      {faellig.length>0 && (
+        <div style={{ background:"#fef2f2", border:"1.5px solid #fca5a5", borderRadius:8, padding:"8px 14px", marginBottom:14, fontSize:12, color:"#991b1b" }}>
+          ⚠️ <b>{faellig.length} Werkzeug(e) mit fälliger/überfälliger Prüfung:</b> {faellig.map(w=>w.name).join(", ")}
+        </div>
+      )}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))", gap:14 }}>
+        {werkzeuge.map(w=>{
+          const ma = mitarbeiter.find(m=>m.id===w.zugeordnetMa);
+          const st = pruefStatus(w);
+          const col = w.team ? getTeamColor(w.team) : { bg:"#475569" };
+          return (
+            <div key={w.id} style={{ border:`1.5px solid ${col.bg}`, borderRadius:10, overflow:"hidden", background:"#fff" }}>
+              <div style={{ background:col.bg, color:"#fff", padding:"7px 12px", fontWeight:700, fontSize:13 }}>🔧 {w.name}</div>
+              <div style={{ padding:"10px 12px", fontSize:12, display:"flex", flexDirection:"column", gap:5 }}>
+                <Info label="Typ" value={w.typ||"–"} />
+                <Info label="Seriennummer" value={w.seriennummer||"–"} />
+                <Info label="Zustand" value={w.zustand||"–"} />
+                <Info label="Zugeordnet" value={ma?ma.name:(w.team||"–")} />
+                {w.bemerkung && <Info label="Bemerkung" value={w.bemerkung} />}
+                <div style={{ marginTop:4 }}><Badge color={st.farbe}>{st.text}</Badge></div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1860,9 +1973,9 @@ function ermittleRolle(userEmail, mitarbeiter) {
 function darfTab(rolle, tabId) {
   if (rolle==="Admin") return true;
   const rechte = {
-    "Bauleiter":   ["dashboard","kosten","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","warnungen"],
-    "Vorarbeiter": ["heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte"],
-    "Monteur":     ["heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte"],
+    "Bauleiter":   ["dashboard","kosten","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Vorarbeiter": ["heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
+    "Monteur":     ["heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Unbekannt":   ["heute","woche","monat"],
   };
   return (rechte[rolle]||rechte["Unbekannt"]).includes(tabId);
@@ -1873,7 +1986,7 @@ export default function EinsatzplanungInner({
   projekte, setProjekte, mitarbeiter, setMitarbeiter,
   sonder, setSonder, antraege, setAntraege, fahrzeuge, setFahrzeuge,
   stunden, setStunden, unterkuenfte, setUnterkuenfte,
-  berichte, setBerichte,
+  berichte, setBerichte, werkzeuge, setWerkzeuge,
   onReset, onLogout, userEmail
 }) {
   const { rolle: meineRolle, ma: meinMA } = useMemo(()=>ermittleRolle(userEmail, mitarbeiter), [userEmail, mitarbeiter]);
@@ -1903,6 +2016,7 @@ export default function EinsatzplanungInner({
     { id:"mitarbeiter",  label:"👷 Mitarbeiter" },
     { id:"fahrzeuge",    label:"🚐 Fahrzeuge" },
     { id:"unterkuenfte", label:"🏨 Unterkünfte" },
+    { id:"werkzeuge",    label:"🔧 Werkzeuge" },
     { id:"verwaltung",   label:"⚙️ Verwaltung" },
     { id:"warnungen",    label:`⚠️${warnungen.length>0?` (${warnungen.length})`:""}`},
   ];
@@ -1967,7 +2081,8 @@ export default function EinsatzplanungInner({
         {tab==="mitarbeiter"  && darfTab(meineRolle,"mitarbeiter")  && <MitarbeiterUebersicht mitarbeiter={mitarbeiter} projekte={projekte} />}
         {tab==="fahrzeuge"    && darfTab(meineRolle,"fahrzeuge")    && <FahrzeugUebersicht fahrzeuge={fahrzeuge} projekte={projekte} />}
         {tab==="unterkuenfte" && darfTab(meineRolle,"unterkuenfte") && <UnterkunftUebersicht unterkuenfte={unterkuenfte} projekte={projekte} />}
-        {tab==="verwaltung"   && istAdmin                          && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte} onReset={onReset} />}
+        {tab==="werkzeuge"    && darfTab(meineRolle,"werkzeuge")    && <WerkzeugUebersicht werkzeuge={werkzeuge} mitarbeiter={mitarbeiter} />}
+        {tab==="verwaltung"   && istAdmin                          && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte} werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge} onReset={onReset} />}
         {tab==="warnungen"    && darfTab(meineRolle,"warnungen")    && <WarnPanel warnungen={warnungen} />}
       </div>
     </div>
