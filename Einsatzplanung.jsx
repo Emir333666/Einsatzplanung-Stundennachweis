@@ -510,13 +510,14 @@ function Monatsansicht({ mitarbeiter, projekte, sonder }) {
 }
 
 // ─── STUNDENZETTEL ─────────────────────────────────────────────────────────────
-function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden }) {
+function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, meinMA }) {
+  const istLeitung = rolle==="Admin" || rolle==="Bauleiter" || rolle==="Vorarbeiter";
   const vorarbeiter = mitarbeiter.filter(m=>m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter");
   const [aktVA, setAktVA] = useState(vorarbeiter[0]?.id||null);
   const [datum, setDatum] = useState(isoDate(new Date()));
   const [entwurf, setEntwurf] = useState({});
-  const gespeichert = stunden || [];
-  const [ansicht, setAnsicht] = useState("erfassen");
+  const gespeichert = istLeitung ? (stunden || []) : (stunden || []).filter(e => meinMA && e.maId===meinMA.id);
+  const [ansicht, setAnsicht] = useState(istLeitung ? "erfassen" : "uebersicht");
 
   const va = mitarbeiter.find(m=>m.id===aktVA);
   const teamMA = va ? mitarbeiter.filter(m=>m.team===va.team) : [];
@@ -539,14 +540,70 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden }) {
     setAnsicht("uebersicht");
   }
 
+  function pdfExport() {
+    const esc = t => String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const sorted = [...gespeichert].sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||String(a.maName).localeCompare(String(b.maName)));
+    const sumStd = sorted.reduce((s,e)=>s+(Number(e.arbeitsstunden)||0),0);
+    const sumFahrt = sorted.reduce((s,e)=>s+(Number(e.fahrzeit)||0),0);
+    const sumSpesen = sorted.reduce((s,e)=>s+(Number(e.spesen)||0),0);
+    const sumUeb = sorted.filter(e=>e.uebernachtung).length;
+    const sumUeberstd = sorted.reduce((s,e)=>s+Math.max(0,(Number(e.arbeitsstunden)||0)-8),0);
+    const heute = new Date();
+    const rows = sorted.map(e=>`<tr>
+      <td>${esc(fmtDate(parseDate(e.datum)))}</td><td>${esc(e.wochentag||"")}</td><td class="c">KW ${esc(e.kw)}</td>
+      <td><b>${esc(e.maName)}</b></td><td>${esc(e.projekt||"–")}</td>
+      <td class="c">${esc(e.start||"–")}</td><td class="c">${esc(e.end||"–")}</td><td class="c">${e.pause?esc(e.pause)+" min":"–"}</td>
+      <td class="c"><b>${esc(e.arbeitsstunden)} h</b></td><td class="c">${e.fahrzeit?esc(e.fahrzeit)+" h":"–"}</td>
+      <td class="c">${e.uebernachtung?"Ja":"–"}</td><td class="c">${e.spesen?esc(e.spesen)+" €":"–"}</td><td>${esc(e.bemerkung||"")}</td>
+    </tr>`).join("");
+    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Baufox – Stundennachweis</title>
+    <style>
+      body{font-family:Arial,Helvetica,sans-serif;margin:28px;color:#1e293b;}
+      .kopf{display:flex;align-items:center;gap:12px;border-bottom:3px solid #ea580c;padding-bottom:12px;margin-bottom:6px;}
+      .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#ea580c,#f97316);display:flex;align-items:center;justify-content:center;font-size:24px;}
+      h1{font-size:20px;margin:0;}
+      .unter{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#94a3b8;margin:0;}
+      .meta{font-size:11px;color:#64748b;margin:8px 0 16px;}
+      table{border-collapse:collapse;width:100%;font-size:10.5px;}
+      th{background:#1e293b;color:#fff;padding:6px 7px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.4px;}
+      td{padding:5px 7px;border-bottom:1px solid #e2e8f0;}
+      td.c{text-align:center;}
+      tr:nth-child(even) td{background:#f8fafc;}
+      .summen{margin-top:14px;display:flex;gap:24px;font-size:12px;border-top:2px solid #ea580c;padding-top:10px;}
+      .summen b{color:#ea580c;}
+      .fuss{margin-top:34px;display:flex;gap:60px;font-size:11px;color:#64748b;}
+      .linie{border-top:1px solid #94a3b8;padding-top:4px;width:220px;}
+      @media print{ body{margin:10mm;} }
+    </style></head><body>
+      <div class="kopf"><div class="logo">🦊</div><div><h1>Baufox – Stundennachweis</h1><p class="unter">Montage-Steuerung</p></div></div>
+      <div class="meta">Erstellt am ${esc(fmtDate(heute))} · ${sorted.length} Einträge</div>
+      <table><thead><tr><th>Datum</th><th>Tag</th><th>KW</th><th>Mitarbeiter</th><th>Projekt</th><th>Beginn</th><th>Ende</th><th>Pause</th><th>Arbeitsstd.</th><th>Fahrzeit</th><th>Übern.</th><th>Spesen</th><th>Bemerkung</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <div class="summen">
+        <span>Arbeitsstunden gesamt: <b>${sumStd.toFixed(2)} h</b></span>
+        <span>Überstunden gesamt: <b>${sumUeberstd.toFixed(2)} h</b></span>
+        <span>Fahrzeit gesamt: <b>${sumFahrt.toFixed(1)} h</b></span>
+        <span>Übernachtungen: <b>${sumUeb}</b></span>
+        <span>Spesen gesamt: <b>${sumSpesen.toFixed(2)} €</b></span>
+      </div>
+      <div class="fuss"><div class="linie">Datum, Unterschrift Vorarbeiter</div><div class="linie">Datum, Unterschrift Auftraggeber</div></div>
+      <script>window.onload=function(){window.print();};<\/script>
+    </body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) { alert("Bitte Pop-ups für diese Seite erlauben, um das PDF zu erstellen."); return; }
+    w.document.write(html);
+    w.document.close();
+  }
+
   const summaryByMA = useMemo(()=>{
     const map={};
     gespeichert.forEach(e=>{
-      if(!map[e.maId]) map[e.maId]={name:e.maName,stunden:0,fahrzeit:0,uebernachtungen:0,spesen:0,eintraege:[]};
+      if(!map[e.maId]) map[e.maId]={name:e.maName,stunden:0,fahrzeit:0,uebernachtungen:0,spesen:0,ueberstunden:0,eintraege:[]};
       map[e.maId].stunden+=parseFloat(e.arbeitsstunden||0);
       map[e.maId].fahrzeit+=parseFloat(e.fahrzeit||0);
       map[e.maId].uebernachtungen+=e.uebernachtung?1:0;
       map[e.maId].spesen+=parseFloat(e.spesen||0);
+      map[e.maId].ueberstunden+=Math.max(0,(parseFloat(e.arbeitsstunden)||0)-8);
       map[e.maId].eintraege.push(e);
     });
     return map;
@@ -555,24 +612,32 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden }) {
   return (
     <div>
       <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:18, alignItems:"flex-end" }}>
-        <div>
-          <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, marginBottom:3, textTransform:"uppercase" }}>Vorarbeiter</div>
-          <select value={aktVA||""} onChange={e=>{setAktVA(Number(e.target.value));setEntwurf({});}} style={{ ...inpS, width:210, fontWeight:700 }}>
-            {vorarbeiter.map(v=><option key={v.id} value={v.id}>{v.name} ({v.team})</option>)}
-          </select>
-        </div>
-        <div>
-          <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, marginBottom:3, textTransform:"uppercase" }}>Datum</div>
-          <input type="date" value={datum} onChange={e=>setDatum(e.target.value)} style={{ ...inpS, width:160 }} />
-        </div>
-        {datum && (
-          <div style={{ background:col.light, border:`1.5px solid ${col.bg}44`, borderRadius:8, padding:"7px 12px", fontSize:12 }}>
-            <span style={{ fontWeight:700, color:col.bg }}>{WOCHENTAGE_LANG[d.getDay()]}</span>
-            <span style={{ color:"#6b7280", marginLeft:6 }}>{fmtDate(d)} · KW {getKW(d)}</span>
+        {istLeitung ? (
+          <>
+            <div>
+              <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, marginBottom:3, textTransform:"uppercase" }}>Vorarbeiter</div>
+              <select value={aktVA||""} onChange={e=>{setAktVA(Number(e.target.value));setEntwurf({});}} style={{ ...inpS, width:210, fontWeight:700 }}>
+                {vorarbeiter.map(v=><option key={v.id} value={v.id}>{v.name} ({v.team})</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, marginBottom:3, textTransform:"uppercase" }}>Datum</div>
+              <input type="date" value={datum} onChange={e=>setDatum(e.target.value)} style={{ ...inpS, width:160 }} />
+            </div>
+            {datum && (
+              <div style={{ background:col.light, border:`1.5px solid ${col.bg}44`, borderRadius:8, padding:"7px 12px", fontSize:12 }}>
+                <span style={{ fontWeight:700, color:col.bg }}>{WOCHENTAGE_LANG[d.getDay()]}</span>
+                <span style={{ color:"#6b7280", marginLeft:6 }}>{fmtDate(d)} · KW {getKW(d)}</span>
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:8, padding:"8px 14px", fontSize:13, color:"#92400e" }}>
+            👷 Deine persönliche Stundenübersicht{meinMA?` – ${meinMA.name}`:""}. Stunden trägt dein Vorarbeiter ein.
           </div>
         )}
         <div style={{ marginLeft:"auto", display:"flex", gap:8 }}>
-          <button onClick={()=>setAnsicht("erfassen")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13, background:ansicht==="erfassen"?col.bg:"#fff", color:ansicht==="erfassen"?"#fff":"#374151", fontWeight:600 }}>✏️ Erfassen</button>
+          {istLeitung && <button onClick={()=>setAnsicht("erfassen")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13, background:ansicht==="erfassen"?col.bg:"#fff", color:ansicht==="erfassen"?"#fff":"#374151", fontWeight:600 }}>✏️ Erfassen</button>}
           <button onClick={()=>setAnsicht("uebersicht")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13, background:ansicht==="uebersicht"?col.bg:"#fff", color:ansicht==="uebersicht"?"#fff":"#374151", fontWeight:600 }}>📋 Übersicht ({gespeichert.length})</button>
         </div>
       </div>
@@ -588,6 +653,16 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden }) {
 
       {ansicht==="erfassen" && va && (
         <>
+          <div style={{ marginBottom:10 }}>
+            <button onClick={()=>{
+              const src = entwurf[aktVA];
+              if (!src || !src.start) { alert("Trag zuerst deine eigenen Zeiten (Zeile mit ★) ein – dann übernimmt dieser Knopf sie für das ganze Team."); return; }
+              setEntwurf(p=>{ const n={...p}; teamMA.forEach(ma=>{ n[ma.id]={...src}; }); return n; });
+            }} style={{ padding:"8px 16px", borderRadius:8, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:12 }}>
+              ⬇ Meine Zeiten für ganzes Team übernehmen
+            </button>
+            <span style={{ fontSize:11, color:"#9ca3af", marginLeft:10 }}>Danach kannst du Einzelne noch anpassen.</span>
+          </div>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
               <thead>
@@ -633,6 +708,9 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden }) {
             <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:32, textAlign:"center", color:"#9ca3af" }}>Noch keine Stundenzettel gespeichert</div>
           ) : (
             <>
+              <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
+                <button onClick={pdfExport} style={{ padding:"9px 18px", borderRadius:8, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>📄 Als PDF exportieren</button>
+              </div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:12, marginBottom:18 }}>
                 {Object.values(summaryByMA).map(s=>{
                   const ma=mitarbeiter.find(m=>m.name===s.name);
@@ -642,6 +720,7 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden }) {
                       <div style={{ background:c.bg, color:"#fff", padding:"7px 12px", fontWeight:700, fontSize:13 }}>{ma?.rolle==="Vorarbeiter"?"★ ":""}{s.name}</div>
                       <div style={{ padding:"10px 12px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"5px 12px", fontSize:12 }}>
                         <Info label="Arbeitsstunden" value={s.stunden.toFixed(2)+" h"} />
+                        <Info label="Überstunden" value={s.ueberstunden>0 ? <span style={{color:"#ea580c",fontWeight:700}}>{s.ueberstunden.toFixed(2)+" h"}</span> : "0 h"} />
                         <Info label="Fahrzeit" value={s.fahrzeit.toFixed(1)+" h"} />
                         <Info label="Übernachtungen" value={s.uebernachtungen} />
                         <Info label="Spesen" value={s.spesen.toFixed(2)+" €"} />
@@ -1506,7 +1585,7 @@ function darfTab(rolle, tabId) {
   const rechte = {
     "Bauleiter":   ["dashboard","heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","warnungen"],
     "Vorarbeiter": ["heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte"],
-    "Monteur":     ["heute","woche","monat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte"],
+    "Monteur":     ["heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte"],
     "Unbekannt":   ["heute","woche","monat"],
   };
   return (rechte[rolle]||rechte["Unbekannt"]).includes(tabId);
@@ -1600,7 +1679,7 @@ export default function EinsatzplanungInner({
         {tab==="heute"        && darfTab(meineRolle,"heute")        && <Tagesansicht   mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} />}
         {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
         {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
-        {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={mitarbeiter} projekte={projekte} stunden={stunden} setStunden={setStunden} />}
+        {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={mitarbeiter} projekte={projekte} stunden={stunden} setStunden={setStunden} rolle={meineRolle} meinMA={meinMA} />}
         {tab==="antraege"     && darfTab(meineRolle,"antraege")     && <Antraege mitarbeiter={mitarbeiter} antraege={antraege} setAntraege={setAntraege} setSonder={setSonder} />}
         {tab==="projekte"     && darfTab(meineRolle,"projekte")     && <ProjektUebersicht projekte={projekte} fahrzeuge={fahrzeuge} />}
         {tab==="mitarbeiter"  && darfTab(meineRolle,"mitarbeiter")  && <MitarbeiterUebersicht mitarbeiter={mitarbeiter} projekte={projekte} />}

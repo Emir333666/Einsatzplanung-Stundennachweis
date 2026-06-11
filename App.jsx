@@ -22,7 +22,7 @@ const toAppSonder = r => ({ ...r, dateStart:r.date_start, dateEnd:r.date_end });
 const toDbSonder  = s => ({ id:s.id, ma:s.ma, typ:s.typ, date_start:s.dateStart||null, date_end:s.dateEnd||null, bemerkung:s.bemerkung });
 const toAppAntrag = r => ({ ...r, dateStart:r.date_start, dateEnd:r.date_end, maName:r.ma_name, eingereicht:r.eingereicht });
 const toDbAntrag  = a => ({ id:a.id, ma:a.ma, ma_name:a.maName, team:a.team, typ:a.typ, date_start:a.dateStart||null, date_end:a.dateEnd||null, grund:a.grund, status:a.status, eingereicht:a.eingereicht||null });
-const toAppStunde = r => ({ ...r, maId:r.ma_id, maName:r.ma_name, arbeitsstunden:r.arbeitsstunden, wochentag:r.wochentag });
+const toAppStunde = r => ({ ...r, maId:r.ma_id, maName:r.ma_name, end:r.ende, arbeitsstunden:r.arbeitsstunden, wochentag:r.wochentag });
 const toAppUnterkunft = r => ({ ...r, projektId:r.projekt_id, kostenNacht:r.kosten_nacht });
 const toDbUnterkunft  = u => ({
   id:u.id, name:u.name, adresse:u.adresse, ansprechpartner:u.ansprechpartner,
