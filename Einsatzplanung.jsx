@@ -1633,7 +1633,7 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
 // ─── KOSTEN-CONTROLLING (Plan vs. Ist mit Ampel) ──────────────────────────────
 function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) {
   const tw = (T && T.text) || "#1e3a5f";
-  const fmt€ = n => (Number(n)||0).toLocaleString("de-DE",{minimumFractionDigits:0,maximumFractionDigits:0})+" €";
+  const fmtEuro = n => (Number(n)||0).toLocaleString("de-DE",{minimumFractionDigits:0,maximumFractionDigits:0})+" €";
 
   const auswertung = useMemo(()=>projekte.map(p=>{
     const eintraege = (stunden||[]).filter(e=>e.projekt===p.name);
@@ -1687,12 +1687,12 @@ function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) 
               <div style={{ padding:"12px 14px" }}>
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:"8px 18px", fontSize:12, marginBottom:10 }}>
                   <Info label="Stunden Ist / Plan" value={`${istStunden.toFixed(1)} h${planStd?` / ${planStd} h`:""}`} />
-                  <Info label="Lohnkosten" value={fmt€(lohn)} />
-                  <Info label="Spesen" value={fmt€(spesen)} />
-                  <Info label="Unterkunft" value={fmt€(unterkunft)} />
-                  <Info label="Kosten Ist / Plan" value={<b style={{color:ampel}}>{fmt€(ist)}{planK?` / ${fmt€(planK)}`:""}</b>} />
-                  {summe>0 && <Info label="Auftragssumme" value={fmt€(summe)} />}
-                  {db!=null && <Info label="Deckungsbeitrag" value={<b style={{color:db>=0?"#16a34a":"#dc2626"}}>{fmt€(db)}</b>} />}
+                  <Info label="Lohnkosten" value={fmtEuro(lohn)} />
+                  <Info label="Spesen" value={fmtEuro(spesen)} />
+                  <Info label="Unterkunft" value={fmtEuro(unterkunft)} />
+                  <Info label="Kosten Ist / Plan" value={<b style={{color:ampel}}>{fmtEuro(ist)}{planK?` / ${fmtEuro(planK)}`:""}</b>} />
+                  {summe>0 && <Info label="Auftragssumme" value={fmtEuro(summe)} />}
+                  {db!=null && <Info label="Deckungsbeitrag" value={<b style={{color:db>=0?"#16a34a":"#dc2626"}}>{fmtEuro(db)}</b>} />}
                 </div>
                 {ratio!=null && (
                   <div style={{ background:"#f1f5f9", borderRadius:99, height:10, overflow:"hidden" }}>
