@@ -766,6 +766,35 @@ function FahrzeugUebersicht({ fahrzeuge, projekte }) {
     </div>
   );
 }
+// ─── UNTERKÜNFTE-ÜBERSICHT ────────────────────────────────────────────────────
+function UnterkunftUebersicht({ unterkuenfte, projekte }) {
+  if (!unterkuenfte || unterkuenfte.length===0) {
+    return <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Unterkünfte angelegt. Lege welche unter „Verwaltung → Unterkünfte" an.</div>;
+  }
+  return (
+    <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:14 }}>
+      {unterkuenfte.map(u=>{
+        const proj = projekte.find(p=>p.id===u.projektId);
+        const col = proj ? getTeamColor(proj.team) : { bg:"#0f766e", light:"#ccfbf1", text:"#0d9488" };
+        return (
+          <div key={u.id} style={{ border:`1.5px solid ${col.bg}`, borderRadius:10, overflow:"hidden" }}>
+            <div style={{ background:col.bg, color:"#fff", padding:"7px 12px", fontWeight:700, fontSize:13 }}>🏨 {u.name||"Unterkunft"}</div>
+            <div style={{ padding:"10px 12px", fontSize:12, display:"flex", flexDirection:"column", gap:5 }}>
+              <Info label="Adresse" value={u.adresse||"–"} />
+              <Info label="Ansprechpartner" value={u.ansprechpartner||"–"} />
+              <Info label="Telefon" value={u.tel||"–"} />
+              <Info label="Check-in" value={u.checkin?fmtDate(parseDate(u.checkin)):"–"} />
+              <Info label="Check-out" value={u.checkout?fmtDate(parseDate(u.checkout)):"–"} />
+              <Info label="Zimmer" value={u.zimmer||"–"} />
+              <Info label="Projekt" value={proj?proj.name:"–"} />
+              <Info label="Kosten/Nacht" value={u.kostenNacht?u.kostenNacht+" €":"–"} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 // ─── URLAUBS-/FREI-ANTRÄGE ────────────────────────────────────────────────────
 function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
   const [maId, setMaId] = useState(mitarbeiter[0]?.id || null);
@@ -975,7 +1004,7 @@ function btnPrimary(farbe="#1d4ed8") { return { padding:"10px 20px", borderRadiu
 const btnGhost = { padding:"10px 16px", borderRadius:8, background:"#f3f4f6", color:"#374151", border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13 };
 
 // ─── VERWALTUNG (Stammdaten anlegen/bearbeiten/löschen) ───────────────────────
-function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrzeuge, setFahrzeuge, onReset }) {
+function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrzeuge, setFahrzeuge, unterkuenfte, setUnterkuenfte, onReset }) {
   const [sub, setSub] = useState("projekte");
   const [modal, setModal] = useState(null); // { art, data }
 
@@ -1096,16 +1125,56 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     );
   }
 
+  // ── Unterkunft-Formular ──
+  function UnterkunftForm({ data }) {
+    const [f, setF] = useState(data || { id:"", name:"", adresse:"", ansprechpartner:"", tel:"", email:"", checkin:"", checkout:"", zimmer:"", projektId:"", kostenNacht:"", bemerkung:"" });
+    const set = (k,v) => setF(p=>({...p,[k]:v}));
+    function speichern() {
+      if (!f.name) return;
+      if (data) setUnterkuenfte(prev => prev.map(x => x.id===data.id ? f : x));
+      else setUnterkuenfte(prev => [...prev, { ...f, id:neueId("U",prev) }]);
+      setModal(null);
+    }
+    const col = { bg:"#0f766e" };
+    return (
+      <Modal titel={data?"Unterkunft bearbeiten":"Neue Unterkunft"} onClose={()=>setModal(null)} farbe={col.bg}>
+        <Feld label="Name der Unterkunft"><input style={inpS} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Hotel Leipzig" /></Feld>
+        <Feld label="Adresse"><input style={inpS} value={f.adresse} onChange={e=>set("adresse",e.target.value)} placeholder="Straße, PLZ, Ort" /></Feld>
+        <div style={{ display:"flex", gap:12 }}>
+          <div style={{ flex:1 }}><Feld label="Ansprechpartner"><input style={inpS} value={f.ansprechpartner} onChange={e=>set("ansprechpartner",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Telefon"><input style={inpS} value={f.tel} onChange={e=>set("tel",e.target.value)} /></Feld></div>
+        </div>
+        <Feld label="E-Mail"><input style={inpS} value={f.email} onChange={e=>set("email",e.target.value)} placeholder="kontakt@hotel.de" /></Feld>
+        <div style={{ display:"flex", gap:12 }}>
+          <div style={{ flex:1 }}><Feld label="Check-in"><input type="date" style={inpS} value={f.checkin} onChange={e=>set("checkin",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Check-out"><input type="date" style={inpS} value={f.checkout} onChange={e=>set("checkout",e.target.value)} /></Feld></div>
+        </div>
+        <div style={{ display:"flex", gap:12 }}>
+          <div style={{ flex:1 }}><Feld label="Zimmer"><input type="number" style={inpS} value={f.zimmer} onChange={e=>set("zimmer",e.target.value)} placeholder="3" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Kosten/Nacht (€)"><input type="number" style={inpS} value={f.kostenNacht} onChange={e=>set("kostenNacht",e.target.value)} placeholder="80" /></Feld></div>
+        </div>
+        <Feld label="Projekt"><select style={inpS} value={f.projektId} onChange={e=>set("projektId",e.target.value)}><option value="">– kein Projekt –</option>{projekte.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Feld>
+        <Feld label="Bemerkung"><input style={inpS} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} /></Feld>
+        <div style={{ display:"flex", gap:10, marginTop:6 }}>
+          <button onClick={speichern} style={btnPrimary(col.bg)}>💾 Speichern</button>
+          <button onClick={()=>setModal(null)} style={btnGhost}>Abbrechen</button>
+        </div>
+      </Modal>
+    );
+  }
+
   function loeschen(art, id) {
     if (art==="projekt") setProjekte(prev => prev.filter(p=>p.id!==id));
     if (art==="ma")      setMitarbeiter(prev => prev.filter(m=>m.id!==id));
     if (art==="fzg")     setFahrzeuge(prev => prev.filter(f=>f.id!==id));
+    if (art==="unterkunft") setUnterkuenfte(prev => prev.filter(u=>u.id!==id));
   }
 
   const subTabs = [
     { id:"projekte", label:`🏗 Projekte (${projekte.length})` },
     { id:"mitarbeiter", label:`👷 Mitarbeiter (${mitarbeiter.length})` },
     { id:"fahrzeuge", label:`🚐 Fahrzeuge (${fahrzeuge.length})` },
+    { id:"unterkuenfte", label:`🏨 Unterkünfte (${(unterkuenfte||[]).length})` },
   ];
 
   return (
@@ -1206,9 +1275,41 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
         </>
       )}
 
+      {sub==="unterkuenfte" && (
+        <>
+          <button onClick={()=>setModal({art:"unterkunft"})} style={{ ...btnPrimary("#0f766e"), marginBottom:14 }}>+ Neue Unterkunft</button>
+          <div style={{ overflowX:"auto" }}>
+            <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
+              <thead><tr>{["Name","Adresse","Check-in","Check-out","Zimmer","Projekt","€/Nacht","Aktion"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+              <tbody>
+                {(unterkuenfte||[]).map(u=>{
+                  const proj=projekte.find(p=>p.id===u.projektId);
+                  return (
+                    <tr key={u.id} style={{ borderBottom:"1px solid #f0f0f0" }}>
+                      <td style={{ ...tdS, fontWeight:600, borderLeft:"4px solid #0f766e" }}>🏨 {u.name}</td>
+                      <td style={tdS}>{u.adresse||"–"}</td>
+                      <td style={tdS}>{u.checkin?fmtDateShort(parseDate(u.checkin)):"–"}</td>
+                      <td style={tdS}>{u.checkout?fmtDateShort(parseDate(u.checkout)):"–"}</td>
+                      <td style={{ ...tdS, textAlign:"center" }}>{u.zimmer||"–"}</td>
+                      <td style={tdS}>{proj?proj.name:"–"}</td>
+                      <td style={{ ...tdS, textAlign:"center" }}>{u.kostenNacht?u.kostenNacht+" €":"–"}</td>
+                      <td style={{ ...tdS, whiteSpace:"nowrap" }}>
+                        <button onClick={()=>setModal({art:"unterkunft",data:u})} style={{ ...btnGhost, padding:"4px 10px", marginRight:5 }}>✏️</button>
+                        <button onClick={()=>loeschen("unterkunft",u.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:"#fff", color:"#dc2626", cursor:"pointer" }}>🗑</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
       {modal?.art==="projekt" && <ProjektForm data={modal.data} />}
       {modal?.art==="ma"      && <MitarbeiterForm data={modal.data} />}
       {modal?.art==="fzg"     && <FahrzeugForm data={modal.data} />}
+      {modal?.art==="unterkunft" && <UnterkunftForm data={modal.data} />}
     </div>
   );
 }
@@ -1231,7 +1332,7 @@ function KennzahlKarte({ wert, label, farbe, icon, onClick }) {
   );
 }
 
-function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnungen, setTab }) {
+function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnungen, unterkuenfte, setTab }) {
   const heute = new Date();
   const d = parseDate(isoDate(heute));
 
@@ -1254,6 +1355,7 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
   // Probleme
   const projOhneVA = aktiveProjekte.filter(p => !p.vorarbeiter);
   const projOhneFzg = aktiveProjekte.filter(p => !p.fzg);
+  const projOhneUnterkunft = aktiveProjekte.filter(p => !(unterkuenfte||[]).some(u => u.projektId===p.id));
   const offeneAntraege = antraege.filter(a => a.status==="offen");
 
   const farbBlau="#1d4ed8", farbGruen="#16a34a", farbRot="#dc2626", farbOrange="#d97706", farbGrau="#6b7280";
@@ -1308,6 +1410,17 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
           <div style={{ padding:"8px 14px", fontSize:12, color:"#374151" }}>
             {projOhneFzg.length===0 ? <span style={{ color:"#9ca3af" }}>Alle aktiven Projekte haben ein Fahrzeug</span> :
               projOhneFzg.map(p=><div key={p.id} style={{ padding:"3px 0" }}>{p.name} · {p.team}</div>)}
+          </div>
+        </div>
+
+        {/* Projekte ohne Unterkunft */}
+        <div style={{ background:"#fff", border:"1.5px solid #e5e7eb", borderRadius:10, overflow:"hidden" }}>
+          <div style={{ background: projOhneUnterkunft.length?"#fef3c7":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: projOhneUnterkunft.length?"#92400e":"#166534", display:"flex", justifyContent:"space-between", cursor:"pointer" }} onClick={()=>setTab("unterkuenfte")}>
+            <span>🏨 Projekte ohne Unterkunft</span><span>{projOhneUnterkunft.length}</span>
+          </div>
+          <div style={{ padding:"8px 14px", fontSize:12, color:"#374151" }}>
+            {projOhneUnterkunft.length===0 ? <span style={{ color:"#9ca3af" }}>Alle aktiven Projekte haben eine Unterkunft</span> :
+              projOhneUnterkunft.map(p=><div key={p.id} style={{ padding:"3px 0" }}>{p.name} · {p.ort}</div>)}
           </div>
         </div>
 
@@ -1368,9 +1481,9 @@ function ermittleRolle(userEmail, mitarbeiter) {
 function darfTab(rolle, tabId) {
   if (rolle==="Admin") return true;
   const rechte = {
-    "Bauleiter":   ["dashboard","heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge","warnungen"],
-    "Vorarbeiter": ["heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge"],
-    "Monteur":     ["heute","woche","monat","antraege","projekte","mitarbeiter","fahrzeuge"],
+    "Bauleiter":   ["dashboard","heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","warnungen"],
+    "Vorarbeiter": ["heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte"],
+    "Monteur":     ["heute","woche","monat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte"],
     "Unbekannt":   ["heute","woche","monat"],
   };
   return (rechte[rolle]||rechte["Unbekannt"]).includes(tabId);
@@ -1380,7 +1493,7 @@ function darfTab(rolle, tabId) {
 export default function EinsatzplanungInner({
   projekte, setProjekte, mitarbeiter, setMitarbeiter,
   sonder, setSonder, antraege, setAntraege, fahrzeuge, setFahrzeuge,
-  stunden, setStunden,
+  stunden, setStunden, unterkuenfte, setUnterkuenfte,
   onReset, onLogout, userEmail
 }) {
   const { rolle: meineRolle, ma: meinMA } = useMemo(()=>ermittleRolle(userEmail, mitarbeiter), [userEmail, mitarbeiter]);
@@ -1402,6 +1515,7 @@ export default function EinsatzplanungInner({
     { id:"projekte",     label:"🏗 Projekte" },
     { id:"mitarbeiter",  label:"👷 Mitarbeiter" },
     { id:"fahrzeuge",    label:"🚐 Fahrzeuge" },
+    { id:"unterkuenfte", label:"🏨 Unterkünfte" },
     { id:"verwaltung",   label:"⚙️ Verwaltung" },
     { id:"warnungen",    label:`⚠️${warnungen.length>0?` (${warnungen.length})`:""}`},
   ];
@@ -1453,7 +1567,7 @@ export default function EinsatzplanungInner({
             ⚠️ Dein Login ist noch keinem Mitarbeiter zugeordnet. Bitte den Administrator, deine E-Mail (<strong>{userEmail}</strong>) in der Mitarbeiter-Verwaltung einzutragen. Bis dahin siehst du nur die Übersichten.
           </div>
         )}
-        {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} antraege={antraege} warnungen={warnungen} setTab={setTab} />}
+        {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} antraege={antraege} warnungen={warnungen} unterkuenfte={unterkuenfte} setTab={setTab} />}
         {tab==="heute"        && darfTab(meineRolle,"heute")        && <Tagesansicht   mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} />}
         {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
         {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
@@ -1462,7 +1576,8 @@ export default function EinsatzplanungInner({
         {tab==="projekte"     && darfTab(meineRolle,"projekte")     && <ProjektUebersicht projekte={projekte} fahrzeuge={fahrzeuge} />}
         {tab==="mitarbeiter"  && darfTab(meineRolle,"mitarbeiter")  && <MitarbeiterUebersicht mitarbeiter={mitarbeiter} projekte={projekte} />}
         {tab==="fahrzeuge"    && darfTab(meineRolle,"fahrzeuge")    && <FahrzeugUebersicht fahrzeuge={fahrzeuge} projekte={projekte} />}
-        {tab==="verwaltung"   && istAdmin                          && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} onReset={onReset} />}
+        {tab==="unterkuenfte" && darfTab(meineRolle,"unterkuenfte") && <UnterkunftUebersicht unterkuenfte={unterkuenfte} projekte={projekte} />}
+        {tab==="verwaltung"   && istAdmin                          && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte} onReset={onReset} />}
         {tab==="warnungen"    && darfTab(meineRolle,"warnungen")    && <WarnPanel warnungen={warnungen} />}
       </div>
     </div>
