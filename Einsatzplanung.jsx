@@ -1,6 +1,11 @@
 import { useState, useMemo, useEffect } from "react";
 import { supabase } from "./supabaseClient.js";
 
+// ─── Farbschema Hell/Dunkel (wird vom Schalter im Header umgestellt) ──────────
+const THEME_HELL   = { panel:"#ffffff", panel2:"#f9fafb", text:"#1f2937", textMut:"#6b7280", border:"#e5e7eb", input:"#ffffff" };
+const THEME_DUNKEL = { panel:"#1e293b", panel2:"#0f172a", text:"#e2e8f0", textMut:"#94a3b8", border:"#334155", input:"#0f172a" };
+let TH = THEME_HELL;
+
 // ─── Dauerhaftes Speichern (mit Fallback im Vorschaufenster) ──────────────────
 const _mem = {};
 const store = {
@@ -150,11 +155,11 @@ function Badge({ children, color="#6b7280" }) {
   return <span style={{ display:"inline-block", padding:"1px 7px", borderRadius:9999, fontSize:10, fontWeight:700, backgroundColor:color+"22", color, border:`1px solid ${color}44`, whiteSpace:"nowrap" }}>{children}</span>;
 }
 function Info({ label, value }) {
-  return <div><span style={{ color:"#9ca3af", fontSize:10, fontWeight:600, textTransform:"uppercase", letterSpacing:0.5 }}>{label} </span><span style={{ color:"#1f2937", fontWeight:500 }}>{value}</span></div>;
+  return <div><span style={{ color:"#9ca3af", fontSize:10, fontWeight:600, textTransform:"uppercase", letterSpacing:0.5 }}>{label} </span><span style={{ color:TH.text, fontWeight:500 }}>{value}</span></div>;
 }
-const thS = { padding:"7px 8px", background:"#f9fafb", fontWeight:700, fontSize:11, color:"#6b7280", borderBottom:"2px solid #e5e7eb", textAlign:"center", whiteSpace:"nowrap" };
-const tdS = { padding:"5px 8px", verticalAlign:"middle", color:"#374151" };
-const inpS = { padding:"5px 8px", borderRadius:6, border:"1.5px solid #e5e7eb", fontSize:12, width:"100%", boxSizing:"border-box" };
+const thS = () => ({ padding:"7px 8px", background:TH.panel2, fontWeight:700, fontSize:11, color:TH.textMut, borderBottom:"2px solid "+TH.border, textAlign:"center", whiteSpace:"nowrap" });
+const tdS = () => ({ padding:"5px 8px", verticalAlign:"middle", color:TH.text });
+const inpS = () => ({ padding:"5px 8px", borderRadius:6, border:"1.5px solid "+TH.border, fontSize:12, width:"100%", boxSizing:"border-box", background:TH.input, color:TH.text });
 
 // ─── TAGESANSICHT ─────────────────────────────────────────────────────────────
 function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
@@ -178,13 +183,13 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
     <div>
       {/* Datumsauswahl */}
       <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:18, flexWrap:"wrap" }}>
-        <button onClick={() => setDatum(isoDate(addDays(d,-1)))} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid #e5e7eb", background:"#fff", cursor:"pointer", fontSize:16 }}>‹</button>
+        <button onClick={() => setDatum(isoDate(addDays(d,-1)))} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>‹</button>
         <div style={{ textAlign:"center" }}>
-          <div style={{ fontWeight:800, fontSize:20, color:"#1e3a5f" }}>{wt}, {fmtDate(d)}</div>
+          <div style={{ fontWeight:800, fontSize:20, color:TH.text }}>{wt}, {fmtDate(d)}</div>
           <div style={{ fontSize:12, color:"#9ca3af" }}>Kalenderwoche {kw} · {MONATE[d.getMonth()]} {d.getFullYear()}</div>
         </div>
-        <button onClick={() => setDatum(isoDate(addDays(d,1)))} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid #e5e7eb", background:"#fff", cursor:"pointer", fontSize:16 }}>›</button>
-        <input type="date" value={datum} onChange={e=>setDatum(e.target.value)} style={{ ...inpS, width:160, marginLeft:8 }} />
+        <button onClick={() => setDatum(isoDate(addDays(d,1)))} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>›</button>
+        <input type="date" value={datum} onChange={e=>setDatum(e.target.value)} style={{ ...inpS(), width:160, marginLeft:8 }} />
         <button onClick={() => setDatum(isoDate(new Date()))} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid #1d4ed8", background:"#dbeafe", color:"#1d4ed8", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
       </div>
 
@@ -201,7 +206,7 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
           { label:"Abwesend",      wert:abwesend.length,     farbe:"#dc2626" },
           { label:"Verfügbar",     wert:frei.length,          farbe:"#16a34a" },
         ].map(k => (
-          <div key={k.label} style={{ background:"#fff", border:`1.5px solid ${k.farbe}33`, borderRadius:10, padding:"10px 14px", textAlign:"center" }}>
+          <div key={k.label} style={{ background:TH.panel, border:`1.5px solid ${k.farbe}33`, borderRadius:10, padding:"10px 14px", textAlign:"center" }}>
             <div style={{ fontSize:22, fontWeight:800, color:k.farbe }}>{k.wert}</div>
             <div style={{ fontSize:11, color:"#6b7280", marginTop:2 }}>{k.label}</div>
           </div>
@@ -211,7 +216,7 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
       {/* Baustellen-Karten */}
       {aufBaustelle.length > 0 && (
         <div style={{ marginBottom:20 }}>
-          <div style={{ fontWeight:700, fontSize:13, color:"#374151", marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>🏗 Heute auf Baustelle</div>
+          <div style={{ fontWeight:700, fontSize:13, color:TH.text, marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>🏗 Heute auf Baustelle</div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {Object.entries(
               aufBaustelle.reduce((acc, { ma, eintrag }) => {
@@ -261,13 +266,13 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
       {/* Abwesend */}
       {abwesend.length > 0 && (
         <div style={{ marginBottom:20 }}>
-          <div style={{ fontWeight:700, fontSize:13, color:"#374151", marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>🚫 Abwesend</div>
+          <div style={{ fontWeight:700, fontSize:13, color:TH.text, marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>🚫 Abwesend</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
             {abwesend.map(({ ma, eintrag }) => {
               const ef = EINSATZ_FARBEN[eintrag.typ] || EINSATZ_FARBEN["Frei"];
               return (
                 <div key={ma.id} style={{ background:ef.bg, border:`1.5px solid ${ef.border}`, borderRadius:8, padding:"7px 12px", fontSize:12 }}>
-                  <div style={{ fontWeight:700, color:"#374151" }}>{ma.name}</div>
+                  <div style={{ fontWeight:700, color:TH.text }}>{ma.name}</div>
                   <div style={{ marginTop:2 }}><Badge color={ef.badge}>{eintrag.typ}</Badge></div>
                   {eintrag.bemerkung && <div style={{ fontSize:11, color:"#6b7280", marginTop:3 }}>{eintrag.bemerkung}</div>}
                 </div>
@@ -280,7 +285,7 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
       {/* Verfügbar */}
       {frei.length > 0 && (
         <div>
-          <div style={{ fontWeight:700, fontSize:13, color:"#374151", marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>✅ Verfügbar / Nicht eingeplant</div>
+          <div style={{ fontWeight:700, fontSize:13, color:TH.text, marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>✅ Verfügbar / Nicht eingeplant</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
             {frei.map(({ ma }) => {
               const col = getTeamColor(ma.team);
@@ -317,13 +322,13 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
     <div>
       {/* Navigation */}
       <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14, flexWrap:"wrap" }}>
-        <button onClick={prevKW} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #e5e7eb", background:"#fff", cursor:"pointer", fontSize:16 }}>‹</button>
+        <button onClick={prevKW} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>‹</button>
         <div style={{ textAlign:"center" }}>
-          <div style={{ fontWeight:800, fontSize:16, color:"#1e3a5f" }}>KW {kw} · {kwYear}</div>
+          <div style={{ fontWeight:800, fontSize:16, color:TH.text }}>KW {kw} · {kwYear}</div>
           <div style={{ fontSize:11, color:"#9ca3af" }}>{fmtDate(tage[0])} – {fmtDate(tage[6])}</div>
         </div>
-        <button onClick={nextKW} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #e5e7eb", background:"#fff", cursor:"pointer", fontSize:16 }}>›</button>
-        <select value={filterTeam} onChange={e=>setFilterTeam(e.target.value)} style={{ padding:"6px 12px", borderRadius:8, border:"1.5px solid #e5e7eb", fontSize:13, marginLeft:8 }}>
+        <button onClick={nextKW} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>›</button>
+        <select value={filterTeam} onChange={e=>setFilterTeam(e.target.value)} style={{ padding:"6px 12px", borderRadius:8, border:"1.5px solid "+TH.border, fontSize:13, marginLeft:8 }}>
           {["Alle",...Object.keys(TEAM_COLORS)].map(t=><option key={t}>{t}</option>)}
         </select>
         <button onClick={()=>{setKw(getKW(heute));setKwYear(heute.getFullYear());}} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #1d4ed8", background:"#dbeafe", color:"#1d4ed8", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
@@ -333,12 +338,12 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
         <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12, minWidth:700 }}>
           <thead>
             <tr>
-              <th style={{ ...thS, textAlign:"left", position:"sticky", left:0, background:"#f9fafb", zIndex:2, minWidth:140 }}>Mitarbeiter</th>
+              <th style={{ ...thS(), textAlign:"left", position:"sticky", left:0, background:TH.panel2, zIndex:2, minWidth:140 }}>Mitarbeiter</th>
               {tage.map(d => {
                 const isHeuteFn = isoDate(d) === isoDate(new Date());
                 const wend = isWeekend(d);
                 return (
-                  <th key={isoDate(d)} style={{ ...thS, minWidth:110, background: isHeuteFn ? "#eff6ff" : wend ? "#f9fafb" : "#f9fafb",
+                  <th key={isoDate(d)} style={{ ...thS(), minWidth:110, background: isHeuteFn ? "#eff6ff" : wend ? "#f9fafb" : "#f9fafb",
                     color: isHeuteFn ? "#1d4ed8" : wend ? "#d1d5db" : "#6b7280",
                     borderTop: isHeuteFn ? "2px solid #1d4ed8" : undefined }}>
                     <div style={{ fontWeight:700 }}>{WOCHENTAGE[d.getDay()]}</div>
@@ -357,8 +362,8 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
                   <td colSpan={8} style={{ background:col.bg, color:"#fff", fontWeight:700, fontSize:11, padding:"4px 10px", letterSpacing:0.5 }}>▸ {team}</td>
                 </tr>,
                 ...teamMA.map(ma => (
-                  <tr key={ma.id} style={{ borderBottom:"1px solid #f0f0f0" }}>
-                    <td style={{ ...tdS, position:"sticky", left:0, background:"#fff", zIndex:1, borderRight:"2px solid #e5e7eb", borderLeft:`4px solid ${col.bg}`, whiteSpace:"nowrap" }}>
+                  <tr key={ma.id} style={{ borderBottom:"1px solid "+TH.border }}>
+                    <td style={{ ...tdS(), position:"sticky", left:0, background:TH.panel, zIndex:1, borderRight:"2px solid #e5e7eb", borderLeft:`4px solid ${col.bg}`, whiteSpace:"nowrap" }}>
                       <div style={{ fontWeight:ma.rolle==="Vorarbeiter"?700:400, color:ma.rolle==="Vorarbeiter"?col.bg:"#374151" }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</div>
                       <div style={{ fontSize:10, color:"#9ca3af" }}>{ma.rolle}</div>
                     </td>
@@ -370,15 +375,15 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
                       const eintrag = se || (proj ? { typ:"Projekt", projekt:proj } : null);
 
                       if (wend && !eintrag) return (
-                        <td key={isoDate(d)} style={{ ...tdS, background:"#fafafa", textAlign:"center", color:"#e5e7eb", fontSize:16 }}>—</td>
+                        <td key={isoDate(d)} style={{ ...tdS(), background:"#fafafa", textAlign:"center", color:"#e5e7eb", fontSize:16 }}>—</td>
                       );
-                      if (!eintrag) return <td key={isoDate(d)} style={{ ...tdS, background: isHeuteFn?"#eff6ff":"#fff" }} />;
+                      if (!eintrag) return <td key={isoDate(d)} style={{ ...tdS(), background: isHeuteFn?"#eff6ff":"#fff" }} />;
 
                       if (eintrag.typ==="Projekt") {
                         const p = eintrag.projekt;
                         const isStart = isoDate(d)===p.dateStart;
                         return (
-                          <td key={isoDate(d)} style={{ ...tdS, background:col.light, padding:"2px 4px" }}>
+                          <td key={isoDate(d)} style={{ ...tdS(), background:col.light, padding:"2px 4px" }}>
                             <div style={{ background:col.light, border:`1.5px solid ${col.bg}`, borderRadius:5, padding:"3px 6px", fontSize:10, borderLeft:isStart?`4px solid ${col.bg}`:undefined }}>
                               <div style={{ fontWeight:600, color:col.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:90 }}>{isStart?"▶ ":""}{p.name}</div>
                               {isStart && <div style={{ fontSize:9, color:"#6b7280" }}>📍 {p.ort}</div>}
@@ -388,7 +393,7 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
                       } else {
                         const ef = EINSATZ_FARBEN[eintrag.typ]||EINSATZ_FARBEN["Frei"];
                         return (
-                          <td key={isoDate(d)} style={{ ...tdS, background:ef.bg, padding:"2px 4px" }}>
+                          <td key={isoDate(d)} style={{ ...tdS(), background:ef.bg, padding:"2px 4px" }}>
                             <div style={{ border:`1.5px solid ${ef.border}`, borderRadius:5, padding:"3px 6px", fontSize:10, textAlign:"center" }}>
                               <span style={{ color:ef.badge, fontWeight:600 }}>{eintrag.typ}</span>
                             </div>
@@ -408,7 +413,7 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
         {Object.entries(EINSATZ_FARBEN).map(([k,v]) => (
           <span key={k} style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, background:v.bg, border:`1px solid ${v.border}`, borderRadius:6, padding:"2px 8px", color:v.badge }}>● {k}</span>
         ))}
-        <span style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, background:"#fafafa", border:"1px solid #e5e7eb", borderRadius:6, padding:"2px 8px", color:"#9ca3af" }}>— Wochenende</span>
+        <span style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, background:"#fafafa", border:"1px solid "+TH.border, borderRadius:6, padding:"2px 8px", color:"#9ca3af" }}>— Wochenende</span>
       </div>
     </div>
   );
@@ -433,10 +438,10 @@ function Monatsansicht({ mitarbeiter, projekte, sonder }) {
   return (
     <div>
       <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16, flexWrap:"wrap" }}>
-        <button onClick={prevM} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #e5e7eb", background:"#fff", cursor:"pointer", fontSize:16 }}>‹</button>
-        <div style={{ fontWeight:800, fontSize:17, color:"#1e3a5f" }}>{MONATE[monat]} {jahr}</div>
-        <button onClick={nextM} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #e5e7eb", background:"#fff", cursor:"pointer", fontSize:16 }}>›</button>
-        <select value={filterMA} onChange={e=>setFilterMA(e.target.value)} style={{ padding:"6px 12px", borderRadius:8, border:"1.5px solid #e5e7eb", fontSize:13 }}>
+        <button onClick={prevM} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>‹</button>
+        <div style={{ fontWeight:800, fontSize:17, color:TH.text }}>{MONATE[monat]} {jahr}</div>
+        <button onClick={nextM} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>›</button>
+        <select value={filterMA} onChange={e=>setFilterMA(e.target.value)} style={{ padding:"6px 12px", borderRadius:8, border:"1.5px solid "+TH.border, fontSize:13 }}>
           <option>Alle</option>
           {mitarbeiter.map(m=><option key={m.id}>{m.name}</option>)}
         </select>
@@ -447,12 +452,12 @@ function Monatsansicht({ mitarbeiter, projekte, sonder }) {
         <table style={{ borderCollapse:"collapse", width:"100%", fontSize:11, minWidth:900 }}>
           <thead>
             <tr>
-              <th style={{ ...thS, textAlign:"left", position:"sticky", left:0, background:"#f9fafb", zIndex:2, minWidth:130 }}>Mitarbeiter</th>
+              <th style={{ ...thS(), textAlign:"left", position:"sticky", left:0, background:TH.panel2, zIndex:2, minWidth:130 }}>Mitarbeiter</th>
               {tage.map(d => {
                 const wend = isWeekend(d);
                 const isH = isoDate(d)===isoDate(heute);
                 return (
-                  <th key={d.getDate()} style={{ ...thS, minWidth:30, padding:"4px 2px", background:isH?"#eff6ff":wend?"#f3f4f6":"#f9fafb",
+                  <th key={d.getDate()} style={{ ...thS(), minWidth:30, padding:"4px 2px", background:isH?"#eff6ff":wend?"#f3f4f6":"#f9fafb",
                     color:isH?"#1d4ed8":wend?"#d1d5db":"#6b7280", borderTop:isH?"2px solid #1d4ed8":undefined }}>
                     <div style={{ fontSize:9 }}>{WOCHENTAGE[d.getDay()]}</div>
                     <div style={{ fontWeight:800, fontSize:12 }}>{d.getDate()}</div>
@@ -465,8 +470,8 @@ function Monatsansicht({ mitarbeiter, projekte, sonder }) {
             {gefilterteMA.map(ma => {
               const col = getTeamColor(ma.team);
               return (
-                <tr key={ma.id} style={{ borderBottom:"1px solid #f0f0f0" }}>
-                  <td style={{ ...tdS, position:"sticky", left:0, background:"#fff", zIndex:1, borderRight:"2px solid #e5e7eb", borderLeft:`4px solid ${col.bg}`, whiteSpace:"nowrap" }}>
+                <tr key={ma.id} style={{ borderBottom:"1px solid "+TH.border }}>
+                  <td style={{ ...tdS(), position:"sticky", left:0, background:TH.panel, zIndex:1, borderRight:"2px solid #e5e7eb", borderLeft:`4px solid ${col.bg}`, whiteSpace:"nowrap" }}>
                     <div style={{ fontWeight:ma.rolle==="Vorarbeiter"?700:400, color:ma.rolle==="Vorarbeiter"?col.bg:"#374151", fontSize:11 }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</div>
                     <div style={{ fontSize:9, color:"#9ca3af" }}>{ma.team}</div>
                   </td>
@@ -477,7 +482,7 @@ function Monatsansicht({ mitarbeiter, projekte, sonder }) {
                     const eintrag = se || (proj?{typ:"Projekt",projekt:proj}:null);
                     const isH = isoDate(d)===isoDate(heute);
 
-                    if (wend && !eintrag) return <td key={d.getDate()} style={{ background:"#f3f4f6", padding:0 }} />;
+                    if (wend && !eintrag) return <td key={d.getDate()} style={{ background:TH.panel2, padding:0 }} />;
                     if (!eintrag) return <td key={d.getDate()} style={{ background:isH?"#eff6ff":"#fff", padding:0 }} />;
 
                     if (eintrag.typ==="Projekt") {
@@ -637,13 +642,13 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
           <>
             <div>
               <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, marginBottom:3, textTransform:"uppercase" }}>Vorarbeiter</div>
-              <select value={aktVA||""} onChange={e=>{setAktVA(Number(e.target.value));setEntwurf({});}} style={{ ...inpS, width:210, fontWeight:700 }}>
+              <select value={aktVA||""} onChange={e=>{setAktVA(Number(e.target.value));setEntwurf({});}} style={{ ...inpS(), width:210, fontWeight:700 }}>
                 {vorarbeiter.map(v=><option key={v.id} value={v.id}>{v.name} ({v.team})</option>)}
               </select>
             </div>
             <div>
               <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, marginBottom:3, textTransform:"uppercase" }}>Datum</div>
-              <input type="date" value={datum} onChange={e=>setDatum(e.target.value)} style={{ ...inpS, width:160 }} />
+              <input type="date" value={datum} onChange={e=>setDatum(e.target.value)} style={{ ...inpS(), width:160 }} />
             </div>
             {datum && (
               <div style={{ background:col.light, border:`1.5px solid ${col.bg}44`, borderRadius:8, padding:"7px 12px", fontSize:12 }}>
@@ -658,8 +663,8 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
           </div>
         )}
         <div style={{ marginLeft:"auto", display:"flex", gap:8 }}>
-          {istLeitung && <button onClick={()=>setAnsicht("erfassen")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13, background:ansicht==="erfassen"?col.bg:"#fff", color:ansicht==="erfassen"?"#fff":"#374151", fontWeight:600 }}>✏️ Erfassen</button>}
-          <button onClick={()=>setAnsicht("uebersicht")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13, background:ansicht==="uebersicht"?col.bg:"#fff", color:ansicht==="uebersicht"?"#fff":"#374151", fontWeight:600 }}>📋 Übersicht ({gespeichert.length})</button>
+          {istLeitung && <button onClick={()=>setAnsicht("erfassen")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, background:ansicht==="erfassen"?col.bg:"#fff", color:ansicht==="erfassen"?"#fff":"#374151", fontWeight:600 }}>✏️ Erfassen</button>}
+          <button onClick={()=>setAnsicht("uebersicht")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, background:ansicht==="uebersicht"?col.bg:"#fff", color:ansicht==="uebersicht"?"#fff":"#374151", fontWeight:600 }}>📋 Übersicht ({gespeichert.length})</button>
         </div>
       </div>
 
@@ -687,7 +692,7 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
               <thead>
-                <tr>{["Mitarbeiter","Rolle","Beginn","Ende","Pause (Min)","Arbeitsstd.","Fahrzeit (h)","Übernachtung","Spesen (€)","Bemerkung"].map(h=><th key={h} style={thS}>{h}</th>)}</tr>
+                <tr>{["Mitarbeiter","Rolle","Beginn","Ende","Pause (Min)","Arbeitsstd.","Fahrzeit (h)","Übernachtung","Spesen (€)","Bemerkung"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr>
               </thead>
               <tbody>
                 {teamMA.map(ma=>{
@@ -695,30 +700,30 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
                   const netto=calcStunden(start,end,Number(pause));
                   const isVA=ma.rolle==="Vorarbeiter";
                   return (
-                    <tr key={ma.id} style={{ borderBottom:"1px solid #f0f0f0", background:isVA?col.light:"#fff" }}>
-                      <td style={{ ...tdS, fontWeight:isVA?700:400, borderLeft:`4px solid ${col.bg}`, whiteSpace:"nowrap" }}>{isVA?"★ ":""}{ma.name}</td>
-                      <td style={tdS}><Badge color={col.bg}>{ma.rolle}</Badge></td>
-                      <td style={{ ...tdS, minWidth:90 }}><input type="time" value={start} onChange={e=>setFeld(ma.id,"start",e.target.value)} style={inpS} /></td>
-                      <td style={{ ...tdS, minWidth:90 }}><input type="time" value={end} onChange={e=>setFeld(ma.id,"end",e.target.value)} style={inpS} /></td>
-                      <td style={{ ...tdS, minWidth:80 }}><input type="number" min={0} max={120} value={pause} onChange={e=>setFeld(ma.id,"pause",e.target.value)} style={inpS} placeholder="30" /></td>
-                      <td style={{ ...tdS, textAlign:"center", fontWeight:700, color:netto>0?col.text:"#9ca3af" }}>{netto>0?netto.toFixed(2)+" h":"–"}</td>
-                      <td style={{ ...tdS, minWidth:80 }}><input type="number" min={0} step={0.5} value={getFeld(ma.id,"fahrzeit","")} onChange={e=>setFeld(ma.id,"fahrzeit",e.target.value)} style={inpS} placeholder="0" /></td>
-                      <td style={{ ...tdS, textAlign:"center" }}><input type="checkbox" checked={!!getFeld(ma.id,"uebernachtung",false)} onChange={e=>setFeld(ma.id,"uebernachtung",e.target.checked)} style={{ width:18, height:18, cursor:"pointer" }} /></td>
-                      <td style={{ ...tdS, minWidth:80 }}><input type="number" min={0} step={0.5} value={getFeld(ma.id,"spesen","")} onChange={e=>setFeld(ma.id,"spesen",e.target.value)} style={inpS} placeholder="0" /></td>
-                      <td style={{ ...tdS, minWidth:140 }}><input type="text" value={getFeld(ma.id,"bemerkung","")} onChange={e=>setFeld(ma.id,"bemerkung",e.target.value)} style={inpS} placeholder="z.B. Überstunden…" /></td>
+                    <tr key={ma.id} style={{ borderBottom:"1px solid "+TH.border, background:isVA?col.light:"#fff" }}>
+                      <td style={{ ...tdS(), fontWeight:isVA?700:400, borderLeft:`4px solid ${col.bg}`, whiteSpace:"nowrap" }}>{isVA?"★ ":""}{ma.name}</td>
+                      <td style={tdS()}><Badge color={col.bg}>{ma.rolle}</Badge></td>
+                      <td style={{ ...tdS(), minWidth:90 }}><input type="time" value={start} onChange={e=>setFeld(ma.id,"start",e.target.value)} style={inpS()} /></td>
+                      <td style={{ ...tdS(), minWidth:90 }}><input type="time" value={end} onChange={e=>setFeld(ma.id,"end",e.target.value)} style={inpS()} /></td>
+                      <td style={{ ...tdS(), minWidth:80 }}><input type="number" min={0} max={120} value={pause} onChange={e=>setFeld(ma.id,"pause",e.target.value)} style={inpS()} placeholder="30" /></td>
+                      <td style={{ ...tdS(), textAlign:"center", fontWeight:700, color:netto>0?col.text:"#9ca3af" }}>{netto>0?netto.toFixed(2)+" h":"–"}</td>
+                      <td style={{ ...tdS(), minWidth:80 }}><input type="number" min={0} step={0.5} value={getFeld(ma.id,"fahrzeit","")} onChange={e=>setFeld(ma.id,"fahrzeit",e.target.value)} style={inpS()} placeholder="0" /></td>
+                      <td style={{ ...tdS(), textAlign:"center" }}><input type="checkbox" checked={!!getFeld(ma.id,"uebernachtung",false)} onChange={e=>setFeld(ma.id,"uebernachtung",e.target.checked)} style={{ width:18, height:18, cursor:"pointer" }} /></td>
+                      <td style={{ ...tdS(), minWidth:80 }}><input type="number" min={0} step={0.5} value={getFeld(ma.id,"spesen","")} onChange={e=>setFeld(ma.id,"spesen",e.target.value)} style={inpS()} placeholder="0" /></td>
+                      <td style={{ ...tdS(), minWidth:140 }}><input type="text" value={getFeld(ma.id,"bemerkung","")} onChange={e=>setFeld(ma.id,"bemerkung",e.target.value)} style={inpS()} placeholder="z.B. Überstunden…" /></td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-          <div style={{ marginTop:12, background:"#f8fafc", border:"1.5px solid #e5e7eb", borderRadius:8, padding:"10px 14px", display:"flex", gap:24, flexWrap:"wrap", fontSize:12 }}>
+          <div style={{ marginTop:12, background:"#f8fafc", border:"1.5px solid "+TH.border, borderRadius:8, padding:"10px 14px", display:"flex", gap:24, flexWrap:"wrap", fontSize:12 }}>
             <div><span style={{ color:"#9ca3af", fontSize:10, fontWeight:600, textTransform:"uppercase" }}>Gesamt heute </span><span style={{ fontWeight:800, fontSize:16, color:col.bg }}>{teamMA.reduce((s,ma)=>s+calcStunden(getFeld(ma.id,"start"),getFeld(ma.id,"end"),Number(getFeld(ma.id,"pause",0))),0).toFixed(2)} h</span></div>
             <div><span style={{ color:"#9ca3af", fontSize:10, fontWeight:600, textTransform:"uppercase" }}>Eingetragen </span><span style={{ fontWeight:800, fontSize:16, color:col.bg }}>{teamMA.filter(ma=>getFeld(ma.id,"start")).length}/{teamMA.length}</span></div>
           </div>
           <div style={{ marginTop:14, display:"flex", gap:10 }}>
             <button onClick={speichern} style={{ padding:"9px 24px", borderRadius:8, background:col.bg, color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>💾 Speichern</button>
-            <button onClick={()=>setEntwurf({})} style={{ padding:"9px 16px", borderRadius:8, background:"#f3f4f6", color:"#374151", border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13 }}>✕ Reset</button>
+            <button onClick={()=>setEntwurf({})} style={{ padding:"9px 16px", borderRadius:8, background:TH.panel2, color:TH.text, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13 }}>✕ Reset</button>
           </div>
         </>
       )}
@@ -726,7 +731,7 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
       {ansicht==="uebersicht" && (
         <div>
           {!gespeichert.length ? (
-            <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:32, textAlign:"center", color:"#9ca3af" }}>Noch keine Stundenzettel gespeichert</div>
+            <div style={{ background:TH.panel2, border:"1.5px solid "+TH.border, borderRadius:10, padding:32, textAlign:"center", color:"#9ca3af" }}>Noch keine Stundenzettel gespeichert</div>
           ) : (
             <>
               <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginBottom:12 }}>
@@ -754,26 +759,26 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
               </div>
               <div style={{ overflowX:"auto" }}>
                 <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-                  <thead><tr>{["Datum","Wochentag","KW","Mitarbeiter","Projekt","Beginn","Ende","Pause","Arbeitsstd.","Fahrzeit","Übern.","Spesen","Bemerkung"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+                  <thead><tr>{["Datum","Wochentag","KW","Mitarbeiter","Projekt","Beginn","Ende","Pause","Arbeitsstd.","Fahrzeit","Übern.","Spesen","Bemerkung"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
                   <tbody>
                     {[...gespeichert].reverse().map((e,i)=>{
                       const ma=mitarbeiter.find(m=>m.id===e.maId);
                       const c=ma?getTeamColor(ma.team):{bg:"#6b7280"};
                       return (
-                        <tr key={i} style={{ borderBottom:"1px solid #f0f0f0" }}>
-                          <td style={tdS}>{fmtDate(parseDate(e.datum))}</td>
-                          <td style={tdS}>{e.wochentag}</td>
-                          <td style={{ ...tdS, textAlign:"center" }}>KW {e.kw}</td>
-                          <td style={{ ...tdS, borderLeft:`4px solid ${c.bg}`, fontWeight:ma?.rolle==="Vorarbeiter"?700:400 }}>{ma?.rolle==="Vorarbeiter"?"★ ":""}{e.maName}</td>
-                          <td style={tdS}>{e.projekt}</td>
-                          <td style={{ ...tdS, textAlign:"center" }}>{e.start||"–"}</td>
-                          <td style={{ ...tdS, textAlign:"center" }}>{e.end||"–"}</td>
-                          <td style={{ ...tdS, textAlign:"center" }}>{e.pause?e.pause+"min":"–"}</td>
-                          <td style={{ ...tdS, textAlign:"center", fontWeight:700, color:c.bg }}>{e.arbeitsstunden} h</td>
-                          <td style={{ ...tdS, textAlign:"center" }}>{e.fahrzeit?e.fahrzeit+" h":"–"}</td>
-                          <td style={{ ...tdS, textAlign:"center" }}>{e.uebernachtung?"✅":"–"}</td>
-                          <td style={{ ...tdS, textAlign:"center" }}>{e.spesen?e.spesen+" €":"–"}</td>
-                          <td style={tdS}>{e.bemerkung||"–"}</td>
+                        <tr key={i} style={{ borderBottom:"1px solid "+TH.border }}>
+                          <td style={tdS()}>{fmtDate(parseDate(e.datum))}</td>
+                          <td style={tdS()}>{e.wochentag}</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}>KW {e.kw}</td>
+                          <td style={{ ...tdS(), borderLeft:`4px solid ${c.bg}`, fontWeight:ma?.rolle==="Vorarbeiter"?700:400 }}>{ma?.rolle==="Vorarbeiter"?"★ ":""}{e.maName}</td>
+                          <td style={tdS()}>{e.projekt}</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}>{e.start||"–"}</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}>{e.end||"–"}</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}>{e.pause?e.pause+"min":"–"}</td>
+                          <td style={{ ...tdS(), textAlign:"center", fontWeight:700, color:c.bg }}>{e.arbeitsstunden} h</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}>{e.fahrzeit?e.fahrzeit+" h":"–"}</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}>{e.uebernachtung?"✅":"–"}</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}>{e.spesen?e.spesen+" €":"–"}</td>
+                          <td style={tdS()}>{e.bemerkung||"–"}</td>
                         </tr>
                       );
                     })}
@@ -824,23 +829,23 @@ function MitarbeiterUebersicht({ mitarbeiter, projekte }) {
   return (
     <div style={{ overflowX:"auto" }}>
       <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-        <thead><tr>{["Name","Rolle","Team","Telefon","FS","Stapler","Schweißer","Urlaub","Krank","Aktuell"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+        <thead><tr>{["Name","Rolle","Team","Telefon","FS","Stapler","Schweißer","Urlaub","Krank","Aktuell"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
         <tbody>
           {mitarbeiter.map(ma=>{
             const col=getTeamColor(ma.team);
             const aktProj=projekte.find(p=>p.team===ma.team&&p.status==="laufend");
             return (
-              <tr key={ma.id} style={{ borderBottom:"1px solid #f0f0f0" }}>
-                <td style={{ ...tdS, fontWeight:ma.rolle==="Vorarbeiter"?700:400, borderLeft:`4px solid ${col.bg}` }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</td>
-                <td style={tdS}><Badge color={col.bg}>{ma.rolle}</Badge></td>
-                <td style={tdS}>{ma.team}</td>
-                <td style={tdS}>{ma.tel}</td>
-                <td style={{ ...tdS, textAlign:"center" }}>{ma.fuehrerschein?"✅":"❌"}</td>
-                <td style={{ ...tdS, textAlign:"center" }}>{ma.stapler?"✅":"❌"}</td>
-                <td style={{ ...tdS, textAlign:"center" }}>{ma.schweisser?"✅":"❌"}</td>
-                <td style={{ ...tdS, textAlign:"center" }}>{ma.urlaub}d</td>
-                <td style={{ ...tdS, textAlign:"center", color:ma.krank>3?"#dc2626":"#374151" }}>{ma.krank}d</td>
-                <td style={tdS}>{aktProj?<Badge color={col.bg}>{aktProj.name}</Badge>:<span style={{ color:"#9ca3af" }}>–</span>}</td>
+              <tr key={ma.id} style={{ borderBottom:"1px solid "+TH.border }}>
+                <td style={{ ...tdS(), fontWeight:ma.rolle==="Vorarbeiter"?700:400, borderLeft:`4px solid ${col.bg}` }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</td>
+                <td style={tdS()}><Badge color={col.bg}>{ma.rolle}</Badge></td>
+                <td style={tdS()}>{ma.team}</td>
+                <td style={tdS()}>{ma.tel}</td>
+                <td style={{ ...tdS(), textAlign:"center" }}>{ma.fuehrerschein?"✅":"❌"}</td>
+                <td style={{ ...tdS(), textAlign:"center" }}>{ma.stapler?"✅":"❌"}</td>
+                <td style={{ ...tdS(), textAlign:"center" }}>{ma.schweisser?"✅":"❌"}</td>
+                <td style={{ ...tdS(), textAlign:"center" }}>{ma.urlaub}d</td>
+                <td style={{ ...tdS(), textAlign:"center", color:ma.krank>3?"#dc2626":"#374151" }}>{ma.krank}d</td>
+                <td style={tdS()}>{aktProj?<Badge color={col.bg}>{aktProj.name}</Badge>:<span style={{ color:"#9ca3af" }}>–</span>}</td>
               </tr>
             );
           })}
@@ -874,7 +879,7 @@ function FahrzeugUebersicht({ fahrzeuge, projekte }) {
 // ─── UNTERKÜNFTE-ÜBERSICHT ────────────────────────────────────────────────────
 function UnterkunftUebersicht({ unterkuenfte, projekte }) {
   if (!unterkuenfte || unterkuenfte.length===0) {
-    return <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Unterkünfte angelegt. Lege welche unter „Verwaltung → Unterkünfte" an.</div>;
+    return <div style={{ background:TH.panel2, border:"1.5px solid "+TH.border, borderRadius:10, padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Unterkünfte angelegt. Lege welche unter „Verwaltung → Unterkünfte" an.</div>;
   }
   return (
     <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:14 }}>
@@ -951,20 +956,20 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
     <div>
       {/* Umschalter */}
       <div style={{ display:"flex", gap:8, marginBottom:18 }}>
-        <button onClick={()=>setSeite("antrag")} style={{ padding:"8px 18px", borderRadius:8, border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13, fontWeight:600, background:seite==="antrag"?"#1d4ed8":"#fff", color:seite==="antrag"?"#fff":"#374151" }}>📝 Antrag stellen</button>
-        <button onClick={()=>setSeite("freigabe")} style={{ padding:"8px 18px", borderRadius:8, border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13, fontWeight:600, background:seite==="freigabe"?"#1d4ed8":"#fff", color:seite==="freigabe"?"#fff":"#374151" }}>
+        <button onClick={()=>setSeite("antrag")} style={{ padding:"8px 18px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:seite==="antrag"?"#1d4ed8":"#fff", color:seite==="antrag"?"#fff":"#374151" }}>📝 Antrag stellen</button>
+        <button onClick={()=>setSeite("freigabe")} style={{ padding:"8px 18px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:seite==="freigabe"?"#1d4ed8":"#fff", color:seite==="freigabe"?"#fff":"#374151" }}>
           ✅ Freigabe {offen.length>0 && <span style={{ background:"#dc2626", color:"#fff", borderRadius:99, padding:"0 7px", fontSize:11, marginLeft:4 }}>{offen.length}</span>}
         </button>
       </div>
 
       {seite === "antrag" && (
         <div style={{ maxWidth:520 }}>
-          <div style={{ background:"#fff", border:"1.5px solid #e5e7eb", borderRadius:12, padding:"18px 20px" }}>
-            <div style={{ fontWeight:700, fontSize:15, marginBottom:16, color:"#1e3a5f" }}>Neuer Antrag auf freie Zeit</div>
+          <div style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderRadius:12, padding:"18px 20px" }}>
+            <div style={{ fontWeight:700, fontSize:15, marginBottom:16, color:TH.text }}>Neuer Antrag auf freie Zeit</div>
 
             <div style={{ marginBottom:14 }}>
               <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, marginBottom:4, textTransform:"uppercase" }}>Mitarbeiter</div>
-              <select value={maId||""} onChange={e=>setMaId(Number(e.target.value))} style={{ ...inpS, fontWeight:600 }}>
+              <select value={maId||""} onChange={e=>setMaId(Number(e.target.value))} style={{ ...inpS(), fontWeight:600 }}>
                 {mitarbeiter.map(m=><option key={m.id} value={m.id}>{m.name} ({m.team})</option>)}
               </select>
             </div>
@@ -988,11 +993,11 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
             <div style={{ display:"flex", gap:12, marginBottom:14 }}>
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, marginBottom:4, textTransform:"uppercase" }}>Von</div>
-                <input type="date" value={von} onChange={e=>setVon(e.target.value)} style={inpS} />
+                <input type="date" value={von} onChange={e=>setVon(e.target.value)} style={inpS()} />
               </div>
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, marginBottom:4, textTransform:"uppercase" }}>Bis</div>
-                <input type="date" value={bis} onChange={e=>setBis(e.target.value)} style={inpS} />
+                <input type="date" value={bis} onChange={e=>setBis(e.target.value)} style={inpS()} />
               </div>
             </div>
 
@@ -1004,7 +1009,7 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
 
             <div style={{ marginBottom:16 }}>
               <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, marginBottom:4, textTransform:"uppercase" }}>Grund (optional)</div>
-              <input type="text" value={grund} onChange={e=>setGrund(e.target.value)} style={inpS} placeholder="z.B. Familienurlaub, Arzttermin…" />
+              <input type="text" value={grund} onChange={e=>setGrund(e.target.value)} style={inpS()} placeholder="z.B. Familienurlaub, Arzttermin…" />
             </div>
 
             <button onClick={einreichen} style={{ width:"100%", padding:"11px", borderRadius:8, background:"#1d4ed8", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:14 }}>
@@ -1016,7 +1021,7 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
 
       {seite === "freigabe" && (
         <div>
-          <div style={{ fontWeight:700, fontSize:13, color:"#374151", marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>
+          <div style={{ fontWeight:700, fontSize:13, color:TH.text, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>
             Offene Anträge {offen.length>0 && `(${offen.length})`}
           </div>
           {offen.length === 0 ? (
@@ -1030,20 +1035,20 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
                   <div key={a.id} style={{ border:`1.5px solid ${ef.border}`, borderRadius:10, overflow:"hidden", boxShadow:"0 1px 4px #0001" }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 14px", background:ef.bg }}>
                       <div>
-                        <span style={{ fontWeight:700, fontSize:14, color:"#1e3a5f" }}>{a.maName}</span>
+                        <span style={{ fontWeight:700, fontSize:14, color:TH.text }}>{a.maName}</span>
                         <span style={{ marginLeft:8 }}><Badge color={c.bg}>{a.team}</Badge></span>
                         <span style={{ marginLeft:6 }}><Badge color={ef.badge}>{a.typ}</Badge></span>
                       </div>
                     </div>
                     <div style={{ padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:12 }}>
                       <div style={{ fontSize:13 }}>
-                        <div style={{ fontWeight:600, color:"#374151" }}>📅 {fmtDate(parseDate(a.dateStart))} – {fmtDate(parseDate(a.dateEnd))}</div>
+                        <div style={{ fontWeight:600, color:TH.text }}>📅 {fmtDate(parseDate(a.dateStart))} – {fmtDate(parseDate(a.dateEnd))}</div>
                         {a.grund && <div style={{ fontSize:12, color:"#6b7280", marginTop:3 }}>💬 {a.grund}</div>}
                         <div style={{ fontSize:11, color:"#9ca3af", marginTop:3 }}>Eingereicht: {fmtDate(parseDate(a.eingereicht))}</div>
                       </div>
                       <div style={{ display:"flex", gap:8 }}>
                         <button onClick={()=>entscheiden(a,"genehmigt")} style={{ padding:"8px 16px", borderRadius:8, background:"#16a34a", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>✓ Genehmigen</button>
-                        <button onClick={()=>entscheiden(a,"abgelehnt")} style={{ padding:"8px 16px", borderRadius:8, background:"#fff", color:"#dc2626", border:"1.5px solid #dc2626", cursor:"pointer", fontWeight:700, fontSize:13 }}>✕ Ablehnen</button>
+                        <button onClick={()=>entscheiden(a,"abgelehnt")} style={{ padding:"8px 16px", borderRadius:8, background:TH.panel, color:"#dc2626", border:"1.5px solid #dc2626", cursor:"pointer", fontWeight:700, fontSize:13 }}>✕ Ablehnen</button>
                       </div>
                     </div>
                   </div>
@@ -1054,21 +1059,21 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
 
           {erledigt.length > 0 && (
             <>
-              <div style={{ fontWeight:700, fontSize:13, color:"#374151", marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>Bearbeitet</div>
+              <div style={{ fontWeight:700, fontSize:13, color:TH.text, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>Bearbeitet</div>
               <div style={{ overflowX:"auto" }}>
                 <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-                  <thead><tr>{["Mitarbeiter","Team","Art","Zeitraum","Grund","Status"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+                  <thead><tr>{["Mitarbeiter","Team","Art","Zeitraum","Grund","Status"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
                   <tbody>
                     {erledigt.map(a=>{
                       const c=getTeamColor(a.team);
                       return (
-                        <tr key={a.id} style={{ borderBottom:"1px solid #f0f0f0" }}>
-                          <td style={{ ...tdS, borderLeft:`4px solid ${c.bg}`, fontWeight:600 }}>{a.maName}</td>
-                          <td style={tdS}>{a.team}</td>
-                          <td style={tdS}><Badge color={EINSATZ_FARBEN[a.typ]?.badge||"#6b7280"}>{a.typ}</Badge></td>
-                          <td style={tdS}>{fmtDate(parseDate(a.dateStart))} – {fmtDate(parseDate(a.dateEnd))}</td>
-                          <td style={tdS}>{a.grund||"–"}</td>
-                          <td style={{ ...tdS, textAlign:"center" }}><Badge color={statusFarbe[a.status]}>{a.status}</Badge></td>
+                        <tr key={a.id} style={{ borderBottom:"1px solid "+TH.border }}>
+                          <td style={{ ...tdS(), borderLeft:`4px solid ${c.bg}`, fontWeight:600 }}>{a.maName}</td>
+                          <td style={tdS()}>{a.team}</td>
+                          <td style={tdS()}><Badge color={EINSATZ_FARBEN[a.typ]?.badge||"#6b7280"}>{a.typ}</Badge></td>
+                          <td style={tdS()}>{fmtDate(parseDate(a.dateStart))} – {fmtDate(parseDate(a.dateEnd))}</td>
+                          <td style={tdS()}>{a.grund||"–"}</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}><Badge color={statusFarbe[a.status]}>{a.status}</Badge></td>
                         </tr>
                       );
                     })}
@@ -1087,7 +1092,7 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
 function Modal({ titel, onClose, children, farbe="#1d4ed8" }) {
   return (
     <div onClick={onClose} style={{ position:"fixed", inset:0, background:"#0007", display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"40px 16px", zIndex:100, overflowY:"auto" }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:14, width:"100%", maxWidth:520, boxShadow:"0 10px 40px #0004" }}>
+      <div onClick={e=>e.stopPropagation()} style={{ background:TH.panel, borderRadius:14, width:"100%", maxWidth:520, boxShadow:"0 10px 40px #0004" }}>
         <div style={{ background:farbe, color:"#fff", padding:"12px 18px", borderRadius:"14px 14px 0 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <span style={{ fontWeight:700, fontSize:15 }}>{titel}</span>
           <button onClick={onClose} style={{ background:"none", border:"none", color:"#fff", fontSize:22, cursor:"pointer", lineHeight:1 }}>×</button>
@@ -1106,7 +1111,7 @@ function Feld({ label, children }) {
   );
 }
 function btnPrimary(farbe="#1d4ed8") { return { padding:"10px 20px", borderRadius:8, background:farbe, color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }; }
-const btnGhost = { padding:"10px 16px", borderRadius:8, background:"#f3f4f6", color:"#374151", border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13 };
+const btnGhost = () => ({ padding:"10px 16px", borderRadius:8, background:TH.panel2, color:TH.text, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13 });
 
 // ─── VERWALTUNG (Stammdaten anlegen/bearbeiten/löschen) ───────────────────────
 function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrzeuge, setFahrzeuge, unterkuenfte, setUnterkuenfte, werkzeuge, setWerkzeuge, onReset }) {
@@ -1136,44 +1141,44 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     return (
       <Modal titel={data?"Projekt bearbeiten":"Neues Projekt"} onClose={()=>setModal(null)} farbe={col.bg}>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:2 }}><Feld label="Projektname"><input style={inpS} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Kranbahn Halle B" /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Projektnummer"><input style={inpS} value={f.nummer||""} onChange={e=>set("nummer",e.target.value)} placeholder="P-2026-001" /></Feld></div>
+          <div style={{ flex:2 }}><Feld label="Projektname"><input style={inpS()} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Kranbahn Halle B" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Projektnummer"><input style={inpS()} value={f.nummer||""} onChange={e=>set("nummer",e.target.value)} placeholder="P-2026-001" /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Kunde"><input style={inpS} value={f.kunde} onChange={e=>set("kunde",e.target.value)} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Auftraggeber"><input style={inpS} value={f.auftraggeber||""} onChange={e=>set("auftraggeber",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Kunde"><input style={inpS()} value={f.kunde} onChange={e=>set("kunde",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Auftraggeber"><input style={inpS()} value={f.auftraggeber||""} onChange={e=>set("auftraggeber",e.target.value)} /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Ansprechpartner Kunde"><input style={inpS} value={f.ansprechpartner||""} onChange={e=>set("ansprechpartner",e.target.value)} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Telefon AP"><input style={inpS} value={f.apTel||""} onChange={e=>set("apTel",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Ansprechpartner Kunde"><input style={inpS()} value={f.ansprechpartner||""} onChange={e=>set("ansprechpartner",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Telefon AP"><input style={inpS()} value={f.apTel||""} onChange={e=>set("apTel",e.target.value)} /></Feld></div>
         </div>
-        <Feld label="E-Mail Ansprechpartner"><input style={inpS} value={f.apEmail||""} onChange={e=>set("apEmail",e.target.value)} /></Feld>
+        <Feld label="E-Mail Ansprechpartner"><input style={inpS()} value={f.apEmail||""} onChange={e=>set("apEmail",e.target.value)} /></Feld>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Ort"><input style={inpS} value={f.ort} onChange={e=>set("ort",e.target.value)} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Land"><input style={inpS} value={f.land||""} onChange={e=>set("land",e.target.value)} placeholder="Deutschland" /></Feld></div>
-        </div>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Start"><input type="date" style={inpS} value={f.dateStart} onChange={e=>set("dateStart",e.target.value)} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Ende"><input type="date" style={inpS} value={f.dateEnd} onChange={e=>set("dateEnd",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Ort"><input style={inpS()} value={f.ort} onChange={e=>set("ort",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Land"><input style={inpS()} value={f.land||""} onChange={e=>set("land",e.target.value)} placeholder="Deutschland" /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Team"><select style={inpS} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Status"><select style={inpS} value={f.status} onChange={e=>set("status",e.target.value)}>{Object.keys(STATUS_FARBEN).map(s=><option key={s}>{s}</option>)}</select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Start"><input type="date" style={inpS()} value={f.dateStart} onChange={e=>set("dateStart",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Ende"><input type="date" style={inpS()} value={f.dateEnd} onChange={e=>set("dateEnd",e.target.value)} /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Vorarbeiter"><select style={inpS} value={f.vorarbeiter} onChange={e=>set("vorarbeiter",e.target.value)}><option value="">–</option>{vorarbeiterNamen.map(v=><option key={v}>{v}</option>)}</select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Fahrzeug"><select style={inpS} value={f.fzg} onChange={e=>set("fzg",e.target.value)}><option value="">–</option>{fahrzeuge.map(fz=><option key={fz.id} value={fz.id}>{fz.kz}</option>)}</select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Team"><select style={inpS()} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Status"><select style={inpS()} value={f.status} onChange={e=>set("status",e.target.value)}>{Object.keys(STATUS_FARBEN).map(s=><option key={s}>{s}</option>)}</select></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Auftragssumme (€)"><input type="number" style={inpS} value={f.auftragssumme||""} onChange={e=>set("auftragssumme",e.target.value)} placeholder="0" /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Geplante Stunden"><input type="number" style={inpS} value={f.planStunden||""} onChange={e=>set("planStunden",e.target.value)} placeholder="0" /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Geplante Kosten (€)"><input type="number" style={inpS} value={f.planKosten||""} onChange={e=>set("planKosten",e.target.value)} placeholder="0" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Vorarbeiter"><select style={inpS()} value={f.vorarbeiter} onChange={e=>set("vorarbeiter",e.target.value)}><option value="">–</option>{vorarbeiterNamen.map(v=><option key={v}>{v}</option>)}</select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Fahrzeug"><select style={inpS()} value={f.fzg} onChange={e=>set("fzg",e.target.value)}><option value="">–</option>{fahrzeuge.map(fz=><option key={fz.id} value={fz.id}>{fz.kz}</option>)}</select></Feld></div>
         </div>
-        <Feld label="Beschreibung der Arbeiten"><input style={inpS} value={f.beschreibung||""} onChange={e=>set("beschreibung",e.target.value)} placeholder="Kurzbeschreibung" /></Feld>
-        <Feld label="Bemerkung"><input style={inpS} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} placeholder="z.B. Anreise Sonntag, Hotel gebucht" /></Feld>
+        <div style={{ display:"flex", gap:12 }}>
+          <div style={{ flex:1 }}><Feld label="Auftragssumme (€)"><input type="number" style={inpS()} value={f.auftragssumme||""} onChange={e=>set("auftragssumme",e.target.value)} placeholder="0" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Geplante Stunden"><input type="number" style={inpS()} value={f.planStunden||""} onChange={e=>set("planStunden",e.target.value)} placeholder="0" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Geplante Kosten (€)"><input type="number" style={inpS()} value={f.planKosten||""} onChange={e=>set("planKosten",e.target.value)} placeholder="0" /></Feld></div>
+        </div>
+        <Feld label="Beschreibung der Arbeiten"><input style={inpS()} value={f.beschreibung||""} onChange={e=>set("beschreibung",e.target.value)} placeholder="Kurzbeschreibung" /></Feld>
+        <Feld label="Bemerkung"><input style={inpS()} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} placeholder="z.B. Anreise Sonntag, Hotel gebucht" /></Feld>
         <div style={{ display:"flex", gap:10, marginTop:6 }}>
           <button onClick={speichern} style={btnPrimary(col.bg)}>💾 Speichern</button>
-          <button onClick={()=>setModal(null)} style={btnGhost}>Abbrechen</button>
+          <button onClick={()=>setModal(null)} style={btnGhost()}>Abbrechen</button>
         </div>
       </Modal>
     );
@@ -1193,14 +1198,14 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     const col = getTeamColor(f.team);
     return (
       <Modal titel={data?"Mitarbeiter bearbeiten":"Neuer Mitarbeiter"} onClose={()=>setModal(null)} farbe={col.bg}>
-        <Feld label="Name"><input style={inpS} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="Vor- und Nachname" /></Feld>
+        <Feld label="Name"><input style={inpS()} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="Vor- und Nachname" /></Feld>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Rolle"><select style={inpS} value={f.rolle} onChange={e=>set("rolle",e.target.value)}><option>Monteur</option><option>Vorarbeiter</option><option>Bauleiter</option></select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Team"><select style={inpS} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Rolle"><select style={inpS()} value={f.rolle} onChange={e=>set("rolle",e.target.value)}><option>Monteur</option><option>Vorarbeiter</option><option>Bauleiter</option></select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Team"><select style={inpS()} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
         </div>
-        <Feld label="Login-E-Mail (für App-Zugang)"><input style={inpS} value={f.email||""} onChange={e=>set("email",e.target.value)} placeholder="z.B. max@firma.de – muss zum Supabase-Login passen" /></Feld>
-        <Feld label="Telefon"><input style={inpS} value={f.tel} onChange={e=>set("tel",e.target.value)} placeholder="0171-…" /></Feld>
-        <Feld label="Stundensatz (€/h, intern für Kostenrechnung)"><input type="number" style={inpS} value={f.stundensatz||""} onChange={e=>set("stundensatz",e.target.value)} placeholder="z.B. 45" /></Feld>
+        <Feld label="Login-E-Mail (für App-Zugang)"><input style={inpS()} value={f.email||""} onChange={e=>set("email",e.target.value)} placeholder="z.B. max@firma.de – muss zum Supabase-Login passen" /></Feld>
+        <Feld label="Telefon"><input style={inpS()} value={f.tel} onChange={e=>set("tel",e.target.value)} placeholder="0171-…" /></Feld>
+        <Feld label="Stundensatz (€/h, intern für Kostenrechnung)"><input type="number" style={inpS()} value={f.stundensatz||""} onChange={e=>set("stundensatz",e.target.value)} placeholder="z.B. 45" /></Feld>
         <Feld label="Qualifikationen">
           <div style={{ display:"flex", gap:16, flexWrap:"wrap", marginTop:4 }}>
             {[["fuehrerschein","Führerschein"],["stapler","Staplerschein"],["schweisser","Schweißer"]].map(([k,lbl])=>(
@@ -1211,12 +1216,12 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           </div>
         </Feld>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Urlaubstage"><input type="number" style={inpS} value={f.urlaub} onChange={e=>set("urlaub",Number(e.target.value))} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Krankheitstage"><input type="number" style={inpS} value={f.krank} onChange={e=>set("krank",Number(e.target.value))} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Urlaubstage"><input type="number" style={inpS()} value={f.urlaub} onChange={e=>set("urlaub",Number(e.target.value))} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Krankheitstage"><input type="number" style={inpS()} value={f.krank} onChange={e=>set("krank",Number(e.target.value))} /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:10, marginTop:6 }}>
           <button onClick={speichern} style={btnPrimary(col.bg)}>💾 Speichern</button>
-          <button onClick={()=>setModal(null)} style={btnGhost}>Abbrechen</button>
+          <button onClick={()=>setModal(null)} style={btnGhost()}>Abbrechen</button>
         </div>
       </Modal>
     );
@@ -1235,15 +1240,15 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     const col = getTeamColor(f.team);
     return (
       <Modal titel={data?"Fahrzeug bearbeiten":"Neues Fahrzeug"} onClose={()=>setModal(null)} farbe={col.bg}>
-        <Feld label="Kennzeichen"><input style={inpS} value={f.kz} onChange={e=>set("kz",e.target.value)} placeholder="MK-XX 000" /></Feld>
-        <Feld label="Fahrzeugtyp"><input style={inpS} value={f.typ} onChange={e=>set("typ",e.target.value)} placeholder="Sprinter, Pritsche…" /></Feld>
+        <Feld label="Kennzeichen"><input style={inpS()} value={f.kz} onChange={e=>set("kz",e.target.value)} placeholder="MK-XX 000" /></Feld>
+        <Feld label="Fahrzeugtyp"><input style={inpS()} value={f.typ} onChange={e=>set("typ",e.target.value)} placeholder="Sprinter, Pritsche…" /></Feld>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Team"><select style={inpS} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="TÜV (JJJJ-MM)"><input style={inpS} value={f.tuev} onChange={e=>set("tuev",e.target.value)} placeholder="2026-08" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Team"><select style={inpS()} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="TÜV (JJJJ-MM)"><input style={inpS()} value={f.tuev} onChange={e=>set("tuev",e.target.value)} placeholder="2026-08" /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:10, marginTop:6 }}>
           <button onClick={speichern} style={btnPrimary(col.bg)}>💾 Speichern</button>
-          <button onClick={()=>setModal(null)} style={btnGhost}>Abbrechen</button>
+          <button onClick={()=>setModal(null)} style={btnGhost()}>Abbrechen</button>
         </div>
       </Modal>
     );
@@ -1262,26 +1267,26 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     const col = { bg:"#0f766e" };
     return (
       <Modal titel={data?"Unterkunft bearbeiten":"Neue Unterkunft"} onClose={()=>setModal(null)} farbe={col.bg}>
-        <Feld label="Name der Unterkunft"><input style={inpS} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Hotel Leipzig" /></Feld>
-        <Feld label="Adresse"><input style={inpS} value={f.adresse} onChange={e=>set("adresse",e.target.value)} placeholder="Straße, PLZ, Ort" /></Feld>
+        <Feld label="Name der Unterkunft"><input style={inpS()} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Hotel Leipzig" /></Feld>
+        <Feld label="Adresse"><input style={inpS()} value={f.adresse} onChange={e=>set("adresse",e.target.value)} placeholder="Straße, PLZ, Ort" /></Feld>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Ansprechpartner"><input style={inpS} value={f.ansprechpartner} onChange={e=>set("ansprechpartner",e.target.value)} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Telefon"><input style={inpS} value={f.tel} onChange={e=>set("tel",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Ansprechpartner"><input style={inpS()} value={f.ansprechpartner} onChange={e=>set("ansprechpartner",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Telefon"><input style={inpS()} value={f.tel} onChange={e=>set("tel",e.target.value)} /></Feld></div>
         </div>
-        <Feld label="E-Mail"><input style={inpS} value={f.email} onChange={e=>set("email",e.target.value)} placeholder="kontakt@hotel.de" /></Feld>
+        <Feld label="E-Mail"><input style={inpS()} value={f.email} onChange={e=>set("email",e.target.value)} placeholder="kontakt@hotel.de" /></Feld>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Check-in"><input type="date" style={inpS} value={f.checkin} onChange={e=>set("checkin",e.target.value)} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Check-out"><input type="date" style={inpS} value={f.checkout} onChange={e=>set("checkout",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Check-in"><input type="date" style={inpS()} value={f.checkin} onChange={e=>set("checkin",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Check-out"><input type="date" style={inpS()} value={f.checkout} onChange={e=>set("checkout",e.target.value)} /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Zimmer"><input type="number" style={inpS} value={f.zimmer} onChange={e=>set("zimmer",e.target.value)} placeholder="3" /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Kosten/Nacht (€)"><input type="number" style={inpS} value={f.kostenNacht} onChange={e=>set("kostenNacht",e.target.value)} placeholder="80" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Zimmer"><input type="number" style={inpS()} value={f.zimmer} onChange={e=>set("zimmer",e.target.value)} placeholder="3" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Kosten/Nacht (€)"><input type="number" style={inpS()} value={f.kostenNacht} onChange={e=>set("kostenNacht",e.target.value)} placeholder="80" /></Feld></div>
         </div>
-        <Feld label="Projekt"><select style={inpS} value={f.projektId} onChange={e=>set("projektId",e.target.value)}><option value="">– kein Projekt –</option>{projekte.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Feld>
-        <Feld label="Bemerkung"><input style={inpS} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} /></Feld>
+        <Feld label="Projekt"><select style={inpS()} value={f.projektId} onChange={e=>set("projektId",e.target.value)}><option value="">– kein Projekt –</option>{projekte.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Feld>
+        <Feld label="Bemerkung"><input style={inpS()} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} /></Feld>
         <div style={{ display:"flex", gap:10, marginTop:6 }}>
           <button onClick={speichern} style={btnPrimary(col.bg)}>💾 Speichern</button>
-          <button onClick={()=>setModal(null)} style={btnGhost}>Abbrechen</button>
+          <button onClick={()=>setModal(null)} style={btnGhost()}>Abbrechen</button>
         </div>
       </Modal>
     );
@@ -1299,23 +1304,23 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     }
     return (
       <Modal titel={data?"Werkzeug bearbeiten":"Neues Werkzeug"} onClose={()=>setModal(null)} farbe="#475569">
-        <Feld label="Bezeichnung"><input style={inpS} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Schweißgerät Fronius" /></Feld>
+        <Feld label="Bezeichnung"><input style={inpS()} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Schweißgerät Fronius" /></Feld>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Typ"><input style={inpS} value={f.typ} onChange={e=>set("typ",e.target.value)} placeholder="Schweißgerät, Bohrmaschine…" /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Seriennummer"><input style={inpS} value={f.seriennummer} onChange={e=>set("seriennummer",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Typ"><input style={inpS()} value={f.typ} onChange={e=>set("typ",e.target.value)} placeholder="Schweißgerät, Bohrmaschine…" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Seriennummer"><input style={inpS()} value={f.seriennummer} onChange={e=>set("seriennummer",e.target.value)} /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Zustand"><select style={inpS} value={f.zustand} onChange={e=>set("zustand",e.target.value)}><option>gut</option><option>gebraucht</option><option>defekt</option><option>in Reparatur</option></select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Prüftermin (z.B. DGUV)"><input type="date" style={inpS} value={f.pruefDatum||""} onChange={e=>set("pruefDatum",e.target.value)} /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Zustand"><select style={inpS()} value={f.zustand} onChange={e=>set("zustand",e.target.value)}><option>gut</option><option>gebraucht</option><option>defekt</option><option>in Reparatur</option></select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Prüftermin (z.B. DGUV)"><input type="date" style={inpS()} value={f.pruefDatum||""} onChange={e=>set("pruefDatum",e.target.value)} /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Zugeordneter Mitarbeiter"><select style={inpS} value={f.zugeordnetMa||""} onChange={e=>set("zugeordnetMa",e.target.value)}><option value="">–</option>{mitarbeiter.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Oder Team"><select style={inpS} value={f.team||""} onChange={e=>set("team",e.target.value)}><option value="">–</option>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Zugeordneter Mitarbeiter"><select style={inpS()} value={f.zugeordnetMa||""} onChange={e=>set("zugeordnetMa",e.target.value)}><option value="">–</option>{mitarbeiter.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Oder Team"><select style={inpS()} value={f.team||""} onChange={e=>set("team",e.target.value)}><option value="">–</option>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
         </div>
-        <Feld label="Bemerkung"><input style={inpS} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} /></Feld>
+        <Feld label="Bemerkung"><input style={inpS()} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} /></Feld>
         <div style={{ display:"flex", gap:10, marginTop:6 }}>
           <button onClick={speichern} style={btnPrimary("#475569")}>💾 Speichern</button>
-          <button onClick={()=>setModal(null)} style={btnGhost}>Abbrechen</button>
+          <button onClick={()=>setModal(null)} style={btnGhost()}>Abbrechen</button>
         </div>
       </Modal>
     );
@@ -1341,9 +1346,9 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     <div>
       <div style={{ display:"flex", gap:8, marginBottom:18, flexWrap:"wrap", alignItems:"center" }}>
         {subTabs.map(t=>(
-          <button key={t.id} onClick={()=>setSub(t.id)} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13, fontWeight:600, background:sub===t.id?"#1e3a5f":"#fff", color:sub===t.id?"#fff":"#374151" }}>{t.label}</button>
+          <button key={t.id} onClick={()=>setSub(t.id)} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:sub===t.id?"#1e3a5f":"#fff", color:sub===t.id?"#fff":"#374151" }}>{t.label}</button>
         ))}
-        {onReset && <button onClick={onReset} style={{ marginLeft:"auto", padding:"7px 14px", borderRadius:8, border:"1.5px solid #fca5a5", background:"#fff", color:"#dc2626", cursor:"pointer", fontSize:12 }}>↺ Demo-Daten zurücksetzen</button>}
+        {onReset && <button onClick={onReset} style={{ marginLeft:"auto", padding:"7px 14px", borderRadius:8, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer", fontSize:12 }}>↺ Demo-Daten zurücksetzen</button>}
       </div>
 
       {sub==="projekte" && (
@@ -1351,21 +1356,21 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           <button onClick={()=>setModal({art:"projekt"})} style={{ ...btnPrimary(), marginBottom:14 }}>+ Neues Projekt</button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-              <thead><tr>{["Name","Kunde","Ort","Zeitraum","Team","Status","Aktion"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Name","Kunde","Ort","Zeitraum","Team","Status","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
               <tbody>
                 {projekte.map(p=>{
                   const col=getTeamColor(p.team);
                   return (
-                    <tr key={p.id} style={{ borderBottom:"1px solid #f0f0f0" }}>
-                      <td style={{ ...tdS, fontWeight:600, borderLeft:`4px solid ${col.bg}` }}>{p.name}</td>
-                      <td style={tdS}>{p.kunde}</td>
-                      <td style={tdS}>{p.ort}</td>
-                      <td style={tdS}>{fmtDateShort(parseDate(p.dateStart))}–{fmtDateShort(parseDate(p.dateEnd))}</td>
-                      <td style={tdS}><Badge color={col.bg}>{p.team}</Badge></td>
-                      <td style={tdS}><Badge color={STATUS_FARBEN[p.status]}>{p.status}</Badge></td>
-                      <td style={{ ...tdS, whiteSpace:"nowrap" }}>
-                        <button onClick={()=>setModal({art:"projekt",data:p})} style={{ ...btnGhost, padding:"4px 10px", marginRight:5 }}>✏️</button>
-                        <button onClick={()=>loeschen("projekt",p.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:"#fff", color:"#dc2626", cursor:"pointer" }}>🗑</button>
+                    <tr key={p.id} style={{ borderBottom:"1px solid "+TH.border }}>
+                      <td style={{ ...tdS(), fontWeight:600, borderLeft:`4px solid ${col.bg}` }}>{p.name}</td>
+                      <td style={tdS()}>{p.kunde}</td>
+                      <td style={tdS()}>{p.ort}</td>
+                      <td style={tdS()}>{fmtDateShort(parseDate(p.dateStart))}–{fmtDateShort(parseDate(p.dateEnd))}</td>
+                      <td style={tdS()}><Badge color={col.bg}>{p.team}</Badge></td>
+                      <td style={tdS()}><Badge color={STATUS_FARBEN[p.status]}>{p.status}</Badge></td>
+                      <td style={{ ...tdS(), whiteSpace:"nowrap" }}>
+                        <button onClick={()=>setModal({art:"projekt",data:p})} style={{ ...btnGhost(), padding:"4px 10px", marginRight:5 }}>✏️</button>
+                        <button onClick={()=>loeschen("projekt",p.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer" }}>🗑</button>
                       </td>
                     </tr>
                   );
@@ -1381,22 +1386,22 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           <button onClick={()=>setModal({art:"ma"})} style={{ ...btnPrimary(), marginBottom:14 }}>+ Neuer Mitarbeiter</button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-              <thead><tr>{["Name","Rolle","Team","Login-E-Mail","Telefon","Quali.","Aktion"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Name","Rolle","Team","Login-E-Mail","Telefon","Quali.","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
               <tbody>
                 {mitarbeiter.map(m=>{
                   const col=getTeamColor(m.team);
                   const q=[m.fuehrerschein&&"FS",m.stapler&&"Stapler",m.schweisser&&"Schw."].filter(Boolean).join(", ")||"–";
                   return (
-                    <tr key={m.id} style={{ borderBottom:"1px solid #f0f0f0" }}>
-                      <td style={{ ...tdS, fontWeight:m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter"?700:400, borderLeft:`4px solid ${col.bg}` }}>{m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter"?"★ ":""}{m.name}</td>
-                      <td style={tdS}><Badge color={col.bg}>{m.rolle}</Badge></td>
-                      <td style={tdS}>{m.team}</td>
-                      <td style={{ ...tdS, fontSize:11, color:m.email?"#374151":"#d1d5db" }}>{m.email||"– kein Zugang –"}</td>
-                      <td style={tdS}>{m.tel}</td>
-                      <td style={{ ...tdS, fontSize:11 }}>{q}</td>
-                      <td style={{ ...tdS, whiteSpace:"nowrap" }}>
-                        <button onClick={()=>setModal({art:"ma",data:m})} style={{ ...btnGhost, padding:"4px 10px", marginRight:5 }}>✏️</button>
-                        <button onClick={()=>loeschen("ma",m.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:"#fff", color:"#dc2626", cursor:"pointer" }}>🗑</button>
+                    <tr key={m.id} style={{ borderBottom:"1px solid "+TH.border }}>
+                      <td style={{ ...tdS(), fontWeight:m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter"?700:400, borderLeft:`4px solid ${col.bg}` }}>{m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter"?"★ ":""}{m.name}</td>
+                      <td style={tdS()}><Badge color={col.bg}>{m.rolle}</Badge></td>
+                      <td style={tdS()}>{m.team}</td>
+                      <td style={{ ...tdS(), fontSize:11, color:m.email?"#374151":"#d1d5db" }}>{m.email||"– kein Zugang –"}</td>
+                      <td style={tdS()}>{m.tel}</td>
+                      <td style={{ ...tdS(), fontSize:11 }}>{q}</td>
+                      <td style={{ ...tdS(), whiteSpace:"nowrap" }}>
+                        <button onClick={()=>setModal({art:"ma",data:m})} style={{ ...btnGhost(), padding:"4px 10px", marginRight:5 }}>✏️</button>
+                        <button onClick={()=>loeschen("ma",m.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer" }}>🗑</button>
                       </td>
                     </tr>
                   );
@@ -1412,19 +1417,19 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           <button onClick={()=>setModal({art:"fzg"})} style={{ ...btnPrimary(), marginBottom:14 }}>+ Neues Fahrzeug</button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-              <thead><tr>{["Kennzeichen","Typ","Team","TÜV","Aktion"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Kennzeichen","Typ","Team","TÜV","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
               <tbody>
                 {fahrzeuge.map(f=>{
                   const col=getTeamColor(f.team);
                   return (
-                    <tr key={f.id} style={{ borderBottom:"1px solid #f0f0f0" }}>
-                      <td style={{ ...tdS, fontWeight:600, borderLeft:`4px solid ${col.bg}` }}>🚐 {f.kz}</td>
-                      <td style={tdS}>{f.typ}</td>
-                      <td style={tdS}><Badge color={col.bg}>{f.team}</Badge></td>
-                      <td style={tdS}>{f.tuev}</td>
-                      <td style={{ ...tdS, whiteSpace:"nowrap" }}>
-                        <button onClick={()=>setModal({art:"fzg",data:f})} style={{ ...btnGhost, padding:"4px 10px", marginRight:5 }}>✏️</button>
-                        <button onClick={()=>loeschen("fzg",f.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:"#fff", color:"#dc2626", cursor:"pointer" }}>🗑</button>
+                    <tr key={f.id} style={{ borderBottom:"1px solid "+TH.border }}>
+                      <td style={{ ...tdS(), fontWeight:600, borderLeft:`4px solid ${col.bg}` }}>🚐 {f.kz}</td>
+                      <td style={tdS()}>{f.typ}</td>
+                      <td style={tdS()}><Badge color={col.bg}>{f.team}</Badge></td>
+                      <td style={tdS()}>{f.tuev}</td>
+                      <td style={{ ...tdS(), whiteSpace:"nowrap" }}>
+                        <button onClick={()=>setModal({art:"fzg",data:f})} style={{ ...btnGhost(), padding:"4px 10px", marginRight:5 }}>✏️</button>
+                        <button onClick={()=>loeschen("fzg",f.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer" }}>🗑</button>
                       </td>
                     </tr>
                   );
@@ -1440,22 +1445,22 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           <button onClick={()=>setModal({art:"unterkunft"})} style={{ ...btnPrimary("#0f766e"), marginBottom:14 }}>+ Neue Unterkunft</button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-              <thead><tr>{["Name","Adresse","Check-in","Check-out","Zimmer","Projekt","€/Nacht","Aktion"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Name","Adresse","Check-in","Check-out","Zimmer","Projekt","€/Nacht","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
               <tbody>
                 {(unterkuenfte||[]).map(u=>{
                   const proj=projekte.find(p=>p.id===u.projektId);
                   return (
-                    <tr key={u.id} style={{ borderBottom:"1px solid #f0f0f0" }}>
-                      <td style={{ ...tdS, fontWeight:600, borderLeft:"4px solid #0f766e" }}>🏨 {u.name}</td>
-                      <td style={tdS}>{u.adresse||"–"}</td>
-                      <td style={tdS}>{u.checkin?fmtDateShort(parseDate(u.checkin)):"–"}</td>
-                      <td style={tdS}>{u.checkout?fmtDateShort(parseDate(u.checkout)):"–"}</td>
-                      <td style={{ ...tdS, textAlign:"center" }}>{u.zimmer||"–"}</td>
-                      <td style={tdS}>{proj?proj.name:"–"}</td>
-                      <td style={{ ...tdS, textAlign:"center" }}>{u.kostenNacht?u.kostenNacht+" €":"–"}</td>
-                      <td style={{ ...tdS, whiteSpace:"nowrap" }}>
-                        <button onClick={()=>setModal({art:"unterkunft",data:u})} style={{ ...btnGhost, padding:"4px 10px", marginRight:5 }}>✏️</button>
-                        <button onClick={()=>loeschen("unterkunft",u.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:"#fff", color:"#dc2626", cursor:"pointer" }}>🗑</button>
+                    <tr key={u.id} style={{ borderBottom:"1px solid "+TH.border }}>
+                      <td style={{ ...tdS(), fontWeight:600, borderLeft:"4px solid #0f766e" }}>🏨 {u.name}</td>
+                      <td style={tdS()}>{u.adresse||"–"}</td>
+                      <td style={tdS()}>{u.checkin?fmtDateShort(parseDate(u.checkin)):"–"}</td>
+                      <td style={tdS()}>{u.checkout?fmtDateShort(parseDate(u.checkout)):"–"}</td>
+                      <td style={{ ...tdS(), textAlign:"center" }}>{u.zimmer||"–"}</td>
+                      <td style={tdS()}>{proj?proj.name:"–"}</td>
+                      <td style={{ ...tdS(), textAlign:"center" }}>{u.kostenNacht?u.kostenNacht+" €":"–"}</td>
+                      <td style={{ ...tdS(), whiteSpace:"nowrap" }}>
+                        <button onClick={()=>setModal({art:"unterkunft",data:u})} style={{ ...btnGhost(), padding:"4px 10px", marginRight:5 }}>✏️</button>
+                        <button onClick={()=>loeschen("unterkunft",u.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer" }}>🗑</button>
                       </td>
                     </tr>
                   );
@@ -1471,21 +1476,21 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           <button onClick={()=>setModal({art:"werkzeug"})} style={{ ...btnPrimary("#475569"), marginBottom:14 }}>+ Neues Werkzeug</button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-              <thead><tr>{["Bezeichnung","Typ","Seriennr.","Zustand","Zugeordnet","Prüftermin","Aktion"].map(h=><th key={h} style={thS}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Bezeichnung","Typ","Seriennr.","Zustand","Zugeordnet","Prüftermin","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
               <tbody>
                 {(werkzeuge||[]).map(w=>{
                   const ma=mitarbeiter.find(m=>m.id===w.zugeordnetMa);
                   return (
-                    <tr key={w.id} style={{ borderBottom:"1px solid #f0f0f0" }}>
-                      <td style={{ ...tdS, fontWeight:600, borderLeft:"4px solid #475569" }}>🔧 {w.name}</td>
-                      <td style={tdS}>{w.typ||"–"}</td>
-                      <td style={tdS}>{w.seriennummer||"–"}</td>
-                      <td style={tdS}>{w.zustand||"–"}</td>
-                      <td style={tdS}>{ma?ma.name:(w.team||"–")}</td>
-                      <td style={tdS}>{w.pruefDatum?fmtDateShort(parseDate(w.pruefDatum)):"–"}</td>
-                      <td style={{ ...tdS, whiteSpace:"nowrap" }}>
-                        <button onClick={()=>setModal({art:"werkzeug",data:w})} style={{ ...btnGhost, padding:"4px 10px", marginRight:5 }}>✏️</button>
-                        <button onClick={()=>loeschen("werkzeug",w.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:"#fff", color:"#dc2626", cursor:"pointer" }}>🗑</button>
+                    <tr key={w.id} style={{ borderBottom:"1px solid "+TH.border }}>
+                      <td style={{ ...tdS(), fontWeight:600, borderLeft:"4px solid #475569" }}>🔧 {w.name}</td>
+                      <td style={tdS()}>{w.typ||"–"}</td>
+                      <td style={tdS()}>{w.seriennummer||"–"}</td>
+                      <td style={tdS()}>{w.zustand||"–"}</td>
+                      <td style={tdS()}>{ma?ma.name:(w.team||"–")}</td>
+                      <td style={tdS()}>{w.pruefDatum?fmtDateShort(parseDate(w.pruefDatum)):"–"}</td>
+                      <td style={{ ...tdS(), whiteSpace:"nowrap" }}>
+                        <button onClick={()=>setModal({art:"werkzeug",data:w})} style={{ ...btnGhost(), padding:"4px 10px", marginRight:5 }}>✏️</button>
+                        <button onClick={()=>loeschen("werkzeug",w.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer" }}>🗑</button>
                       </td>
                     </tr>
                   );
@@ -1513,7 +1518,7 @@ function WarnPanel({ warnungen }) {
 // ─── ADMIN-DASHBOARD (Kontrollzentrum) ────────────────────────────────────────
 function KennzahlKarte({ wert, label, farbe, icon, onClick }) {
   return (
-    <div onClick={onClick} style={{ background:"#fff", border:`1.5px solid ${farbe}33`, borderRadius:12, padding:"14px 16px", cursor:onClick?"pointer":"default", boxShadow:"0 1px 3px #0001", transition:"all .15s" }}>
+    <div onClick={onClick} style={{ background:TH.panel, border:`1.5px solid ${farbe}33`, borderRadius:12, padding:"14px 16px", cursor:onClick?"pointer":"default", boxShadow:"0 1px 3px #0001", transition:"all .15s" }}>
       <div style={{ display:"flex", alignItems:"center", gap:8 }}>
         <span style={{ fontSize:22 }}>{icon}</span>
         <span style={{ fontSize:30, fontWeight:800, color:farbe }}>{wert}</span>
@@ -1536,7 +1541,7 @@ function WerkzeugUebersicht({ werkzeuge, mitarbeiter }) {
   }
   const faellig = (werkzeuge||[]).filter(w=>{ const s=pruefStatus(w); return s.farbe!=="#16a34a" && s.farbe!=="#9ca3af"; });
   if (!werkzeuge || werkzeuge.length===0) {
-    return <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Werkzeuge angelegt. Lege welche unter „Verwaltung → Werkzeuge" an.</div>;
+    return <div style={{ background:TH.panel2, border:"1.5px solid "+TH.border, borderRadius:10, padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Werkzeuge angelegt. Lege welche unter „Verwaltung → Werkzeuge" an.</div>;
   }
   return (
     <div>
@@ -1551,7 +1556,7 @@ function WerkzeugUebersicht({ werkzeuge, mitarbeiter }) {
           const st = pruefStatus(w);
           const col = w.team ? getTeamColor(w.team) : { bg:"#475569" };
           return (
-            <div key={w.id} style={{ border:`1.5px solid ${col.bg}`, borderRadius:10, overflow:"hidden", background:"#fff" }}>
+            <div key={w.id} style={{ border:`1.5px solid ${col.bg}`, borderRadius:10, overflow:"hidden", background:TH.panel }}>
               <div style={{ background:col.bg, color:"#fff", padding:"7px 12px", fontWeight:700, fontSize:13 }}>🔧 {w.name}</div>
               <div style={{ padding:"10px 12px", fontSize:12, display:"flex", flexDirection:"column", gap:5 }}>
                 <Info label="Typ" value={w.typ||"–"} />
@@ -1665,21 +1670,21 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
       )}
 
       {istLeitung && zeigeForm && (
-        <div style={{ background:"#fff", border:"1.5px solid #ea580c", borderRadius:10, padding:16, marginBottom:20 }}>
+        <div style={{ background:TH.panel, border:"1.5px solid #ea580c", borderRadius:10, padding:16, marginBottom:20 }}>
           <div style={{ fontWeight:700, fontSize:14, marginBottom:12, color:"#ea580c" }}>📝 Neuer Tagesbericht</div>
           <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-            <div style={{ minWidth:150 }}><Feld label="Datum"><input type="date" style={inpS} value={f.datum} onChange={e=>set("datum",e.target.value)} /></Feld></div>
-            <div style={{ flex:1, minWidth:200 }}><Feld label="Projekt"><select style={inpS} value={f.projektId} onChange={e=>projektWaehlen(e.target.value)}><option value="">– wählen –</option>{projekte.map(p=><option key={p.id} value={p.id}>{p.name} ({p.ort})</option>)}</select></Feld></div>
-            <div style={{ minWidth:110 }}><Feld label="Leistung (%)"><input type="number" min={0} max={100} style={inpS} value={f.leistung} onChange={e=>set("leistung",e.target.value)} placeholder="z.B. 60" /></Feld></div>
+            <div style={{ minWidth:150 }}><Feld label="Datum"><input type="date" style={inpS()} value={f.datum} onChange={e=>set("datum",e.target.value)} /></Feld></div>
+            <div style={{ flex:1, minWidth:200 }}><Feld label="Projekt"><select style={inpS()} value={f.projektId} onChange={e=>projektWaehlen(e.target.value)}><option value="">– wählen –</option>{projekte.map(p=><option key={p.id} value={p.id}>{p.name} ({p.ort})</option>)}</select></Feld></div>
+            <div style={{ minWidth:110 }}><Feld label="Leistung (%)"><input type="number" min={0} max={100} style={inpS()} value={f.leistung} onChange={e=>set("leistung",e.target.value)} placeholder="z.B. 60" /></Feld></div>
           </div>
           <Feld label={"Wetter "+(wetterLaedt?"(wird geholt…)":"(automatisch beim Projekt-Wählen)")}>
-            <input style={inpS} value={f.wetter} onChange={e=>set("wetter",e.target.value)} placeholder="wird automatisch ausgefüllt…" />
+            <input style={inpS()} value={f.wetter} onChange={e=>set("wetter",e.target.value)} placeholder="wird automatisch ausgefüllt…" />
           </Feld>
-          <Feld label="Anwesende (automatisch aus Team, anpassbar)"><input style={inpS} value={f.anwesende} onChange={e=>set("anwesende",e.target.value)} /></Feld>
-          <Feld label="Arbeitsfortschritt – was wurde gemacht?"><textarea style={{ ...inpS, minHeight:70, resize:"vertical" }} value={f.fortschritt} onChange={e=>set("fortschritt",e.target.value)} placeholder="z.B. Schienenstöße 12–18 verschweißt, Vermessung Achse B abgeschlossen" /></Feld>
+          <Feld label="Anwesende (automatisch aus Team, anpassbar)"><input style={inpS()} value={f.anwesende} onChange={e=>set("anwesende",e.target.value)} /></Feld>
+          <Feld label="Arbeitsfortschritt – was wurde gemacht?"><textarea style={{ ...inpS(), minHeight:70, resize:"vertical" }} value={f.fortschritt} onChange={e=>set("fortschritt",e.target.value)} placeholder="z.B. Schienenstöße 12–18 verschweißt, Vermessung Achse B abgeschlossen" /></Feld>
           <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-            <div style={{ flex:1, minWidth:220 }}><Feld label="Probleme / Behinderungen"><textarea style={{ ...inpS, minHeight:50, resize:"vertical" }} value={f.probleme} onChange={e=>set("probleme",e.target.value)} placeholder="z.B. Kran erst ab 10 Uhr verfügbar" /></Feld></div>
-            <div style={{ flex:1, minWidth:220 }}><Feld label="Materialbedarf"><textarea style={{ ...inpS, minHeight:50, resize:"vertical" }} value={f.material} onChange={e=>set("material",e.target.value)} placeholder="z.B. 20× Klemmplatten, Schweißdraht" /></Feld></div>
+            <div style={{ flex:1, minWidth:220 }}><Feld label="Probleme / Behinderungen"><textarea style={{ ...inpS(), minHeight:50, resize:"vertical" }} value={f.probleme} onChange={e=>set("probleme",e.target.value)} placeholder="z.B. Kran erst ab 10 Uhr verfügbar" /></Feld></div>
+            <div style={{ flex:1, minWidth:220 }}><Feld label="Materialbedarf"><textarea style={{ ...inpS(), minHeight:50, resize:"vertical" }} value={f.material} onChange={e=>set("material",e.target.value)} placeholder="z.B. 20× Klemmplatten, Schweißdraht" /></Feld></div>
           </div>
           <Feld label="Fotos (Zeitstempel wird automatisch eingebrannt)">
             <input type="file" accept="image/*" multiple onChange={e=>fotosHochladen(e.target.files)} style={{ fontSize:13 }} />
@@ -1688,7 +1693,7 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:8 }}>
                 {f.fotos.map((fo,i)=>(
                   <div key={i} style={{ position:"relative" }}>
-                    <img src={fo.url} alt="" style={{ width:110, height:80, objectFit:"cover", borderRadius:8, border:"1.5px solid #e5e7eb" }} />
+                    <img src={fo.url} alt="" style={{ width:110, height:80, objectFit:"cover", borderRadius:8, border:"1.5px solid "+TH.border }} />
                     <button onClick={()=>set("fotos", f.fotos.filter((_,j)=>j!==i))} style={{ position:"absolute", top:-6, right:-6, width:22, height:22, borderRadius:99, border:"none", background:"#dc2626", color:"#fff", cursor:"pointer", fontSize:11, fontWeight:700 }}>✕</button>
                   </div>
                 ))}
@@ -1697,20 +1702,20 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
           </Feld>
           <div style={{ display:"flex", gap:10, marginTop:8 }}>
             <button onClick={speichern} disabled={laedt} style={{ ...btnPrimary("#ea580c"), opacity:laedt?0.6:1 }}>💾 Bericht speichern</button>
-            <button onClick={()=>{setF(leer);setZeigeForm(false);}} style={btnGhost}>Abbrechen</button>
+            <button onClick={()=>{setF(leer);setZeigeForm(false);}} style={btnGhost()}>Abbrechen</button>
           </div>
         </div>
       )}
 
       {!sortiert.length ? (
-        <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Tagesberichte vorhanden.</div>
+        <div style={{ background:TH.panel2, border:"1.5px solid "+TH.border, borderRadius:10, padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Tagesberichte vorhanden.</div>
       ) : (
         <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
           {sortiert.map(b=>{
             const proj = projekte.find(p=>p.id===b.projektId);
             const col = proj ? getTeamColor(proj.team) : { bg:"#6b7280", light:"#f3f4f6" };
             return (
-              <div key={b.id} style={{ border:`1.5px solid ${col.bg}`, borderRadius:10, overflow:"hidden", background:"#fff" }}>
+              <div key={b.id} style={{ border:`1.5px solid ${col.bg}`, borderRadius:10, overflow:"hidden", background:TH.panel }}>
                 <div style={{ background:col.bg, color:"#fff", padding:"8px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:6 }}>
                   <span style={{ fontWeight:700, fontSize:13 }}>📝 {fmtDate(parseDate(b.datum))} · {proj?.name||"Projekt gelöscht"}</span>
                   <span style={{ fontSize:11, opacity:0.85 }}>von {b.verfasser}{b.leistung?` · Leistung ${b.leistung}%`:""}</span>
@@ -1725,13 +1730,13 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
                     <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:4 }}>
                       {b.fotos.map((fo,i)=>(
                         <a key={i} href={fo.url} target="_blank" rel="noreferrer">
-                          <img src={fo.url} alt="" style={{ width:130, height:95, objectFit:"cover", borderRadius:8, border:"1.5px solid #e5e7eb" }} />
+                          <img src={fo.url} alt="" style={{ width:130, height:95, objectFit:"cover", borderRadius:8, border:"1.5px solid "+TH.border }} />
                         </a>
                       ))}
                     </div>
                   )}
                   {istLeitung && (
-                    <div><button onClick={()=>{ if(window.confirm("Diesen Bericht wirklich löschen?")) setBerichte(prev=>prev.filter(x=>x.id!==b.id)); }} style={{ padding:"4px 12px", borderRadius:6, border:"1.5px solid #fca5a5", background:"#fff", color:"#dc2626", cursor:"pointer", fontSize:11 }}>🗑 Löschen</button></div>
+                    <div><button onClick={()=>{ if(window.confirm("Diesen Bericht wirklich löschen?")) setBerichte(prev=>prev.filter(x=>x.id!==b.id)); }} style={{ padding:"4px 12px", borderRadius:6, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer", fontSize:11 }}>🗑 Löschen</button></div>
                   )}
                 </div>
               </div>
@@ -1792,10 +1797,10 @@ function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) 
         {auswertung.map(({p,istStunden,lohn,spesen,unterkunft,ist,planK,planStd,summe,ratio,stdRatio,db,ampel,ampelText,anzahl})=>{
           const col=getTeamColor(p.team);
           return (
-            <div key={p.id} style={{ border:`1.5px solid ${col.bg}`, borderRadius:10, overflow:"hidden", background:"#fff" }}>
+            <div key={p.id} style={{ border:`1.5px solid ${col.bg}`, borderRadius:10, overflow:"hidden", background:TH.panel }}>
               <div style={{ background:col.bg, color:"#fff", padding:"8px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8 }}>
                 <span style={{ fontWeight:700, fontSize:14 }}>{p.name}{p.nummer?` · ${p.nummer}`:""}</span>
-                <span style={{ background:"#fff", color:ampel, borderRadius:99, padding:"2px 12px", fontSize:11, fontWeight:800 }}>● {ampelText}</span>
+                <span style={{ background:TH.panel, color:ampel, borderRadius:99, padding:"2px 12px", fontSize:11, fontWeight:800 }}>● {ampelText}</span>
               </div>
               <div style={{ padding:"12px 14px" }}>
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:"8px 18px", fontSize:12, marginBottom:10 }}>
@@ -1817,7 +1822,7 @@ function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) 
             </div>
           );
         })}
-        {!projekte.length && <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Projekte angelegt.</div>}
+        {!projekte.length && <div style={{ background:TH.panel2, border:"1.5px solid "+TH.border, borderRadius:10, padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Projekte angelegt.</div>}
       </div>
     </div>
   );
@@ -1873,55 +1878,55 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:12, marginBottom:24 }}>
 
         {/* Offene Anträge */}
-        <div style={{ background:"#fff", border:"1.5px solid #e5e7eb", borderRadius:10, overflow:"hidden" }}>
+        <div style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderRadius:10, overflow:"hidden" }}>
           <div style={{ background: offeneAntraege.length?"#fef3c7":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: offeneAntraege.length?"#92400e":"#166534", display:"flex", justifyContent:"space-between", cursor:"pointer" }} onClick={()=>setTab("antraege")}>
             <span>🌴 Offene Urlaubsanträge</span><span>{offeneAntraege.length}</span>
           </div>
-          <div style={{ padding:"8px 14px", fontSize:12, color:"#374151" }}>
+          <div style={{ padding:"8px 14px", fontSize:12, color:TH.text }}>
             {offeneAntraege.length===0 ? <span style={{ color:"#9ca3af" }}>Keine offenen Anträge</span> :
               offeneAntraege.slice(0,4).map(a=><div key={a.id} style={{ padding:"3px 0" }}>{a.maName} · {a.typ} · {fmtDateShort(parseDate(a.dateStart))}–{fmtDateShort(parseDate(a.dateEnd))}</div>)}
           </div>
         </div>
 
         {/* Projekte ohne Vorarbeiter */}
-        <div style={{ background:"#fff", border:"1.5px solid #e5e7eb", borderRadius:10, overflow:"hidden" }}>
+        <div style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderRadius:10, overflow:"hidden" }}>
           <div style={{ background: projOhneVA.length?"#fee2e2":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: projOhneVA.length?"#991b1b":"#166534", display:"flex", justifyContent:"space-between" }}>
             <span>⚠️ Projekte ohne Vorarbeiter</span><span>{projOhneVA.length}</span>
           </div>
-          <div style={{ padding:"8px 14px", fontSize:12, color:"#374151" }}>
+          <div style={{ padding:"8px 14px", fontSize:12, color:TH.text }}>
             {projOhneVA.length===0 ? <span style={{ color:"#9ca3af" }}>Alle Projekte haben einen Vorarbeiter</span> :
               projOhneVA.map(p=><div key={p.id} style={{ padding:"3px 0" }}>{p.name} · {p.team}</div>)}
           </div>
         </div>
 
         {/* Projekte ohne Fahrzeug */}
-        <div style={{ background:"#fff", border:"1.5px solid #e5e7eb", borderRadius:10, overflow:"hidden" }}>
+        <div style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderRadius:10, overflow:"hidden" }}>
           <div style={{ background: projOhneFzg.length?"#fef3c7":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: projOhneFzg.length?"#92400e":"#166534", display:"flex", justifyContent:"space-between" }}>
             <span>🚐 Projekte ohne Fahrzeug</span><span>{projOhneFzg.length}</span>
           </div>
-          <div style={{ padding:"8px 14px", fontSize:12, color:"#374151" }}>
+          <div style={{ padding:"8px 14px", fontSize:12, color:TH.text }}>
             {projOhneFzg.length===0 ? <span style={{ color:"#9ca3af" }}>Alle aktiven Projekte haben ein Fahrzeug</span> :
               projOhneFzg.map(p=><div key={p.id} style={{ padding:"3px 0" }}>{p.name} · {p.team}</div>)}
           </div>
         </div>
 
         {/* Projekte ohne Unterkunft */}
-        <div style={{ background:"#fff", border:"1.5px solid #e5e7eb", borderRadius:10, overflow:"hidden" }}>
+        <div style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderRadius:10, overflow:"hidden" }}>
           <div style={{ background: projOhneUnterkunft.length?"#fef3c7":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: projOhneUnterkunft.length?"#92400e":"#166534", display:"flex", justifyContent:"space-between", cursor:"pointer" }} onClick={()=>setTab("unterkuenfte")}>
             <span>🏨 Projekte ohne Unterkunft</span><span>{projOhneUnterkunft.length}</span>
           </div>
-          <div style={{ padding:"8px 14px", fontSize:12, color:"#374151" }}>
+          <div style={{ padding:"8px 14px", fontSize:12, color:TH.text }}>
             {projOhneUnterkunft.length===0 ? <span style={{ color:"#9ca3af" }}>Alle aktiven Projekte haben eine Unterkunft</span> :
               projOhneUnterkunft.map(p=><div key={p.id} style={{ padding:"3px 0" }}>{p.name} · {p.ort}</div>)}
           </div>
         </div>
 
         {/* Konflikte */}
-        <div style={{ background:"#fff", border:"1.5px solid #e5e7eb", borderRadius:10, overflow:"hidden" }}>
+        <div style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderRadius:10, overflow:"hidden" }}>
           <div style={{ background: warnungen.length?"#fff7ed":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: warnungen.length?"#92400e":"#166534", display:"flex", justifyContent:"space-between", cursor:"pointer" }} onClick={()=>setTab("warnungen")}>
             <span>🔎 Konflikt-Warnungen</span><span>{warnungen.length}</span>
           </div>
-          <div style={{ padding:"8px 14px", fontSize:12, color:"#374151" }}>
+          <div style={{ padding:"8px 14px", fontSize:12, color:TH.text }}>
             {warnungen.length===0 ? <span style={{ color:"#9ca3af" }}>Keine Konflikte gefunden</span> :
               warnungen.slice(0,4).map((w,i)=><div key={i} style={{ padding:"3px 0" }}>{w.msg}</div>)}
           </div>
@@ -1931,7 +1936,7 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
       {/* Heute auf Baustelle */}
       <div style={{ fontWeight:700, fontSize:14, color:tw, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>🏗 Heute aktiv</div>
       {aktiveProjekte.length===0 ? (
-        <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:20, textAlign:"center", color:"#9ca3af" }}>Heute sind keine Projekte aktiv</div>
+        <div style={{ background:TH.panel2, border:"1.5px solid "+TH.border, borderRadius:10, padding:20, textAlign:"center", color:"#9ca3af" }}>Heute sind keine Projekte aktiv</div>
       ) : (
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:12 }}>
           {aktiveProjekte.map(p=>{
@@ -1997,6 +2002,7 @@ export default function EinsatzplanungInner({
   const [menueOffen, setMenueOffen] = useState(false);
   const [dunkel, setDunkel] = useState(()=>{ try { return localStorage.getItem("baufox-theme")==="dunkel"; } catch(e){ return false; } });
   useEffect(()=>{ try { localStorage.setItem("baufox-theme", dunkel?"dunkel":"hell"); } catch(e){} }, [dunkel]);
+  TH = dunkel ? THEME_DUNKEL : THEME_HELL;
   const T = dunkel
     ? { bg:"#0f172a", panel:"#1e293b", panel2:"#334155", text:"#e2e8f0", textMut:"#94a3b8", border:"#334155", tabBar:"#1e293b" }
     : { bg:"#f8fafc", panel:"#ffffff", panel2:"#f9fafb", text:"#1e293b", textMut:"#6b7280", border:"#e5e7eb", tabBar:"#ffffff" };
