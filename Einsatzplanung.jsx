@@ -510,12 +510,12 @@ function Monatsansicht({ mitarbeiter, projekte, sonder }) {
 }
 
 // ─── STUNDENZETTEL ─────────────────────────────────────────────────────────────
-function Stundenzettel({ mitarbeiter, projekte }) {
-  const vorarbeiter = mitarbeiter.filter(m=>m.rolle==="Vorarbeiter");
+function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden }) {
+  const vorarbeiter = mitarbeiter.filter(m=>m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter");
   const [aktVA, setAktVA] = useState(vorarbeiter[0]?.id||null);
   const [datum, setDatum] = useState(isoDate(new Date()));
-  const [stunden, setStunden] = useState({});
-  const [gespeichert, setGespeichert] = useState([]);
+  const [entwurf, setEntwurf] = useState({});
+  const gespeichert = stunden || [];
   const [ansicht, setAnsicht] = useState("erfassen");
 
   const va = mitarbeiter.find(m=>m.id===aktVA);
@@ -524,18 +524,18 @@ function Stundenzettel({ mitarbeiter, projekte }) {
   const teamProjekt = va ? projekte.find(p=>p.team===va.team && dateInRange(d, p.dateStart, p.dateEnd)) : null;
   const col = va ? getTeamColor(va.team) : { bg:"#6b7280", light:"#f3f4f6", text:"#374151" };
 
-  function setFeld(maId,feld,wert){ setStunden(p=>({...p,[maId]:{...(p[maId]||{}),[feld]:wert}})); }
-  function getFeld(maId,feld,def=""){ return stunden[maId]?.[feld]??def; }
+  function setFeld(maId,feld,wert){ setEntwurf(p=>({...p,[maId]:{...(p[maId]||{}),[feld]:wert}})); }
+  function getFeld(maId,feld,def=""){ return entwurf[maId]?.[feld]??def; }
 
   function speichern() {
     const eintraege = teamMA.map(ma => {
-      const s = stunden[ma.id]||{};
+      const s = entwurf[ma.id]||{};
       const h = calcStunden(s.start, s.end, Number(s.pause)||0);
-      return { maId:ma.id, maName:ma.name, team:va.team, datum, wochentag:WOCHENTAGE_LANG[d.getDay()], kw:getKW(d), projekt:teamProjekt?.name||"–", ...s, arbeitsstunden:h.toFixed(2) };
+      return { id:"H"+Date.now()+"_"+ma.id, maId:ma.id, maName:ma.name, team:va.team, datum, wochentag:WOCHENTAGE_LANG[d.getDay()], kw:getKW(d), projekt:teamProjekt?.name||"–", ...s, arbeitsstunden:h.toFixed(2) };
     }).filter(e=>e.start);
     if (!eintraege.length) return;
-    setGespeichert(p=>[...p,...eintraege]);
-    setStunden({});
+    setStunden(prev => [...(prev||[]), ...eintraege]);
+    setEntwurf({});
     setAnsicht("uebersicht");
   }
 
@@ -557,7 +557,7 @@ function Stundenzettel({ mitarbeiter, projekte }) {
       <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:18, alignItems:"flex-end" }}>
         <div>
           <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, marginBottom:3, textTransform:"uppercase" }}>Vorarbeiter</div>
-          <select value={aktVA||""} onChange={e=>{setAktVA(Number(e.target.value));setStunden({});}} style={{ ...inpS, width:210, fontWeight:700 }}>
+          <select value={aktVA||""} onChange={e=>{setAktVA(Number(e.target.value));setEntwurf({});}} style={{ ...inpS, width:210, fontWeight:700 }}>
             {vorarbeiter.map(v=><option key={v.id} value={v.id}>{v.name} ({v.team})</option>)}
           </select>
         </div>
@@ -622,7 +622,7 @@ function Stundenzettel({ mitarbeiter, projekte }) {
           </div>
           <div style={{ marginTop:14, display:"flex", gap:10 }}>
             <button onClick={speichern} style={{ padding:"9px 24px", borderRadius:8, background:col.bg, color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>💾 Speichern</button>
-            <button onClick={()=>setStunden({})} style={{ padding:"9px 16px", borderRadius:8, background:"#f3f4f6", color:"#374151", border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13 }}>✕ Reset</button>
+            <button onClick={()=>setEntwurf({})} style={{ padding:"9px 16px", borderRadius:8, background:"#f3f4f6", color:"#374151", border:"1.5px solid #e5e7eb", cursor:"pointer", fontSize:13 }}>✕ Reset</button>
           </div>
         </>
       )}
@@ -1380,6 +1380,7 @@ function darfTab(rolle, tabId) {
 export default function EinsatzplanungInner({
   projekte, setProjekte, mitarbeiter, setMitarbeiter,
   sonder, setSonder, antraege, setAntraege, fahrzeuge, setFahrzeuge,
+  stunden, setStunden,
   onReset, onLogout, userEmail
 }) {
   const { rolle: meineRolle, ma: meinMA } = useMemo(()=>ermittleRolle(userEmail, mitarbeiter), [userEmail, mitarbeiter]);
@@ -1456,7 +1457,7 @@ export default function EinsatzplanungInner({
         {tab==="heute"        && darfTab(meineRolle,"heute")        && <Tagesansicht   mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} />}
         {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
         {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
-        {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={mitarbeiter} projekte={projekte} />}
+        {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={mitarbeiter} projekte={projekte} stunden={stunden} setStunden={setStunden} />}
         {tab==="antraege"     && darfTab(meineRolle,"antraege")     && <Antraege mitarbeiter={mitarbeiter} antraege={antraege} setAntraege={setAntraege} setSonder={setSonder} />}
         {tab==="projekte"     && darfTab(meineRolle,"projekte")     && <ProjektUebersicht projekte={projekte} fahrzeuge={fahrzeuge} />}
         {tab==="mitarbeiter"  && darfTab(meineRolle,"mitarbeiter")  && <MitarbeiterUebersicht mitarbeiter={mitarbeiter} projekte={projekte} />}

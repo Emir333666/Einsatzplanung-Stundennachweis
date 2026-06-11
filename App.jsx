@@ -15,6 +15,19 @@ const toAppSonder = r => ({ ...r, dateStart:r.date_start, dateEnd:r.date_end });
 const toDbSonder  = s => ({ id:s.id, ma:s.ma, typ:s.typ, date_start:s.dateStart||null, date_end:s.dateEnd||null, bemerkung:s.bemerkung });
 const toAppAntrag = r => ({ ...r, dateStart:r.date_start, dateEnd:r.date_end, maName:r.ma_name, eingereicht:r.eingereicht });
 const toDbAntrag  = a => ({ id:a.id, ma:a.ma, ma_name:a.maName, team:a.team, typ:a.typ, date_start:a.dateStart||null, date_end:a.dateEnd||null, grund:a.grund, status:a.status, eingereicht:a.eingereicht||null });
+const toAppStunde = r => ({ ...r, maId:r.ma_id, maName:r.ma_name, arbeitsstunden:r.arbeitsstunden, wochentag:r.wochentag });
+const toDbStunde  = s => ({
+  id: s.id,
+  ma_id: s.maId, ma_name: s.maName, team: s.team||null,
+  datum: s.datum||null, wochentag: s.wochentag||null, kw: s.kw||null,
+  projekt: s.projekt||null, start: s.start||null, ende: s.end||null,
+  pause: s.pause!=null && s.pause!=="" ? Number(s.pause) : null,
+  fahrzeit: s.fahrzeit!=null && s.fahrzeit!=="" ? Number(s.fahrzeit) : null,
+  uebernachtung: !!s.uebernachtung,
+  spesen: s.spesen!=null && s.spesen!=="" ? Number(s.spesen) : null,
+  bemerkung: s.bemerkung||null,
+  arbeitsstunden: s.arbeitsstunden!=null && s.arbeitsstunden!=="" ? Number(s.arbeitsstunden) : null
+});
 
 // ─── Login-Bildschirm ────────────────────────────────────────────────────────
 function Login({ onLogin }) {
@@ -71,6 +84,7 @@ export default function App() {
   const [sonder, setSonderState] = useState([]);
   const [antraege, setAntraegeState] = useState([]);
   const [fahrzeuge, setFahrzeugeState] = useState([]);
+  const [stunden, setStundenState] = useState([]);
 
   // Session prüfen
   useEffect(() => {
@@ -82,18 +96,20 @@ export default function App() {
   // Daten aus der Cloud laden, sobald eingeloggt
   const ladeDaten = useCallback(async () => {
     setLaden(true);
-    const [p, m, f, s, a] = await Promise.all([
+    const [p, m, f, s, a, st] = await Promise.all([
       supabase.from("projekte").select("*"),
       supabase.from("mitarbeiter").select("*"),
       supabase.from("fahrzeuge").select("*"),
       supabase.from("sonder").select("*"),
       supabase.from("antraege").select("*"),
+      supabase.from("stunden").select("*"),
     ]);
     setProjekteState((p.data||[]).map(toAppProjekt));
     setMitarbeiterState(m.data||[]);
     setFahrzeugeState(f.data||[]);
     setSonderState((s.data||[]).map(toAppSonder));
     setAntraegeState((a.data||[]).map(toAppAntrag));
+    setStundenState((st.data||[]).map(toAppStunde));
     setLaden(false);
     setBereit(true);
   }, []);
@@ -146,6 +162,12 @@ export default function App() {
     await syncTabelle("antraege", antraege, arr, toDbAntrag);
     ladeDaten();
   };
+  const setStunden = async (next) => {
+    const arr = typeof next === "function" ? next(stunden) : next;
+    setStundenState(arr);
+    await syncTabelle("stunden", stunden, arr, toDbStunde);
+    ladeDaten();
+  };
 
   // Demo-Daten in leere Cloud laden (einmalig, falls alles leer ist)
   async function demoLaden() {
@@ -174,6 +196,7 @@ export default function App() {
         sonder={sonder} setSonder={setSonder}
         antraege={antraege} setAntraege={setAntraege}
         fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge}
+        stunden={stunden} setStunden={setStunden}
         onReset={null}
         onLogout={abmelden}
         userEmail={session.user?.email}
