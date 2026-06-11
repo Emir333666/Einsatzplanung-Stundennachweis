@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { supabase } from "./supabaseClient.js";
 
 // ─── Dauerhaftes Speichern (mit Fallback im Vorschaufenster) ──────────────────
 const _mem = {};
@@ -540,6 +541,26 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
     setAnsicht("uebersicht");
   }
 
+  function excelExport() {
+    const sorted = [...gespeichert].sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||String(a.maName).localeCompare(String(b.maName)));
+    const kopf = ["Datum","Wochentag","KW","Mitarbeiter","Team","Projekt","Beginn","Ende","Pause (Min)","Arbeitsstunden","Überstunden","Fahrzeit (h)","Übernachtung","Spesen (€)","Bemerkung"];
+    const zelle = v => `"${String(v==null?"":v).replace(/"/g,'""')}"`;
+    const zeilen = sorted.map(e=>[
+      fmtDate(parseDate(e.datum)), e.wochentag||"", "KW "+(e.kw||""), e.maName||"", e.team||"", e.projekt||"",
+      e.start||"", e.end||"", e.pause||"", String(e.arbeitsstunden||"").replace(".",","),
+      String(Math.max(0,(Number(e.arbeitsstunden)||0)-8).toFixed(2)).replace(".",","),
+      String(e.fahrzeit||"").replace(".",","), e.uebernachtung?"Ja":"Nein",
+      String(e.spesen||"").replace(".",","), e.bemerkung||""
+    ].map(zelle).join(";"));
+    const csv = "\uFEFF" + kopf.map(zelle).join(";") + "\n" + zeilen.join("\n");
+    const blob = new Blob([csv], { type:"text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "Baufox_Stundennachweis_"+isoDate(new Date())+".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   function pdfExport() {
     const esc = t => String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const sorted = [...gespeichert].sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||String(a.maName).localeCompare(String(b.maName)));
@@ -708,7 +729,8 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
             <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:32, textAlign:"center", color:"#9ca3af" }}>Noch keine Stundenzettel gespeichert</div>
           ) : (
             <>
-              <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:12 }}>
+              <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginBottom:12 }}>
+                <button onClick={excelExport} style={{ padding:"9px 18px", borderRadius:8, background:"#16a34a", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>📊 Excel (CSV)</button>
                 <button onClick={pdfExport} style={{ padding:"9px 18px", borderRadius:8, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>📄 Als PDF exportieren</button>
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:12, marginBottom:18 }}>
@@ -1159,11 +1181,11 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
 
   // ── Mitarbeiter-Formular ──
   function MitarbeiterForm({ data }) {
-    const [f, setF] = useState(data || { id:null, name:"", rolle:"Monteur", team:teamNamen[0], tel:"", email:"", fuehrerschein:false, stapler:false, schweisser:false, urlaub:0, krank:0 });
+    const [f, setF] = useState(data || { id:null, name:"", rolle:"Monteur", team:teamNamen[0], tel:"", email:"", stundensatz:"", fuehrerschein:false, stapler:false, schweisser:false, urlaub:0, krank:0 });
     const set = (k,v) => setF(p=>({...p,[k]:v}));
     function speichern() {
       if (!f.name) return;
-      const sauber = { ...f, email:(f.email||"").trim().toLowerCase(), urlaub: Number(f.urlaub)||0, krank: Number(f.krank)||0, fuehrerschein: !!f.fuehrerschein, stapler: !!f.stapler, schweisser: !!f.schweisser };
+      const sauber = { ...f, email:(f.email||"").trim().toLowerCase(), stundensatz: f.stundensatz!=null && f.stundensatz!=="" ? Number(f.stundensatz) : null, urlaub: Number(f.urlaub)||0, krank: Number(f.krank)||0, fuehrerschein: !!f.fuehrerschein, stapler: !!f.stapler, schweisser: !!f.schweisser };
       if (data) setMitarbeiter(prev => prev.map(m => m.id===data.id ? sauber : m));
       else setMitarbeiter(prev => [...prev, { ...sauber, id: null }]);
       setModal(null);
@@ -1178,6 +1200,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
         </div>
         <Feld label="Login-E-Mail (für App-Zugang)"><input style={inpS} value={f.email||""} onChange={e=>set("email",e.target.value)} placeholder="z.B. max@firma.de – muss zum Supabase-Login passen" /></Feld>
         <Feld label="Telefon"><input style={inpS} value={f.tel} onChange={e=>set("tel",e.target.value)} placeholder="0171-…" /></Feld>
+        <Feld label="Stundensatz (€/h, intern für Kostenrechnung)"><input type="number" style={inpS} value={f.stundensatz||""} onChange={e=>set("stundensatz",e.target.value)} placeholder="z.B. 45" /></Feld>
         <Feld label="Qualifikationen">
           <div style={{ display:"flex", gap:16, flexWrap:"wrap", marginTop:4 }}>
             {[["fuehrerschein","Führerschein"],["stapler","Staplerschein"],["schweisser","Schweißer"]].map(([k,lbl])=>(
@@ -1433,6 +1456,260 @@ function KennzahlKarte({ wert, label, farbe, icon, onClick }) {
   );
 }
 
+// ─── TAGESBERICHTE (Wetter automatisch, Fotos mit Zeitstempel) ────────────────
+const WETTER_CODES = { 0:"Klar ☀️",1:"Überwiegend klar 🌤",2:"Teilweise bewölkt ⛅",3:"Bewölkt ☁️",45:"Nebel 🌫",48:"Nebel (Reif) 🌫",51:"Leichter Niesel 🌦",53:"Niesel 🌦",55:"Starker Niesel 🌧",61:"Leichter Regen 🌦",63:"Regen 🌧",65:"Starker Regen 🌧",71:"Leichter Schnee 🌨",73:"Schnee 🌨",75:"Starker Schnee ❄️",80:"Regenschauer 🌦",81:"Schauer 🌧",82:"Starke Schauer ⛈",95:"Gewitter ⛈",96:"Gewitter mit Hagel ⛈",99:"Schweres Gewitter ⛈" };
+
+async function holeWetter(ort) {
+  try {
+    const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(ort)}&count=1&language=de`).then(r=>r.json());
+    const loc = g?.results?.[0];
+    if (!loc) return null;
+    const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${loc.latitude}&longitude=${loc.longitude}&current=temperature_2m,weather_code,wind_speed_10m`).then(r=>r.json());
+    const c = w?.current;
+    if (!c) return null;
+    const text = WETTER_CODES[c.weather_code] || "";
+    return `${text}, ${Math.round(c.temperature_2m)}°C, Wind ${Math.round(c.wind_speed_10m)} km/h (${loc.name})`;
+  } catch(e) { return null; }
+}
+
+async function stempleFoto(file) {
+  const img = await createImageBitmap(file);
+  const maxB = 1600;
+  const skala = Math.min(1, maxB / img.width);
+  const cw = Math.round(img.width * skala), ch = Math.round(img.height * skala);
+  const canvas = document.createElement("canvas");
+  canvas.width = cw; canvas.height = ch;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, cw, ch);
+  const ts = new Date(file.lastModified || Date.now());
+  const text = `📷 ${String(ts.getDate()).padStart(2,"0")}.${String(ts.getMonth()+1).padStart(2,"0")}.${ts.getFullYear()}  ${String(ts.getHours()).padStart(2,"0")}:${String(ts.getMinutes()).padStart(2,"0")} Uhr`;
+  const fs = Math.max(16, Math.round(cw/45));
+  ctx.font = `bold ${fs}px Arial`;
+  const tw2 = ctx.measureText(text).width;
+  ctx.fillStyle = "rgba(15,23,42,0.72)";
+  ctx.fillRect(cw - tw2 - 24, ch - fs*2.1, tw2 + 24, fs*2.1);
+  ctx.fillStyle = "#f97316";
+  ctx.fillText(text, cw - tw2 - 12, ch - fs*0.7);
+  const blob = await new Promise(res=>canvas.toBlob(res, "image/jpeg", 0.85));
+  return { blob, zeit: ts.toISOString() };
+}
+
+function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, meinMA, userEmail }) {
+  const istLeitung = rolle==="Admin" || rolle==="Bauleiter" || rolle==="Vorarbeiter";
+  const leer = { datum: isoDate(new Date()), projektId:"", wetter:"", fortschritt:"", probleme:"", material:"", anwesende:"", leistung:"", fotos:[] };
+  const [f, setF] = useState(leer);
+  const [zeigeForm, setZeigeForm] = useState(false);
+  const [laedt, setLaedt] = useState(false);
+  const [wetterLaedt, setWetterLaedt] = useState(false);
+  const set = (k,v)=>setF(p=>({...p,[k]:v}));
+
+  async function projektWaehlen(pid) {
+    const proj = projekte.find(p=>p.id===pid);
+    const team = proj ? mitarbeiter.filter(m=>m.team===proj.team).map(m=>m.name).join(", ") : "";
+    setF(p=>({ ...p, projektId:pid, anwesende:team, team:proj?.team||"" }));
+    if (proj?.ort) {
+      setWetterLaedt(true);
+      const w = await holeWetter(proj.ort);
+      setWetterLaedt(false);
+      if (w) setF(p=>({ ...p, wetter:w }));
+    }
+  }
+
+  async function fotosHochladen(files) {
+    if (!files?.length) return;
+    setLaedt(true);
+    const neu = [];
+    for (const file of Array.from(files)) {
+      try {
+        const { blob, zeit } = await stempleFoto(file);
+        const pfad = `${Date.now()}_${Math.random().toString(36).slice(2,8)}.jpg`;
+        const { error } = await supabase.storage.from("berichte").upload(pfad, blob, { contentType:"image/jpeg" });
+        if (error) { alert("Foto-Upload fehlgeschlagen: "+error.message); continue; }
+        const { data } = supabase.storage.from("berichte").getPublicUrl(pfad);
+        neu.push({ url: data.publicUrl, zeit });
+      } catch(e) { alert("Foto konnte nicht verarbeitet werden."); }
+    }
+    setF(p=>({ ...p, fotos:[...(p.fotos||[]), ...neu] }));
+    setLaedt(false);
+  }
+
+  function speichern() {
+    if (!f.projektId || !f.fortschritt) { alert("Bitte mindestens Projekt und Arbeitsfortschritt ausfüllen."); return; }
+    const proj = projekte.find(p=>p.id===f.projektId);
+    const b = { ...f, id:"B"+Date.now(), team:proj?.team||"", verfasser: meinMA?.name || userEmail || "Unbekannt",
+      maAnzahl: f.anwesende ? f.anwesende.split(",").filter(x=>x.trim()).length : null };
+    setBerichte(prev=>[...(prev||[]), b]);
+    setF(leer);
+    setZeigeForm(false);
+  }
+
+  const sortiert = [...(berichte||[])].sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||String(b.id).localeCompare(String(a.id)));
+
+  return (
+    <div>
+      {istLeitung && !zeigeForm && (
+        <button onClick={()=>setZeigeForm(true)} style={{ padding:"10px 20px", borderRadius:8, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13, marginBottom:16 }}>+ Neuer Tagesbericht</button>
+      )}
+
+      {istLeitung && zeigeForm && (
+        <div style={{ background:"#fff", border:"1.5px solid #ea580c", borderRadius:10, padding:16, marginBottom:20 }}>
+          <div style={{ fontWeight:700, fontSize:14, marginBottom:12, color:"#ea580c" }}>📝 Neuer Tagesbericht</div>
+          <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+            <div style={{ minWidth:150 }}><Feld label="Datum"><input type="date" style={inpS} value={f.datum} onChange={e=>set("datum",e.target.value)} /></Feld></div>
+            <div style={{ flex:1, minWidth:200 }}><Feld label="Projekt"><select style={inpS} value={f.projektId} onChange={e=>projektWaehlen(e.target.value)}><option value="">– wählen –</option>{projekte.map(p=><option key={p.id} value={p.id}>{p.name} ({p.ort})</option>)}</select></Feld></div>
+            <div style={{ minWidth:110 }}><Feld label="Leistung (%)"><input type="number" min={0} max={100} style={inpS} value={f.leistung} onChange={e=>set("leistung",e.target.value)} placeholder="z.B. 60" /></Feld></div>
+          </div>
+          <Feld label={"Wetter "+(wetterLaedt?"(wird geholt…)":"(automatisch beim Projekt-Wählen)")}>
+            <input style={inpS} value={f.wetter} onChange={e=>set("wetter",e.target.value)} placeholder="wird automatisch ausgefüllt…" />
+          </Feld>
+          <Feld label="Anwesende (automatisch aus Team, anpassbar)"><input style={inpS} value={f.anwesende} onChange={e=>set("anwesende",e.target.value)} /></Feld>
+          <Feld label="Arbeitsfortschritt – was wurde gemacht?"><textarea style={{ ...inpS, minHeight:70, resize:"vertical" }} value={f.fortschritt} onChange={e=>set("fortschritt",e.target.value)} placeholder="z.B. Schienenstöße 12–18 verschweißt, Vermessung Achse B abgeschlossen" /></Feld>
+          <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+            <div style={{ flex:1, minWidth:220 }}><Feld label="Probleme / Behinderungen"><textarea style={{ ...inpS, minHeight:50, resize:"vertical" }} value={f.probleme} onChange={e=>set("probleme",e.target.value)} placeholder="z.B. Kran erst ab 10 Uhr verfügbar" /></Feld></div>
+            <div style={{ flex:1, minWidth:220 }}><Feld label="Materialbedarf"><textarea style={{ ...inpS, minHeight:50, resize:"vertical" }} value={f.material} onChange={e=>set("material",e.target.value)} placeholder="z.B. 20× Klemmplatten, Schweißdraht" /></Feld></div>
+          </div>
+          <Feld label="Fotos (Zeitstempel wird automatisch eingebrannt)">
+            <input type="file" accept="image/*" multiple onChange={e=>fotosHochladen(e.target.files)} style={{ fontSize:13 }} />
+            {laedt && <div style={{ fontSize:12, color:"#ea580c", marginTop:6 }}>⏳ Fotos werden gestempelt und hochgeladen…</div>}
+            {f.fotos?.length>0 && (
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:8 }}>
+                {f.fotos.map((fo,i)=>(
+                  <div key={i} style={{ position:"relative" }}>
+                    <img src={fo.url} alt="" style={{ width:110, height:80, objectFit:"cover", borderRadius:8, border:"1.5px solid #e5e7eb" }} />
+                    <button onClick={()=>set("fotos", f.fotos.filter((_,j)=>j!==i))} style={{ position:"absolute", top:-6, right:-6, width:22, height:22, borderRadius:99, border:"none", background:"#dc2626", color:"#fff", cursor:"pointer", fontSize:11, fontWeight:700 }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Feld>
+          <div style={{ display:"flex", gap:10, marginTop:8 }}>
+            <button onClick={speichern} disabled={laedt} style={{ ...btnPrimary("#ea580c"), opacity:laedt?0.6:1 }}>💾 Bericht speichern</button>
+            <button onClick={()=>{setF(leer);setZeigeForm(false);}} style={btnGhost}>Abbrechen</button>
+          </div>
+        </div>
+      )}
+
+      {!sortiert.length ? (
+        <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Tagesberichte vorhanden.</div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+          {sortiert.map(b=>{
+            const proj = projekte.find(p=>p.id===b.projektId);
+            const col = proj ? getTeamColor(proj.team) : { bg:"#6b7280", light:"#f3f4f6" };
+            return (
+              <div key={b.id} style={{ border:`1.5px solid ${col.bg}`, borderRadius:10, overflow:"hidden", background:"#fff" }}>
+                <div style={{ background:col.bg, color:"#fff", padding:"8px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:6 }}>
+                  <span style={{ fontWeight:700, fontSize:13 }}>📝 {fmtDate(parseDate(b.datum))} · {proj?.name||"Projekt gelöscht"}</span>
+                  <span style={{ fontSize:11, opacity:0.85 }}>von {b.verfasser}{b.leistung?` · Leistung ${b.leistung}%`:""}</span>
+                </div>
+                <div style={{ padding:"10px 14px", fontSize:12, display:"flex", flexDirection:"column", gap:6 }}>
+                  {b.wetter && <Info label="Wetter" value={b.wetter} />}
+                  {b.anwesende && <Info label="Anwesend" value={b.anwesende+(b.maAnzahl?` (${b.maAnzahl})`:"")} />}
+                  <Info label="Fortschritt" value={b.fortschritt||"–"} />
+                  {b.probleme && <div style={{ padding:"6px 10px", background:"#fef2f2", border:"1px solid #fecaca", borderRadius:6, color:"#991b1b" }}>⚠️ <b>Probleme:</b> {b.probleme}</div>}
+                  {b.material && <div style={{ padding:"6px 10px", background:"#eff6ff", border:"1px solid #bfdbfe", borderRadius:6, color:"#1e40af" }}>📦 <b>Material:</b> {b.material}</div>}
+                  {b.fotos?.length>0 && (
+                    <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:4 }}>
+                      {b.fotos.map((fo,i)=>(
+                        <a key={i} href={fo.url} target="_blank" rel="noreferrer">
+                          <img src={fo.url} alt="" style={{ width:130, height:95, objectFit:"cover", borderRadius:8, border:"1.5px solid #e5e7eb" }} />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  {istLeitung && (
+                    <div><button onClick={()=>{ if(window.confirm("Diesen Bericht wirklich löschen?")) setBerichte(prev=>prev.filter(x=>x.id!==b.id)); }} style={{ padding:"4px 12px", borderRadius:6, border:"1.5px solid #fca5a5", background:"#fff", color:"#dc2626", cursor:"pointer", fontSize:11 }}>🗑 Löschen</button></div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── KOSTEN-CONTROLLING (Plan vs. Ist mit Ampel) ──────────────────────────────
+function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) {
+  const tw = (T && T.text) || "#1e3a5f";
+  const fmt€ = n => (Number(n)||0).toLocaleString("de-DE",{minimumFractionDigits:0,maximumFractionDigits:0})+" €";
+
+  const auswertung = useMemo(()=>projekte.map(p=>{
+    const eintraege = (stunden||[]).filter(e=>e.projekt===p.name);
+    const istStunden = eintraege.reduce((s,e)=>s+(Number(e.arbeitsstunden)||0),0);
+    const lohn = eintraege.reduce((s,e)=>{
+      const ma = mitarbeiter.find(m=>m.id===e.maId);
+      return s + (Number(e.arbeitsstunden)||0) * (Number(ma?.stundensatz)||0);
+    },0);
+    const spesen = eintraege.reduce((s,e)=>s+(Number(e.spesen)||0),0);
+    const unterkunft = (unterkuenfte||[]).filter(u=>u.projektId===p.id).reduce((s,u)=>{
+      if (!u.checkin||!u.checkout||!u.kostenNacht) return s;
+      const naechte = Math.max(0, Math.round((parseDate(u.checkout)-parseDate(u.checkin))/86400000));
+      return s + naechte * (Number(u.kostenNacht)||0) * (Number(u.zimmer)||1);
+    },0);
+    const ist = lohn + spesen + unterkunft;
+    const planK = Number(p.planKosten)||0;
+    const planStd = Number(p.planStunden)||0;
+    const summe = Number(p.auftragssumme)||0;
+    const ratio = planK>0 ? ist/planK : null;
+    const stdRatio = planStd>0 ? istStunden/planStd : null;
+    const db = summe>0 ? summe-ist : null;
+    let ampel = "#9ca3af", ampelText = "kein Planwert";
+    if (ratio!=null) {
+      if (ratio<=0.8) { ampel="#16a34a"; ampelText="im Plan"; }
+      else if (ratio<=1.0) { ampel="#d97706"; ampelText="wird knapp"; }
+      else { ampel="#dc2626"; ampelText="über Plan!"; }
+    }
+    return { p, istStunden, lohn, spesen, unterkunft, ist, planK, planStd, summe, ratio, stdRatio, db, ampel, ampelText, anzahl:eintraege.length };
+  }),[projekte, stunden, mitarbeiter, unterkuenfte]);
+
+  const ohneSatz = mitarbeiter.filter(m=>!m.stundensatz);
+
+  return (
+    <div>
+      <div style={{ fontWeight:700, fontSize:14, color:tw, marginBottom:4, textTransform:"uppercase", letterSpacing:0.5 }}>💰 Kosten-Controlling</div>
+      <div style={{ fontSize:12, color:"#6b7280", marginBottom:14 }}>Ist-Kosten = erfasste Stunden × Stundensatz + Spesen + Unterkunft (Nächte × €/Nacht × Zimmer)</div>
+      {ohneSatz.length>0 && (
+        <div style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:8, padding:"8px 14px", marginBottom:14, fontSize:12, color:"#92400e" }}>
+          ⚠️ Ohne Stundensatz (zählen mit 0 € in die Lohnkosten): {ohneSatz.map(m=>m.name).join(", ")} → in Verwaltung → Mitarbeiter nachtragen.
+        </div>
+      )}
+      <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+        {auswertung.map(({p,istStunden,lohn,spesen,unterkunft,ist,planK,planStd,summe,ratio,stdRatio,db,ampel,ampelText,anzahl})=>{
+          const col=getTeamColor(p.team);
+          return (
+            <div key={p.id} style={{ border:`1.5px solid ${col.bg}`, borderRadius:10, overflow:"hidden", background:"#fff" }}>
+              <div style={{ background:col.bg, color:"#fff", padding:"8px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8 }}>
+                <span style={{ fontWeight:700, fontSize:14 }}>{p.name}{p.nummer?` · ${p.nummer}`:""}</span>
+                <span style={{ background:"#fff", color:ampel, borderRadius:99, padding:"2px 12px", fontSize:11, fontWeight:800 }}>● {ampelText}</span>
+              </div>
+              <div style={{ padding:"12px 14px" }}>
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:"8px 18px", fontSize:12, marginBottom:10 }}>
+                  <Info label="Stunden Ist / Plan" value={`${istStunden.toFixed(1)} h${planStd?` / ${planStd} h`:""}`} />
+                  <Info label="Lohnkosten" value={fmt€(lohn)} />
+                  <Info label="Spesen" value={fmt€(spesen)} />
+                  <Info label="Unterkunft" value={fmt€(unterkunft)} />
+                  <Info label="Kosten Ist / Plan" value={<b style={{color:ampel}}>{fmt€(ist)}{planK?` / ${fmt€(planK)}`:""}</b>} />
+                  {summe>0 && <Info label="Auftragssumme" value={fmt€(summe)} />}
+                  {db!=null && <Info label="Deckungsbeitrag" value={<b style={{color:db>=0?"#16a34a":"#dc2626"}}>{fmt€(db)}</b>} />}
+                </div>
+                {ratio!=null && (
+                  <div style={{ background:"#f1f5f9", borderRadius:99, height:10, overflow:"hidden" }}>
+                    <div style={{ width:Math.min(100,ratio*100)+"%", height:"100%", background:ampel, transition:"width 0.3s" }} />
+                  </div>
+                )}
+                {anzahl===0 && <div style={{ fontSize:11, color:"#9ca3af", marginTop:6 }}>Noch keine Stunden für dieses Projekt erfasst (Projektname im Stundenzettel muss übereinstimmen).</div>}
+              </div>
+            </div>
+          );
+        })}
+        {!projekte.length && <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Projekte angelegt.</div>}
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnungen, unterkuenfte, setTab, T }) {
   const tw = (T && T.text) || "#1e3a5f";
   const heute = new Date();
@@ -1583,9 +1860,9 @@ function ermittleRolle(userEmail, mitarbeiter) {
 function darfTab(rolle, tabId) {
   if (rolle==="Admin") return true;
   const rechte = {
-    "Bauleiter":   ["dashboard","heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","warnungen"],
-    "Vorarbeiter": ["heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte"],
-    "Monteur":     ["heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte"],
+    "Bauleiter":   ["dashboard","kosten","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","warnungen"],
+    "Vorarbeiter": ["heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte"],
+    "Monteur":     ["heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte"],
     "Unbekannt":   ["heute","woche","monat"],
   };
   return (rechte[rolle]||rechte["Unbekannt"]).includes(tabId);
@@ -1596,6 +1873,7 @@ export default function EinsatzplanungInner({
   projekte, setProjekte, mitarbeiter, setMitarbeiter,
   sonder, setSonder, antraege, setAntraege, fahrzeuge, setFahrzeuge,
   stunden, setStunden, unterkuenfte, setUnterkuenfte,
+  berichte, setBerichte,
   onReset, onLogout, userEmail
 }) {
   const { rolle: meineRolle, ma: meinMA } = useMemo(()=>ermittleRolle(userEmail, mitarbeiter), [userEmail, mitarbeiter]);
@@ -1614,10 +1892,12 @@ export default function EinsatzplanungInner({
 
   const alleTabs = [
     { id:"dashboard",    label:"📊 Dashboard" },
+    { id:"kosten",       label:"💰 Kosten" },
     { id:"heute",        label:"📆 Heute" },
     { id:"woche",        label:"📅 Woche" },
     { id:"monat",        label:"🗓 Monat" },
     { id:"stundenzettel",label:"⏱ Stundenzettel" },
+    { id:"berichte",     label:"📝 Berichte" },
     { id:"antraege",     label:`🌴 Anträge${antraege.filter(a=>a.status==="offen").length>0?` (${antraege.filter(a=>a.status==="offen").length})`:""}` },
     { id:"projekte",     label:"🏗 Projekte" },
     { id:"mitarbeiter",  label:"👷 Mitarbeiter" },
@@ -1676,10 +1956,12 @@ export default function EinsatzplanungInner({
           </div>
         )}
         {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} antraege={antraege} warnungen={warnungen} unterkuenfte={unterkuenfte} setTab={setTab} T={T} />}
+        {tab==="kosten"       && darfTab(meineRolle,"kosten")       && <KostenControlling projekte={projekte} stunden={stunden} mitarbeiter={mitarbeiter} unterkuenfte={unterkuenfte} T={T} />}
         {tab==="heute"        && darfTab(meineRolle,"heute")        && <Tagesansicht   mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} />}
         {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
         {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
         {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={mitarbeiter} projekte={projekte} stunden={stunden} setStunden={setStunden} rolle={meineRolle} meinMA={meinMA} />}
+        {tab==="berichte"     && darfTab(meineRolle,"berichte")     && <Tagesberichte projekte={projekte} mitarbeiter={mitarbeiter} berichte={berichte} setBerichte={setBerichte} rolle={meineRolle} meinMA={meinMA} userEmail={userEmail} />}
         {tab==="antraege"     && darfTab(meineRolle,"antraege")     && <Antraege mitarbeiter={mitarbeiter} antraege={antraege} setAntraege={setAntraege} setSonder={setSonder} />}
         {tab==="projekte"     && darfTab(meineRolle,"projekte")     && <ProjektUebersicht projekte={projekte} fahrzeuge={fahrzeuge} />}
         {tab==="mitarbeiter"  && darfTab(meineRolle,"mitarbeiter")  && <MitarbeiterUebersicht mitarbeiter={mitarbeiter} projekte={projekte} />}

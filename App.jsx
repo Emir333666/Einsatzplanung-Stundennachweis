@@ -33,6 +33,23 @@ const toDbUnterkunft  = u => ({
   kosten_nacht: u.kostenNacht!=null && u.kostenNacht!=="" ? Number(u.kostenNacht) : null,
   bemerkung: u.bemerkung||null
 });
+const toAppBericht = r => ({ ...r, projektId:r.projekt_id, maAnzahl:r.ma_anzahl, fotos:Array.isArray(r.fotos)?r.fotos:[] });
+const toDbBericht  = b => ({
+  id:b.id, datum:b.datum||null, projekt_id:b.projektId||null, team:b.team||null,
+  verfasser:b.verfasser||null, wetter:b.wetter||null, fortschritt:b.fortschritt||null,
+  probleme:b.probleme||null, material:b.material||null,
+  ma_anzahl: b.maAnzahl!=null && b.maAnzahl!=="" ? Number(b.maAnzahl) : null,
+  anwesende: b.anwesende||null,
+  leistung: b.leistung!=null && b.leistung!=="" ? Number(b.leistung) : null,
+  fotos: b.fotos||[]
+});
+const toAppWerkzeug = r => ({ ...r, zugeordnetMa:r.zugeordnet_ma, pruefDatum:r.pruef_datum });
+const toDbWerkzeug  = w => ({
+  id:w.id, name:w.name, typ:w.typ||null, seriennummer:w.seriennummer||null,
+  zustand:w.zustand||null,
+  zugeordnet_ma: w.zugeordnetMa!=null && w.zugeordnetMa!=="" ? Number(w.zugeordnetMa) : null,
+  team:w.team||null, pruef_datum:w.pruefDatum||null, bemerkung:w.bemerkung||null
+});
 const toDbStunde  = s => ({
   id: s.id,
   ma_id: s.maId, ma_name: s.maName, team: s.team||null,
@@ -103,6 +120,7 @@ export default function App() {
   const [fahrzeuge, setFahrzeugeState] = useState([]);
   const [stunden, setStundenState] = useState([]);
   const [unterkuenfte, setUnterkuenfteState] = useState([]);
+  const [berichte, setBerichteState] = useState([]);
 
   // Session prüfen
   useEffect(() => {
@@ -114,7 +132,7 @@ export default function App() {
   // Daten aus der Cloud laden, sobald eingeloggt
   const ladeDaten = useCallback(async () => {
     setLaden(true);
-    const [p, m, f, s, a, st, u] = await Promise.all([
+    const [p, m, f, s, a, st, u, tb] = await Promise.all([
       supabase.from("projekte").select("*"),
       supabase.from("mitarbeiter").select("*"),
       supabase.from("fahrzeuge").select("*"),
@@ -122,6 +140,7 @@ export default function App() {
       supabase.from("antraege").select("*"),
       supabase.from("stunden").select("*"),
       supabase.from("unterkuenfte").select("*"),
+      supabase.from("tagesberichte").select("*"),
     ]);
     setProjekteState((p.data||[]).map(toAppProjekt));
     setMitarbeiterState(m.data||[]);
@@ -130,6 +149,7 @@ export default function App() {
     setAntraegeState((a.data||[]).map(toAppAntrag));
     setStundenState((st.data||[]).map(toAppStunde));
     setUnterkuenfteState((u.data||[]).map(toAppUnterkunft));
+    setBerichteState((tb.data||[]).map(toAppBericht));
     setLaden(false);
     setBereit(true);
   }, []);
@@ -194,6 +214,12 @@ export default function App() {
     await syncTabelle("unterkuenfte", unterkuenfte, arr, toDbUnterkunft);
     ladeDaten();
   };
+  const setBerichte = async (next) => {
+    const arr = typeof next === "function" ? next(berichte) : next;
+    setBerichteState(arr);
+    await syncTabelle("tagesberichte", berichte, arr, toDbBericht);
+    ladeDaten();
+  };
 
   // Demo-Daten in leere Cloud laden (einmalig, falls alles leer ist)
   async function demoLaden() {
@@ -224,6 +250,7 @@ export default function App() {
         fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge}
         stunden={stunden} setStunden={setStunden}
         unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte}
+        berichte={berichte} setBerichte={setBerichte}
         onReset={null}
         onLogout={abmelden}
         userEmail={session.user?.email}
