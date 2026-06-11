@@ -1994,6 +1994,7 @@ export default function EinsatzplanungInner({
   const istLeitung = istAdmin || meineRolle==="Bauleiter" || meineRolle==="Vorarbeiter";
 
   const [tab, setTab] = useState(istAdmin ? "dashboard" : "heute");
+  const [menueOffen, setMenueOffen] = useState(false);
   const [dunkel, setDunkel] = useState(()=>{ try { return localStorage.getItem("baufox-theme")==="dunkel"; } catch(e){ return false; } });
   useEffect(()=>{ try { localStorage.setItem("baufox-theme", dunkel?"dunkel":"hell"); } catch(e){} }, [dunkel]);
   const T = dunkel
@@ -2030,11 +2031,12 @@ export default function EinsatzplanungInner({
 
   return (
     <div style={{ fontFamily:"'Inter', system-ui, sans-serif", minHeight:"100vh", background:T.bg, color:T.text, transition:"background 0.2s" }}>
-      <div style={{ background:"linear-gradient(135deg, #1e293b 0%, #334155 100%)", padding:"16px 20px", color:"#fff", display:"flex", alignItems:"center", gap:14 }}>
+      <div style={{ position:"sticky", top:0, zIndex:50, background:"linear-gradient(135deg, #1e293b 0%, #334155 100%)", padding:"12px 16px", color:"#fff", display:"flex", alignItems:"center", gap:12, boxShadow:"0 2px 8px #0003" }}>
+        <button onClick={()=>setMenueOffen(true)} title="Menü öffnen" style={{ background:"#fff2", border:"1px solid #fff4", borderRadius:8, padding:"7px 11px", fontSize:18, color:"#fff", cursor:"pointer", lineHeight:1 }}>☰</button>
         <div style={{ background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", borderRadius:10, padding:"6px 10px", fontSize:20, boxShadow:"0 2px 8px #ea580c55" }}>🦊</div>
         <div>
           <div style={{ fontWeight:800, fontSize:18, letterSpacing:-0.5 }}>Baufox</div>
-          <div style={{ fontSize:11, opacity:0.7, textTransform:"uppercase", letterSpacing:1 }}>Montage-Steuerung</div>
+          <div style={{ fontSize:11, opacity:0.7, textTransform:"uppercase", letterSpacing:1 }}>{(tabs.find(t=>t.id===tab)?.label)||"Montage-Steuerung"}</div>
         </div>
         <div style={{ marginLeft:"auto", display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
           {Object.entries(TEAM_COLORS).map(([t,c])=>(
@@ -2047,16 +2049,29 @@ export default function EinsatzplanungInner({
         </div>
       </div>
 
-      <div style={{ background:T.tabBar, borderBottom:`1.5px solid ${T.border}`, display:"flex", overflowX:"auto", padding:"0 12px" }}>
-        {tabs.map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{
-            padding:"11px 14px", border:"none", background:"none", cursor:"pointer", fontSize:12,
-            fontWeight:tab===t.id?700:500, color:tab===t.id?"#ea580c":T.textMut,
-            borderBottom:tab===t.id?"2.5px solid #ea580c":"2.5px solid transparent",
-            whiteSpace:"nowrap", transition:"all 0.15s"
-          }}>{t.label}</button>
-        ))}
-      </div>
+      {menueOffen && (
+        <>
+          <div onClick={()=>setMenueOffen(false)} style={{ position:"fixed", inset:0, background:"#0008", zIndex:90 }} />
+          <div style={{ position:"fixed", left:0, top:0, bottom:0, width:250, background:T.tabBar, zIndex:91, boxShadow:"4px 0 20px #0004", display:"flex", flexDirection:"column" }}>
+            <div style={{ background:"linear-gradient(135deg, #1e293b 0%, #334155 100%)", color:"#fff", padding:"14px 16px", display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", borderRadius:8, padding:"4px 8px", fontSize:16 }}>🦊</div>
+              <div style={{ fontWeight:800, fontSize:16, flex:1 }}>Baufox</div>
+              <button onClick={()=>setMenueOffen(false)} style={{ background:"#fff2", border:"1px solid #fff4", borderRadius:6, padding:"4px 10px", color:"#fff", cursor:"pointer", fontSize:14 }}>✕</button>
+            </div>
+            <div style={{ flex:1, overflowY:"auto", padding:"10px 0" }}>
+              {tabs.map(t=>(
+                <button key={t.id} onClick={()=>{setTab(t.id);setMenueOffen(false);}} style={{
+                  display:"block", width:"100%", textAlign:"left", padding:"12px 18px", border:"none", cursor:"pointer", fontSize:14,
+                  fontWeight:tab===t.id?700:500,
+                  color:tab===t.id?"#ea580c":T.textMut,
+                  background:tab===t.id?(dunkel?"#33415588":"#fff7ed"):"transparent",
+                  borderLeft:tab===t.id?"4px solid #ea580c":"4px solid transparent"
+                }}>{t.label}</button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       <div style={{ padding:"18px 14px", maxWidth:1400, margin:"0 auto" }}>
         {meinMA && !istAdmin && (
