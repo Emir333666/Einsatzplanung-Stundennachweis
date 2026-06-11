@@ -1218,6 +1218,141 @@ function WarnPanel({ warnungen }) {
   return <div style={{ display:"flex", flexDirection:"column", gap:8 }}>{warnungen.map((w,i)=><div key={i} style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:8, padding:"10px 14px", color:"#92400e", display:"flex", gap:10, fontSize:13 }}><span style={{ fontSize:18 }}>⚠️</span><div><strong style={{ marginRight:6 }}>{w.typ}:</strong>{w.msg}</div></div>)}</div>;
 }
 
+// ─── ADMIN-DASHBOARD (Kontrollzentrum) ────────────────────────────────────────
+function KennzahlKarte({ wert, label, farbe, icon, onClick }) {
+  return (
+    <div onClick={onClick} style={{ background:"#fff", border:`1.5px solid ${farbe}33`, borderRadius:12, padding:"14px 16px", cursor:onClick?"pointer":"default", boxShadow:"0 1px 3px #0001", transition:"all .15s" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+        <span style={{ fontSize:22 }}>{icon}</span>
+        <span style={{ fontSize:30, fontWeight:800, color:farbe }}>{wert}</span>
+      </div>
+      <div style={{ fontSize:12, color:"#6b7280", marginTop:4, fontWeight:600 }}>{label}</div>
+    </div>
+  );
+}
+
+function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnungen, setTab }) {
+  const heute = new Date();
+  const d = parseDate(isoDate(heute));
+
+  // Wer ist heute wo?
+  const eintraege = mitarbeiter.map(ma => {
+    const proj = getProjektForTeamDate(projekte, ma.team, d);
+    const se = getSonderForMaDate(sonder, ma.id, d);
+    return { ma, proj, se };
+  });
+  const imEinsatz = eintraege.filter(e => e.proj && !e.se);
+  const imUrlaub  = eintraege.filter(e => e.se && e.se.typ==="Urlaub");
+  const krank     = eintraege.filter(e => e.se && e.se.typ==="Krank");
+  const abwesendSonst = eintraege.filter(e => e.se && e.se.typ!=="Urlaub" && e.se.typ!=="Krank");
+  const ohneEinsatz = eintraege.filter(e => !e.proj && !e.se);
+
+  // Aktive Projekte heute
+  const aktiveProjekte = projekte.filter(p => dateInRange(d, p.dateStart, p.dateEnd) && p.status!=="storniert" && p.status!=="abgeschlossen");
+  const aktiveTeams = [...new Set(aktiveProjekte.map(p=>p.team))];
+
+  // Probleme
+  const projOhneVA = aktiveProjekte.filter(p => !p.vorarbeiter);
+  const projOhneFzg = aktiveProjekte.filter(p => !p.fzg);
+  const offeneAntraege = antraege.filter(a => a.status==="offen");
+
+  const farbBlau="#1d4ed8", farbGruen="#16a34a", farbRot="#dc2626", farbOrange="#d97706", farbGrau="#6b7280";
+
+  return (
+    <div>
+      <div style={{ fontSize:13, color:"#6b7280", marginBottom:14 }}>
+        {WOCHENTAGE_LANG[heute.getDay()]}, {fmtDate(heute)} · KW {getKW(heute)} — Überblick für heute
+      </div>
+
+      {/* Kennzahlen */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:12, marginBottom:20 }}>
+        <KennzahlKarte wert={aktiveProjekte.length} label="Aktive Projekte heute" farbe={farbBlau} icon="🏗" onClick={()=>setTab("projekte")} />
+        <KennzahlKarte wert={aktiveTeams.length} label="Teams im Einsatz" farbe={farbBlau} icon="👥" onClick={()=>setTab("woche")} />
+        <KennzahlKarte wert={imEinsatz.length} label="Mitarbeiter im Einsatz" farbe={farbGruen} icon="👷" onClick={()=>setTab("heute")} />
+        <KennzahlKarte wert={imUrlaub.length} label="Im Urlaub" farbe={farbOrange} icon="🌴" />
+        <KennzahlKarte wert={krank.length} label="Krank gemeldet" farbe={farbRot} icon="🤒" />
+        <KennzahlKarte wert={ohneEinsatz.length} label="Ohne Einsatz" farbe={farbGrau} icon="🆓" />
+      </div>
+
+      {/* Handlungsbedarf */}
+      <div style={{ fontWeight:700, fontSize:14, color:"#1e3a5f", marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>⚡ Handlungsbedarf</div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:12, marginBottom:24 }}>
+
+        {/* Offene Anträge */}
+        <div style={{ background:"#fff", border:"1.5px solid #e5e7eb", borderRadius:10, overflow:"hidden" }}>
+          <div style={{ background: offeneAntraege.length?"#fef3c7":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: offeneAntraege.length?"#92400e":"#166534", display:"flex", justifyContent:"space-between", cursor:"pointer" }} onClick={()=>setTab("antraege")}>
+            <span>🌴 Offene Urlaubsanträge</span><span>{offeneAntraege.length}</span>
+          </div>
+          <div style={{ padding:"8px 14px", fontSize:12, color:"#374151" }}>
+            {offeneAntraege.length===0 ? <span style={{ color:"#9ca3af" }}>Keine offenen Anträge</span> :
+              offeneAntraege.slice(0,4).map(a=><div key={a.id} style={{ padding:"3px 0" }}>{a.maName} · {a.typ} · {fmtDateShort(parseDate(a.dateStart))}–{fmtDateShort(parseDate(a.dateEnd))}</div>)}
+          </div>
+        </div>
+
+        {/* Projekte ohne Vorarbeiter */}
+        <div style={{ background:"#fff", border:"1.5px solid #e5e7eb", borderRadius:10, overflow:"hidden" }}>
+          <div style={{ background: projOhneVA.length?"#fee2e2":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: projOhneVA.length?"#991b1b":"#166534", display:"flex", justifyContent:"space-between" }}>
+            <span>⚠️ Projekte ohne Vorarbeiter</span><span>{projOhneVA.length}</span>
+          </div>
+          <div style={{ padding:"8px 14px", fontSize:12, color:"#374151" }}>
+            {projOhneVA.length===0 ? <span style={{ color:"#9ca3af" }}>Alle Projekte haben einen Vorarbeiter</span> :
+              projOhneVA.map(p=><div key={p.id} style={{ padding:"3px 0" }}>{p.name} · {p.team}</div>)}
+          </div>
+        </div>
+
+        {/* Projekte ohne Fahrzeug */}
+        <div style={{ background:"#fff", border:"1.5px solid #e5e7eb", borderRadius:10, overflow:"hidden" }}>
+          <div style={{ background: projOhneFzg.length?"#fef3c7":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: projOhneFzg.length?"#92400e":"#166534", display:"flex", justifyContent:"space-between" }}>
+            <span>🚐 Projekte ohne Fahrzeug</span><span>{projOhneFzg.length}</span>
+          </div>
+          <div style={{ padding:"8px 14px", fontSize:12, color:"#374151" }}>
+            {projOhneFzg.length===0 ? <span style={{ color:"#9ca3af" }}>Alle aktiven Projekte haben ein Fahrzeug</span> :
+              projOhneFzg.map(p=><div key={p.id} style={{ padding:"3px 0" }}>{p.name} · {p.team}</div>)}
+          </div>
+        </div>
+
+        {/* Konflikte */}
+        <div style={{ background:"#fff", border:"1.5px solid #e5e7eb", borderRadius:10, overflow:"hidden" }}>
+          <div style={{ background: warnungen.length?"#fff7ed":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: warnungen.length?"#92400e":"#166534", display:"flex", justifyContent:"space-between", cursor:"pointer" }} onClick={()=>setTab("warnungen")}>
+            <span>🔎 Konflikt-Warnungen</span><span>{warnungen.length}</span>
+          </div>
+          <div style={{ padding:"8px 14px", fontSize:12, color:"#374151" }}>
+            {warnungen.length===0 ? <span style={{ color:"#9ca3af" }}>Keine Konflikte gefunden</span> :
+              warnungen.slice(0,4).map((w,i)=><div key={i} style={{ padding:"3px 0" }}>{w.msg}</div>)}
+          </div>
+        </div>
+      </div>
+
+      {/* Heute auf Baustelle */}
+      <div style={{ fontWeight:700, fontSize:14, color:"#1e3a5f", marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>🏗 Heute aktiv</div>
+      {aktiveProjekte.length===0 ? (
+        <div style={{ background:"#f9fafb", border:"1.5px solid #e5e7eb", borderRadius:10, padding:20, textAlign:"center", color:"#9ca3af" }}>Heute sind keine Projekte aktiv</div>
+      ) : (
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:12 }}>
+          {aktiveProjekte.map(p=>{
+            const col=getTeamColor(p.team);
+            const team=imEinsatz.filter(e=>e.ma.team===p.team);
+            const fzg=fahrzeuge.find(f=>f.id===p.fzg);
+            return (
+              <div key={p.id} style={{ border:`1.5px solid ${col.bg}`, borderRadius:10, overflow:"hidden" }}>
+                <div style={{ background:col.bg, color:"#fff", padding:"7px 12px", fontWeight:700, fontSize:13, display:"flex", justifyContent:"space-between" }}>
+                  <span>{p.name}</span><span style={{ opacity:0.85 }}>{p.team}</span>
+                </div>
+                <div style={{ padding:"8px 12px", fontSize:12 }}>
+                  <Info label="Ort" value={p.ort} />
+                  <Info label="Vorarbeiter" value={p.vorarbeiter||"– fehlt –"} />
+                  <Info label="Fahrzeug" value={fzg?fzg.kz:"– fehlt –"} />
+                  <Info label="Mitarbeiter heute" value={team.length} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Rollen & Rechte ──────────────────────────────────────────────────────────
 const ADMIN_EMAILS = ["emircan.g@cc-schienentechnik.de"];
 
@@ -1233,7 +1368,7 @@ function ermittleRolle(userEmail, mitarbeiter) {
 function darfTab(rolle, tabId) {
   if (rolle==="Admin") return true;
   const rechte = {
-    "Bauleiter":   ["heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge","warnungen"],
+    "Bauleiter":   ["dashboard","heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge","warnungen"],
     "Vorarbeiter": ["heute","woche","monat","stundenzettel","antraege","projekte","mitarbeiter","fahrzeuge"],
     "Monteur":     ["heute","woche","monat","antraege","projekte","mitarbeiter","fahrzeuge"],
     "Unbekannt":   ["heute","woche","monat"],
@@ -1251,12 +1386,13 @@ export default function EinsatzplanungInner({
   const istAdmin = meineRolle==="Admin";
   const istLeitung = istAdmin || meineRolle==="Bauleiter" || meineRolle==="Vorarbeiter";
 
-  const [tab, setTab] = useState("heute");
+  const [tab, setTab] = useState(istAdmin ? "dashboard" : "heute");
   const warnungen = useMemo(()=>pruefKonflikte(projekte,sonder,mitarbeiter),[projekte,sonder,mitarbeiter]);
 
   function resetDaten() { if (onReset) onReset(); }
 
   const alleTabs = [
+    { id:"dashboard",    label:"📊 Dashboard" },
     { id:"heute",        label:"📆 Heute" },
     { id:"woche",        label:"📅 Woche" },
     { id:"monat",        label:"🗓 Monat" },
@@ -1316,6 +1452,7 @@ export default function EinsatzplanungInner({
             ⚠️ Dein Login ist noch keinem Mitarbeiter zugeordnet. Bitte den Administrator, deine E-Mail (<strong>{userEmail}</strong>) in der Mitarbeiter-Verwaltung einzutragen. Bis dahin siehst du nur die Übersichten.
           </div>
         )}
+        {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} antraege={antraege} warnungen={warnungen} setTab={setTab} />}
         {tab==="heute"        && darfTab(meineRolle,"heute")        && <Tagesansicht   mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} />}
         {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
         {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
