@@ -1,27 +1,111 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import { VitePWA } from "vite-plugin-pwa";
+/* ─── Baufox Design-Feinschliff ─────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-export default defineConfig({
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: "autoUpdate",
-      includeAssets: ["favicon.svg"],
-      manifest: {
-        name: "Einsatzplanung",
-        short_name: "Einsatzplan",
-        description: "Team-Einsatzplanung für Montagefirma",
-        theme_color: "#1d4ed8",
-        background_color: "#f8fafc",
-        display: "standalone",
-        orientation: "portrait",
-        icons: [
-          { src: "icon-192.png", sizes: "192x192", type: "image/png" },
-          { src: "icon-512.png", sizes: "512x512", type: "image/png" },
-          { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }
-        ]
-      }
-    })
-  ]
-});
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root > div > div:last-child {
+  animation: einblenden 0.25s ease;
+}
+@keyframes einblenden {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Knöpfe: sanfte Reaktion */
+button {
+  font-family: inherit;
+  transition: transform 0.12s ease, filter 0.12s ease, box-shadow 0.12s ease;
+}
+button:hover  { filter: brightness(1.06); }
+button:active { transform: scale(0.97); }
+
+/* Eingabefelder: oranger Fokus statt Browser-Blau */
+input, select, textarea {
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #ea580c !important;
+  box-shadow: 0 0 0 3px #ea580c22;
+}
+
+/* Tabellenzeilen: dezentes Hover */
+tbody tr { transition: background 0.1s ease; }
+tbody tr:hover { background: #ea580c0a; }
+
+/* Schlanke, moderne Scrollbalken */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #94a3b866; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8aa; }
+
+/* Bilder in Berichten: leichter Zoom beim Hover */
+a img { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+a img:hover { transform: scale(1.03); box-shadow: 0 4px 14px #0003; }
+
+/* ─── Bewegung & Micro-Interactions ─────────────────────────────────────── */
+
+/* Seitenwechsel: Inhalt blendet sanft ein */
+.inhalt { animation: einblenden 0.25s ease; }
+
+/* Seitenmenü gleitet von links rein, Hintergrund blendet ein */
+.seitenmenue { animation: reingleiten 0.22s cubic-bezier(0.2, 0.8, 0.3, 1); }
+@keyframes reingleiten {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+.abdunkler { animation: abdunkeln 0.2s ease; }
+@keyframes abdunkeln {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Menüpunkte: rutschen beim Hover leicht nach rechts */
+.seitenmenue button { transition: padding-left 0.15s ease, background 0.15s ease, color 0.15s ease; }
+.seitenmenue button:hover { padding-left: 24px !important; background: #ea580c14 !important; filter: none; }
+
+/* Fenster (Modals): poppen weich auf */
+.modal-hintergrund { animation: abdunkeln 0.15s ease; }
+.modal-fenster { animation: aufpoppen 0.2s cubic-bezier(0.2, 0.8, 0.3, 1.1); }
+@keyframes aufpoppen {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Karten heben sich beim Drüberfahren leicht an */
+div[style*="box-shadow"][style*="border-radius: 12px"] {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+div[style*="box-shadow"][style*="border-radius: 12px"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px #00000022 !important;
+}
+
+/* Wichtige (farbige) Knöpfe heben sich beim Hover an */
+button[style*="gradient"]:hover, button[style*="background: rgb"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px #0002;
+}
+button[style*="gradient"]:active { transform: translateY(0) scale(0.97); }
+
+/* Sanfter Farbwechsel beim Hell/Dunkel-Umschalten */
+body, div, span, td, th { transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
+
+/* Icons in Knöpfen: minimal vergrößern beim Hover */
+button svg { transition: transform 0.15s ease; }
+button:hover svg { transform: scale(1.12); }
+
+/* Kennzahlen & Badges: weiches Erscheinen */
+.inhalt > div { animation: einblenden 0.3s ease backwards; }
+.inhalt > div:nth-child(2) { animation-delay: 0.04s; }
+.inhalt > div:nth-child(3) { animation-delay: 0.08s; }

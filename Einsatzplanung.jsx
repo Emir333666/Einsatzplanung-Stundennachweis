@@ -1114,8 +1114,8 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
 // ─── Modal ─────────────────────────────────────────────────────────────────
 function Modal({ titel, onClose, children, farbe="#1d4ed8" }) {
   return (
-    <div onClick={onClose} style={{ position:"fixed", inset:0, background:"#0007", display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"40px 16px", zIndex:100, overflowY:"auto" }}>
-      <div onClick={e=>e.stopPropagation()} style={{ background:TH.panel, borderRadius:14, width:"100%", maxWidth:520, boxShadow:"0 10px 40px #0004" }}>
+    <div className="modal-hintergrund" onClick={onClose} style={{ position:"fixed", inset:0, background:"#0007", display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"40px 16px", zIndex:100, overflowY:"auto" }}>
+      <div className="modal-fenster" onClick={e=>e.stopPropagation()} style={{ background:TH.panel, borderRadius:14, width:"100%", maxWidth:520, boxShadow:"0 10px 40px #0004" }}>
         <div style={{ background:farbe, color:"#fff", padding:"12px 18px", borderRadius:"14px 14px 0 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <span style={{ fontWeight:700, fontSize:15 }}>{titel}</span>
           <button onClick={onClose} style={{ background:"none", border:"none", color:"#fff", fontSize:22, cursor:"pointer", lineHeight:1 }}>×</button>
@@ -2304,8 +2304,8 @@ export default function EinsatzplanungInner({
 
       {menueOffen && (
         <>
-          <div onClick={()=>setMenueOffen(false)} style={{ position:"fixed", inset:0, background:"#0008", zIndex:90 }} />
-          <div style={{ position:"fixed", left:0, top:0, bottom:0, width:250, background:T.tabBar, zIndex:91, boxShadow:"4px 0 20px #0004", display:"flex", flexDirection:"column" }}>
+          <div className="abdunkler" onClick={()=>setMenueOffen(false)} style={{ position:"fixed", inset:0, background:"#0008", zIndex:90 }} />
+          <div className="seitenmenue" style={{ position:"fixed", left:0, top:0, bottom:0, width:250, background:T.tabBar, zIndex:91, boxShadow:"4px 0 20px #0004", display:"flex", flexDirection:"column" }}>
             <div style={{ background:"linear-gradient(135deg, #1e293b 0%, #334155 100%)", color:"#fff", padding:"14px 16px", display:"flex", alignItems:"center", gap:10 }}>
               <img src="/icon-192.png" alt="" style={{ width:30, height:30, borderRadius:8 }} />
               <div style={{ fontWeight:800, fontSize:16, flex:1 }}>Baufox</div>
@@ -2326,7 +2326,7 @@ export default function EinsatzplanungInner({
         </>
       )}
 
-      <div style={{ padding:"18px 14px", maxWidth:1400, margin:"0 auto" }}>
+      <div key={tab} className="inhalt" style={{ padding:"18px 14px", maxWidth:1400, margin:"0 auto" }}>
         {meinMA && !istAdmin && (
           <div style={{ background:"#eff6ff", border:"1.5px solid #bfdbfe", borderRadius:8, padding:"8px 14px", marginBottom:14, fontSize:12, color:"#1e40af" }}>
             👋 Angemeldet als <strong>{meinMA.name}</strong> · {meinMA.team} · Rolle: <strong>{meineRolle}</strong>
