@@ -116,3 +116,9 @@ button:hover svg { transform: scale(1.12); }
   0%, 100% { transform: scale(1);    box-shadow: 0 6px 24px #ea580c66; }
   50%      { transform: scale(1.07); box-shadow: 0 10px 34px #ea580c99; }
 }
+
+/* ─── Responsive Feinschliff ────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .hide-klein { display: none !important; }
+  .inhalt { padding: 12px 8px !important; }
+}

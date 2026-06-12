@@ -1178,45 +1178,45 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     const col = getTeamColor(f.team);
     return (
       <Modal titel={data?"Projekt bearbeiten":"Neues Projekt"} onClose={()=>setModal(null)} farbe={col.bg}>
-        <div style={{ display:"flex", gap:12 }}>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
           <div style={{ flex:2 }}><Feld label="Projektname"><input style={inpS()} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Kranbahn Halle B" /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Projektnummer"><input style={inpS()} value={f.nummer||""} onChange={e=>set("nummer",e.target.value)} placeholder="P-2026-001" /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Projektnummer"><input style={inpS()} value={f.nummer||""} onChange={e=>set("nummer",e.target.value)} placeholder="P-2026-001" /></Feld></div>
         </div>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Kunde"><input style={inpS()} value={f.kunde} onChange={e=>set("kunde",e.target.value)} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Auftraggeber"><input style={inpS()} value={f.auftraggeber||""} onChange={e=>set("auftraggeber",e.target.value)} /></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Kunde"><input style={inpS()} value={f.kunde} onChange={e=>set("kunde",e.target.value)} /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Auftraggeber"><input style={inpS()} value={f.auftraggeber||""} onChange={e=>set("auftraggeber",e.target.value)} /></Feld></div>
         </div>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Ansprechpartner Kunde"><input style={inpS()} value={f.ansprechpartner||""} onChange={e=>set("ansprechpartner",e.target.value)} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Telefon AP"><input style={inpS()} value={f.apTel||""} onChange={e=>set("apTel",e.target.value)} /></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Ansprechpartner Kunde"><input style={inpS()} value={f.ansprechpartner||""} onChange={e=>set("ansprechpartner",e.target.value)} /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Telefon AP"><input style={inpS()} value={f.apTel||""} onChange={e=>set("apTel",e.target.value)} /></Feld></div>
         </div>
         <Feld label="E-Mail Ansprechpartner"><input style={inpS()} value={f.apEmail||""} onChange={e=>set("apEmail",e.target.value)} /></Feld>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Ort"><input style={inpS()} value={f.ort} onChange={e=>set("ort",e.target.value)} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Land"><input style={inpS()} value={f.land||""} onChange={e=>set("land",e.target.value)} placeholder="Deutschland" /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Mindestlohn vor Ort (€/h)"><input type="number" style={inpS()} value={f.mindestlohn||""} onChange={e=>set("mindestlohn",e.target.value)} placeholder="z.B. 24" /></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Ort"><input style={inpS()} value={f.ort} onChange={e=>set("ort",e.target.value)} /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Land"><input style={inpS()} value={f.land||""} onChange={e=>set("land",e.target.value)} placeholder="Deutschland" /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Mindestlohn vor Ort (€/h)"><input type="number" style={inpS()} value={f.mindestlohn||""} onChange={e=>set("mindestlohn",e.target.value)} placeholder="z.B. 24" /></Feld></div>
         </div>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Start"><input type="date" style={inpS()} value={f.dateStart} onChange={e=>set("dateStart",e.target.value)} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Ende"><input type="date" style={inpS()} value={f.dateEnd} onChange={e=>set("dateEnd",e.target.value)} /></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Start"><input type="date" style={inpS()} value={f.dateStart} onChange={e=>set("dateStart",e.target.value)} /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Ende"><input type="date" style={inpS()} value={f.dateEnd} onChange={e=>set("dateEnd",e.target.value)} /></Feld></div>
         </div>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Team"><select style={inpS()} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Status"><select style={inpS()} value={f.status} onChange={e=>set("status",e.target.value)}>{Object.keys(STATUS_FARBEN).map(s=><option key={s}>{s}</option>)}</select></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Team"><select style={inpS()} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Status"><select style={inpS()} value={f.status} onChange={e=>set("status",e.target.value)}>{Object.keys(STATUS_FARBEN).map(s=><option key={s}>{s}</option>)}</select></Feld></div>
         </div>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Vorarbeiter"><select style={inpS()} value={f.vorarbeiter} onChange={e=>set("vorarbeiter",e.target.value)}><option value="">–</option>{vorarbeiterNamen.map(v=><option key={v}>{v}</option>)}</select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Fahrzeug"><select style={inpS()} value={f.fzg} onChange={e=>set("fzg",e.target.value)}><option value="">–</option>{fahrzeuge.map(fz=><option key={fz.id} value={fz.id}>{fz.kz}</option>)}</select></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Vorarbeiter"><select style={inpS()} value={f.vorarbeiter} onChange={e=>set("vorarbeiter",e.target.value)}><option value="">–</option>{vorarbeiterNamen.map(v=><option key={v}>{v}</option>)}</select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Fahrzeug"><select style={inpS()} value={f.fzg} onChange={e=>set("fzg",e.target.value)}><option value="">–</option>{fahrzeuge.map(fz=><option key={fz.id} value={fz.id}>{fz.kz}</option>)}</select></Feld></div>
         </div>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Projektleiter"><select style={inpS()} value={f.projektleiterId||""} onChange={e=>set("projektleiterId",e.target.value?Number(e.target.value):"")}><option value="">–</option>{mitarbeiter.filter(m=>m.rolle==="Projektleiter").map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Bauleiter"><select style={inpS()} value={f.bauleiterId||""} onChange={e=>set("bauleiterId",e.target.value?Number(e.target.value):"")}><option value="">–</option>{mitarbeiter.filter(m=>m.rolle==="Bauleiter").map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Vertretung (bei Ausfall)"><select style={inpS()} value={f.vertretungId||""} onChange={e=>set("vertretungId",e.target.value?Number(e.target.value):"")}><option value="">–</option>{mitarbeiter.filter(m=>m.rolle==="Projektleiter"||m.rolle==="Bauleiter").map(m=><option key={m.id} value={m.id}>{m.name} ({m.rolle})</option>)}</select></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Projektleiter"><select style={inpS()} value={f.projektleiterId||""} onChange={e=>set("projektleiterId",e.target.value?Number(e.target.value):"")}><option value="">–</option>{mitarbeiter.filter(m=>m.rolle==="Projektleiter").map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Bauleiter"><select style={inpS()} value={f.bauleiterId||""} onChange={e=>set("bauleiterId",e.target.value?Number(e.target.value):"")}><option value="">–</option>{mitarbeiter.filter(m=>m.rolle==="Bauleiter").map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Vertretung (bei Ausfall)"><select style={inpS()} value={f.vertretungId||""} onChange={e=>set("vertretungId",e.target.value?Number(e.target.value):"")}><option value="">–</option>{mitarbeiter.filter(m=>m.rolle==="Projektleiter"||m.rolle==="Bauleiter").map(m=><option key={m.id} value={m.id}>{m.name} ({m.rolle})</option>)}</select></Feld></div>
         </div>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Auftragssumme (€)"><input type="number" style={inpS()} value={f.auftragssumme||""} onChange={e=>set("auftragssumme",e.target.value)} placeholder="0" /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Geplante Stunden"><input type="number" style={inpS()} value={f.planStunden||""} onChange={e=>set("planStunden",e.target.value)} placeholder="0" /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Geplante Kosten (€)"><input type="number" style={inpS()} value={f.planKosten||""} onChange={e=>set("planKosten",e.target.value)} placeholder="0" /></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Auftragssumme (€)"><input type="number" style={inpS()} value={f.auftragssumme||""} onChange={e=>set("auftragssumme",e.target.value)} placeholder="0" /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Geplante Stunden"><input type="number" style={inpS()} value={f.planStunden||""} onChange={e=>set("planStunden",e.target.value)} placeholder="0" /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Geplante Kosten (€)"><input type="number" style={inpS()} value={f.planKosten||""} onChange={e=>set("planKosten",e.target.value)} placeholder="0" /></Feld></div>
         </div>
         <Feld label="Beschreibung der Arbeiten"><input style={inpS()} value={f.beschreibung||""} onChange={e=>set("beschreibung",e.target.value)} placeholder="Kurzbeschreibung" /></Feld>
         <Feld label="Bemerkung"><input style={inpS()} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} placeholder="z.B. Anreise Sonntag, Hotel gebucht" /></Feld>
@@ -1243,9 +1243,9 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     return (
       <Modal titel={data?"Mitarbeiter bearbeiten":"Neuer Mitarbeiter"} onClose={()=>setModal(null)} farbe={col.bg}>
         <Feld label="Name"><input style={inpS()} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="Vor- und Nachname" /></Feld>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Rolle"><select style={inpS()} value={f.rolle} onChange={e=>set("rolle",e.target.value)}><option>Monteur</option><option>Vorarbeiter</option><option>Bauleiter</option><option>Projektleiter</option></select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Team"><select style={inpS()} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Rolle"><select style={inpS()} value={f.rolle} onChange={e=>set("rolle",e.target.value)}><option>Monteur</option><option>Vorarbeiter</option><option>Bauleiter</option><option>Projektleiter</option></select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Team"><select style={inpS()} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
         </div>
         <Feld label="Login-E-Mail (für App-Zugang)"><input style={inpS()} value={f.email||""} onChange={e=>set("email",e.target.value)} placeholder="z.B. max@firma.de – muss zum Supabase-Login passen" /></Feld>
         <Feld label="Telefon"><input style={inpS()} value={f.tel} onChange={e=>set("tel",e.target.value)} placeholder="0171-…" /></Feld>
@@ -1259,9 +1259,9 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
             ))}
           </div>
         </Feld>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Urlaubstage"><input type="number" style={inpS()} value={f.urlaub} onChange={e=>set("urlaub",Number(e.target.value))} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Krankheitstage"><input type="number" style={inpS()} value={f.krank} onChange={e=>set("krank",Number(e.target.value))} /></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Urlaubstage"><input type="number" style={inpS()} value={f.urlaub} onChange={e=>set("urlaub",Number(e.target.value))} /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Krankheitstage"><input type="number" style={inpS()} value={f.krank} onChange={e=>set("krank",Number(e.target.value))} /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:10, marginTop:6 }}>
           <button onClick={speichern} style={btnPrimary(col.bg)}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Save size={14}/>Speichern</span></button>
@@ -1286,9 +1286,9 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
       <Modal titel={data?"Fahrzeug bearbeiten":"Neues Fahrzeug"} onClose={()=>setModal(null)} farbe={col.bg}>
         <Feld label="Kennzeichen"><input style={inpS()} value={f.kz} onChange={e=>set("kz",e.target.value)} placeholder="MK-XX 000" /></Feld>
         <Feld label="Fahrzeugtyp"><input style={inpS()} value={f.typ} onChange={e=>set("typ",e.target.value)} placeholder="Sprinter, Pritsche…" /></Feld>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Team"><select style={inpS()} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="TÜV (JJJJ-MM)"><input style={inpS()} value={f.tuev} onChange={e=>set("tuev",e.target.value)} placeholder="2026-08" /></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Team"><select style={inpS()} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="TÜV (JJJJ-MM)"><input style={inpS()} value={f.tuev} onChange={e=>set("tuev",e.target.value)} placeholder="2026-08" /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:10, marginTop:6 }}>
           <button onClick={speichern} style={btnPrimary(col.bg)}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Save size={14}/>Speichern</span></button>
@@ -1313,18 +1313,18 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
       <Modal titel={data?"Unterkunft bearbeiten":"Neue Unterkunft"} onClose={()=>setModal(null)} farbe={col.bg}>
         <Feld label="Name der Unterkunft"><input style={inpS()} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Hotel Leipzig" /></Feld>
         <Feld label="Adresse"><input style={inpS()} value={f.adresse} onChange={e=>set("adresse",e.target.value)} placeholder="Straße, PLZ, Ort" /></Feld>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Ansprechpartner"><input style={inpS()} value={f.ansprechpartner} onChange={e=>set("ansprechpartner",e.target.value)} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Telefon"><input style={inpS()} value={f.tel} onChange={e=>set("tel",e.target.value)} /></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Ansprechpartner"><input style={inpS()} value={f.ansprechpartner} onChange={e=>set("ansprechpartner",e.target.value)} /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Telefon"><input style={inpS()} value={f.tel} onChange={e=>set("tel",e.target.value)} /></Feld></div>
         </div>
         <Feld label="E-Mail"><input style={inpS()} value={f.email} onChange={e=>set("email",e.target.value)} placeholder="kontakt@hotel.de" /></Feld>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Check-in"><input type="date" style={inpS()} value={f.checkin} onChange={e=>set("checkin",e.target.value)} /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Check-out"><input type="date" style={inpS()} value={f.checkout} onChange={e=>set("checkout",e.target.value)} /></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Check-in"><input type="date" style={inpS()} value={f.checkin} onChange={e=>set("checkin",e.target.value)} /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Check-out"><input type="date" style={inpS()} value={f.checkout} onChange={e=>set("checkout",e.target.value)} /></Feld></div>
         </div>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Zimmer"><input type="number" style={inpS()} value={f.zimmer} onChange={e=>set("zimmer",e.target.value)} placeholder="3" /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Kosten/Nacht (€)"><input type="number" style={inpS()} value={f.kostenNacht} onChange={e=>set("kostenNacht",e.target.value)} placeholder="80" /></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Zimmer"><input type="number" style={inpS()} value={f.zimmer} onChange={e=>set("zimmer",e.target.value)} placeholder="3" /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Kosten/Nacht (€)"><input type="number" style={inpS()} value={f.kostenNacht} onChange={e=>set("kostenNacht",e.target.value)} placeholder="80" /></Feld></div>
         </div>
         <Feld label="Projekt"><select style={inpS()} value={f.projektId} onChange={e=>set("projektId",e.target.value)}><option value="">– kein Projekt –</option>{projekte.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Feld>
         <Feld label="Bemerkung"><input style={inpS()} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} /></Feld>
@@ -1349,17 +1349,17 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     return (
       <Modal titel={data?"Werkzeug bearbeiten":"Neues Werkzeug"} onClose={()=>setModal(null)} farbe="#475569">
         <Feld label="Bezeichnung"><input style={inpS()} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Schweißgerät Fronius" /></Feld>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Typ"><input style={inpS()} value={f.typ} onChange={e=>set("typ",e.target.value)} placeholder="Schweißgerät, Bohrmaschine…" /></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Seriennummer"><input style={inpS()} value={f.seriennummer} onChange={e=>set("seriennummer",e.target.value)} /></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Typ"><input style={inpS()} value={f.typ} onChange={e=>set("typ",e.target.value)} placeholder="Schweißgerät, Bohrmaschine…" /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Seriennummer"><input style={inpS()} value={f.seriennummer} onChange={e=>set("seriennummer",e.target.value)} /></Feld></div>
         </div>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Zustand"><select style={inpS()} value={f.zustand} onChange={e=>set("zustand",e.target.value)}><option>gut</option><option>gebraucht</option><option>defekt</option><option>in Reparatur</option></select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Prüftermin (z.B. DGUV)"><input type="date" style={inpS()} value={f.pruefDatum||""} onChange={e=>set("pruefDatum",e.target.value)} /></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Zustand"><select style={inpS()} value={f.zustand} onChange={e=>set("zustand",e.target.value)}><option>gut</option><option>gebraucht</option><option>defekt</option><option>in Reparatur</option></select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Prüftermin (z.B. DGUV)"><input type="date" style={inpS()} value={f.pruefDatum||""} onChange={e=>set("pruefDatum",e.target.value)} /></Feld></div>
         </div>
-        <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Zugeordneter Mitarbeiter"><select style={inpS()} value={f.zugeordnetMa||""} onChange={e=>set("zugeordnetMa",e.target.value)}><option value="">–</option>{mitarbeiter.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
-          <div style={{ flex:1 }}><Feld label="Oder Team"><select style={inpS()} value={f.team||""} onChange={e=>set("team",e.target.value)}><option value="">–</option>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
+        <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Zugeordneter Mitarbeiter"><select style={inpS()} value={f.zugeordnetMa||""} onChange={e=>set("zugeordnetMa",e.target.value)}><option value="">–</option>{mitarbeiter.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Oder Team"><select style={inpS()} value={f.team||""} onChange={e=>set("team",e.target.value)}><option value="">–</option>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
         </div>
         <Feld label="Bemerkung"><input style={inpS()} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} /></Feld>
         <div style={{ display:"flex", gap:10, marginTop:6 }}>
@@ -2249,6 +2249,12 @@ export default function EinsatzplanungInner({
   const [tab, setTab] = useState(istAdmin ? "dashboard" : "heute");
   const [menueOffen, setMenueOffen] = useState(false);
   useEffect(()=>{ window.scrollTo({ top:0, behavior:"smooth" }); }, [tab]);
+  const [breit, setBreit] = useState(()=>typeof window!=="undefined" && window.innerWidth>=1100);
+  useEffect(()=>{
+    const h = ()=>setBreit(window.innerWidth>=1100);
+    window.addEventListener("resize", h);
+    return ()=>window.removeEventListener("resize", h);
+  }, []);
   const [dunkel, setDunkel] = useState(()=>{ try { return localStorage.getItem("baufox-theme")==="dunkel"; } catch(e){ return false; } });
   useEffect(()=>{ try { localStorage.setItem("baufox-theme", dunkel?"dunkel":"hell"); } catch(e){} }, [dunkel]);
   if (teams && teams.length) setTeamListe(teams);
@@ -2289,29 +2295,29 @@ export default function EinsatzplanungInner({
   return (
     <div style={{ fontFamily:"'Inter', system-ui, sans-serif", minHeight:"100vh", background:T.bg, color:T.text, transition:"background 0.2s" }}>
       <div style={{ position:"sticky", top:0, zIndex:50, background:"linear-gradient(135deg, #1e293b 0%, #334155 100%)", padding:"12px 16px", color:"#fff", display:"flex", alignItems:"center", gap:12, boxShadow:"0 2px 8px #0003" }}>
-        <button onClick={()=>setMenueOffen(true)} title="Menü öffnen" style={{ background:"#fff2", border:"1px solid #fff4", borderRadius:8, padding:"7px 11px", fontSize:18, color:"#fff", cursor:"pointer", lineHeight:1, display:"flex", alignItems:"center" }}><Menu size={20} /></button>
+        {!breit && <button onClick={()=>setMenueOffen(true)} title="Menü öffnen" style={{ background:"#fff2", border:"1px solid #fff4", borderRadius:8, padding:"7px 11px", fontSize:18, color:"#fff", cursor:"pointer", lineHeight:1, display:"flex", alignItems:"center" }}><Menu size={20} /></button>}
         <img src="/icon-192.png" alt="Baufox" style={{ width:38, height:38, borderRadius:10, boxShadow:"0 2px 8px #ea580c55" }} />
         <div>
           <div style={{ fontWeight:800, fontSize:18, letterSpacing:-0.5 }}>Baufox</div>
           <div style={{ fontSize:11, opacity:0.7, textTransform:"uppercase", letterSpacing:1 }}>{(tabs.find(t=>t.id===tab)?.label)||"Montage-Steuerung"}</div>
         </div>
         <div style={{ marginLeft:"auto", display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
-          {userEmail && <span style={{ fontSize:11, color:"#fff", opacity:0.85, marginLeft:8 }}>👤 {userEmail}</span>}
+          {userEmail && <span className="hide-klein" style={{ fontSize:11, color:"#fff", opacity:0.85, marginLeft:8 }}>{userEmail}</span>}
           <span style={{ background:istAdmin?"#16a34a":"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"2px 9px", fontSize:10, color:"#fff", fontWeight:700, marginLeft:2 }}>{meineRolle}</span>
           <button onClick={()=>setDunkel(d=>!d)} title={dunkel?"Helles Design":"Dunkles Design"} style={{ background:"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"3px 9px", fontSize:13, color:"#fff", cursor:"pointer", marginLeft:4 }}>{dunkel?<Sun size={15} />:<Moon size={15} />}</button>
           {onLogout && <button onClick={onLogout} style={{ background:"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"3px 10px", fontSize:11, color:"#fff", fontWeight:600, cursor:"pointer", marginLeft:4 }}>Abmelden</button>}
         </div>
       </div>
 
-      {menueOffen && (
+      {(menueOffen || breit) && (
         <>
-          <div className="abdunkler" onClick={()=>setMenueOffen(false)} style={{ position:"fixed", inset:0, background:"#0008", zIndex:90 }} />
-          <div className="seitenmenue" style={{ position:"fixed", left:0, top:0, bottom:0, width:250, background:T.tabBar, zIndex:91, boxShadow:"4px 0 20px #0004", display:"flex", flexDirection:"column" }}>
-            <div style={{ background:"linear-gradient(135deg, #1e293b 0%, #334155 100%)", color:"#fff", padding:"14px 16px", display:"flex", alignItems:"center", gap:10 }}>
+          {!breit && <div className="abdunkler" onClick={()=>setMenueOffen(false)} style={{ position:"fixed", inset:0, background:"#0008", zIndex:90 }} />}
+          <div className={breit?"":"seitenmenue"} style={{ position:"fixed", left:0, top:breit?63:0, bottom:0, width:250, background:T.tabBar, zIndex:breit?40:91, boxShadow:breit?("2px 0 10px #00000014"):"4px 0 20px #0004", borderRight:"1px solid "+T.border, display:"flex", flexDirection:"column" }}>
+            {!breit && <div style={{ background:"linear-gradient(135deg, #1e293b 0%, #334155 100%)", color:"#fff", padding:"14px 16px", display:"flex", alignItems:"center", gap:10 }}>
               <img src="/icon-192.png" alt="" style={{ width:30, height:30, borderRadius:8 }} />
               <div style={{ fontWeight:800, fontSize:16, flex:1 }}>Baufox</div>
               <button onClick={()=>setMenueOffen(false)} style={{ background:"#fff2", border:"1px solid #fff4", borderRadius:6, padding:"4px 10px", color:"#fff", cursor:"pointer", fontSize:14, display:"flex", alignItems:"center" }}><X size={15} /></button>
-            </div>
+            </div>}
             <div style={{ flex:1, overflowY:"auto", padding:"10px 0" }}>
               {tabs.map(t=>(
                 <button key={t.id} onClick={()=>{setTab(t.id);setMenueOffen(false);}} style={{
@@ -2327,7 +2333,7 @@ export default function EinsatzplanungInner({
         </>
       )}
 
-      <div key={tab} className="inhalt" style={{ padding:"18px 14px", maxWidth:1400, margin:"0 auto" }}>
+      <div key={tab} className="inhalt" style={{ padding:"18px 14px", maxWidth:1400, margin:"0 auto", marginLeft: breit ? 264 : "auto" }}>
         {meinMA && !istAdmin && (
           <div style={{ background:"#eff6ff", border:"1.5px solid #bfdbfe", borderRadius:8, padding:"8px 14px", marginBottom:14, fontSize:12, color:"#1e40af" }}>
             👋 Angemeldet als <strong>{meinMA.name}</strong> · {meinMA.team} · Rolle: <strong>{meineRolle}</strong>
