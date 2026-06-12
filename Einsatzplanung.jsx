@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient.js";
-import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Plus, Thermometer, CircleSlash } from "lucide-react";
+import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Plus, Bell, MessageCircle, Send, Thermometer, CircleSlash } from "lucide-react";
 
 // ─── Farbschema Hell/Dunkel (wird vom Schalter im Header umgestellt) ──────────
 const THEME_HELL   = { panel:"#ffffff", panel2:"#f9fafb", text:"#1f2937", textMut:"#6b7280", border:"#e5e7eb", input:"#ffffff" };
@@ -1979,6 +1979,89 @@ function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeug
   );
 }
 
+// ─── TEAM-CHAT (Alle + Team-Kanäle) ───────────────────────────────────────────
+function TeamChat({ meinMA, meineRolle, userEmail }) {
+  const istLeitung = ["Admin","Projektleiter","Bauleiter"].includes(meineRolle);
+  const darfSchreiben = ["Admin","Projektleiter","Bauleiter","Vorarbeiter"].includes(meineRolle);
+  const kanaele = ["Alle", ...(istLeitung ? TEAM_NAMEN_AKTUELL : TEAM_NAMEN_AKTUELL.filter(t=>meinMA && t===meinMA.team))];
+  const [kanal, setKanal] = useState("Alle");
+  const [nachrichten, setNachrichten] = useState([]);
+  const [text, setText] = useState("");
+  const [laedt, setLaedt] = useState(true);
+  const endeRef = useRef(null);
+  const meinName = meinMA?.name || userEmail || "Unbekannt";
+
+  async function laden(scrollen) {
+    const { data } = await supabase.from("nachrichten").select("*").eq("kanal", kanal).order("created_at", { ascending:true }).limit(200);
+    setNachrichten(data||[]);
+    setLaedt(false);
+    if (scrollen) setTimeout(()=>endeRef.current?.scrollIntoView({ behavior:"smooth" }), 80);
+  }
+
+  useEffect(()=>{
+    setLaedt(true);
+    laden(true);
+    const iv = setInterval(()=>laden(false), 5000);
+    return ()=>clearInterval(iv);
+  }, [kanal]);
+
+  async function senden() {
+    const t = text.trim();
+    if (!t) return;
+    setText("");
+    const neu = { id:"N"+Date.now(), kanal, absender:meinName, absender_email:userEmail||"", text:t };
+    setNachrichten(p=>[...p, { ...neu, created_at:new Date().toISOString() }]);
+    setTimeout(()=>endeRef.current?.scrollIntoView({ behavior:"smooth" }), 50);
+    await supabase.from("nachrichten").insert(neu);
+    laden(false);
+  }
+
+  const fmtZeit = iso => { const d = new Date(iso); return d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}); };
+
+  return (
+    <div>
+      <h2 style={{ margin:"0 0 12px", fontSize:18, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><MessageCircle size={18}/> Chat</h2>
+      <div style={{ display:"flex", gap:6, marginBottom:12, flexWrap:"wrap" }}>
+        {kanaele.map(k=>{
+          const col = k==="Alle" ? { bg:"#ea580c", light:"#ffedd5" } : getTeamColor(k);
+          const aktiv = kanal===k;
+          return <button key={k} onClick={()=>setKanal(k)} style={{ padding:"7px 14px", borderRadius:99, border:"1.5px solid "+(aktiv?col.bg:TH.border), background:aktiv?col.bg:TH.panel, color:aktiv?"#fff":TH.text, cursor:"pointer", fontSize:12.5, fontWeight:700 }}>{k}</button>;
+        })}
+      </div>
+      <div style={{ background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", display:"flex", flexDirection:"column", height:"min(62vh, 560px)" }}>
+        <div style={{ flex:1, overflowY:"auto", padding:14, display:"flex", flexDirection:"column", gap:8 }}>
+          {laedt && <div style={{ color:TH.textMut, fontSize:12.5, textAlign:"center", padding:20 }}>Nachrichten werden geladen…</div>}
+          {!laedt && !nachrichten.length && <div style={{ color:TH.textMut, fontSize:12.5, textAlign:"center", padding:20 }}>Noch keine Nachrichten in „{kanal}" – schreib die erste! 💬</div>}
+          {nachrichten.map(n=>{
+            const meins = n.absender_email && n.absender_email===userEmail;
+            return (
+              <div key={n.id} style={{ alignSelf:meins?"flex-end":"flex-start", maxWidth:"78%" }}>
+                <div style={{ background:meins?"linear-gradient(135deg,#ea580c 0%,#f97316 100%)":TH.panel2, color:meins?"#fff":TH.text, border:meins?"none":"1px solid "+TH.border, borderRadius:meins?"14px 14px 4px 14px":"14px 14px 14px 4px", padding:"8px 12px", fontSize:13.5, whiteSpace:"pre-wrap", wordBreak:"break-word" }}>
+                  {!meins && <div style={{ fontSize:10.5, fontWeight:800, color:getTeamColor(kanal==="Alle"?n.absender:kanal).bg, marginBottom:2 }}>{n.absender}</div>}
+                  {n.text}
+                  <div style={{ fontSize:9.5, opacity:0.65, marginTop:3, textAlign:"right" }}>{fmtZeit(n.created_at)}</div>
+                </div>
+              </div>
+            );
+          })}
+          <div ref={endeRef} />
+        </div>
+        {darfSchreiben ? (
+          <div style={{ display:"flex", gap:8, padding:10, borderTop:"1px solid "+TH.border }}>
+            <input style={{ ...inpS(), flex:1 }} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&senden()} placeholder={`Nachricht an „${kanal}"…`} />
+            <button onClick={senden} style={{ ...btnPrimary("#ea580c"), display:"inline-flex", alignItems:"center", gap:6 }}><Send size={14}/> Senden</button>
+          </div>
+        ) : (
+          <div style={{ padding:"10px 14px", borderTop:"1px solid "+TH.border, fontSize:12, color:TH.textMut, textAlign:"center" }}>
+            Du liest hier mit – schreiben können Vorarbeiter, Bauleiter und Projektleiter.
+          </div>
+        )}
+      </div>
+      <div style={{ marginTop:8, fontSize:11, color:TH.textMut }}>Aktualisiert sich automatisch alle 5 Sekunden.</div>
+    </div>
+  );
+}
+
 // ─── TEAM-VERWALTUNG (eigene Namen, beliebig viele) ───────────────────────────
 function TeamVerwaltung({ teams, setTeams, mitarbeiter, projekte, fahrzeuge }) {
   const [neuName, setNeuName] = useState("");
@@ -2266,10 +2349,10 @@ function ermittleRolle(userEmail, mitarbeiter) {
 function darfTab(rolle, tabId) {
   if (rolle==="Admin") return true;
   const rechte = {
-    "Projektleiter": ["dashboard","kosten","assistent","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
-    "Bauleiter":   ["dashboard","kosten","assistent","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
-    "Vorarbeiter": ["heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
-    "Monteur":     ["heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
+    "Projektleiter": ["dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Bauleiter":   ["dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Vorarbeiter": ["heute","woche","monat","stundenzettel","berichte","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
+    "Monteur":     ["heute","woche","monat","stundenzettel","berichte","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Unbekannt":   ["heute","woche","monat"],
   };
   return (rechte[rolle]||rechte["Unbekannt"]).includes(tabId);
@@ -2316,6 +2399,61 @@ export default function EinsatzplanungInner({
   const [menueOffen, setMenueOffen] = useState(false);
   useEffect(()=>{ window.scrollTo({ top:0, behavior:"smooth" }); }, [tab]);
   const [breit, setBreit] = useState(()=>typeof window!=="undefined" && window.innerWidth>=1100);
+
+  // ── Mitteilungen ──
+  const [mittOffen, setMittOffen] = useState(false);
+  const gelesenKey = "bfx_gelesen_" + (userEmail||"gast");
+  const [gelesenAb, setGelesenAb] = useState(()=>Number(localStorage.getItem(gelesenKey)||0));
+  const istLeitungM = ["Admin","Projektleiter","Bauleiter","Vorarbeiter"].includes(meineRolle);
+  const tsAusId = id => { const m = String(id||"").match(/(\d{13})/); return m ? Number(m[1]) : 0; };
+  const heuteM = new Date(); heuteM.setHours(0,0,0,0);
+  const mitteilungen = [];
+  // Offene Anträge (für Leitung)
+  if (istLeitungM) (vAntraege||[]).filter(a=>a.status==="offen").forEach(a=>{
+    mitteilungen.push({ id:"an-"+a.id, ts:tsAusId(a.id), text:`Neuer Antrag: ${a.name} – ${a.typ} ${fmtDate(parseDate(a.von))}–${fmtDate(parseDate(a.bis))}`, tab:"antraege", farbe:"#d97706" });
+  });
+  // Entschiedene eigene Anträge (für Mitarbeiter)
+  if (meinMA) (antraege||[]).filter(a=>a.name===meinMA.name && (a.status==="genehmigt"||a.status==="abgelehnt")).forEach(a=>{
+    mitteilungen.push({ id:"ae-"+a.id+a.status, ts:tsAusId(a.id), text:`Dein ${a.typ}-Antrag (${fmtDate(parseDate(a.von))}–${fmtDate(parseDate(a.bis))}) wurde ${a.status}`, tab:"antraege", farbe:a.status==="genehmigt"?"#059669":"#dc2626" });
+  });
+  // Neue Tagesberichte der letzten 5 Tage (für Leitung)
+  if (istLeitungM) (vBerichte||[]).forEach(b=>{
+    const d = parseDate(b.datum);
+    if ((heuteM-d)/86400000 <= 5) {
+      const pn = projekte.find(p=>p.id===b.projektId)?.name||"Projekt";
+      mitteilungen.push({ id:"tb-"+b.id, ts:tsAusId(b.id)||d.getTime(), text:`Neuer Tagesbericht: ${pn} (${fmtDate(d)}) von ${b.verfasser||"?"}`, tab:"berichte", farbe:"#0891b2" });
+    }
+  });
+  // Werkzeug-Prüfungen (für Leitung)
+  if (istLeitungM) (werkzeuge||[]).forEach(w=>{
+    if (!w.pruefDatum) return;
+    const tage = Math.round((parseDate(w.pruefDatum)-heuteM)/86400000);
+    if (tage<0) mitteilungen.push({ id:"wz-"+w.id, ts:parseDate(w.pruefDatum).getTime(), text:`Prüfung überfällig: ${w.name} (seit ${fmtDate(parseDate(w.pruefDatum))})`, tab:"verwaltung", farbe:"#dc2626" });
+    else if (tage<=30) mitteilungen.push({ id:"wz-"+w.id, ts:parseDate(w.pruefDatum).getTime()-2592000000, text:`Prüfung fällig in ${tage} Tagen: ${w.name}`, tab:"verwaltung", farbe:"#d97706" });
+  });
+  // Projekte, die in den nächsten 3 Tagen starten
+  (vProjekte||[]).forEach(p=>{
+    if (!p.dateStart || p.status==="abgeschlossen") return;
+    const tage = Math.round((parseDate(p.dateStart)-heuteM)/86400000);
+    if (tage>=0 && tage<=3) mitteilungen.push({ id:"ps-"+p.id, ts:parseDate(p.dateStart).getTime()-259200000, text:tage===0?`Projekt startet heute: ${p.name}`:`Projekt startet in ${tage} Tag(en): ${p.name}`, tab:"projekte", farbe:"#ea580c" });
+  });
+  // Kosten-Ampel rot (für Admin/PL/BL)
+  if (["Admin","Projektleiter","Bauleiter"].includes(meineRolle)) (vProjekte||[]).forEach(p=>{
+    const planK = Number(p.planKosten)||0;
+    if (!planK) return;
+    const minL = Number(p.mindestlohn)||0;
+    const ist = (vStunden||[]).filter(e=>e.projekt===p.name).reduce((su,e)=>{
+      const ma = mitarbeiter.find(m=>m.id===e.maId);
+      return su + (Number(e.arbeitsstunden)||0)*Math.max(Number(ma?.stundensatz)||0,minL) + (Number(e.spesen)||0);
+    },0);
+    if (ist>planK) mitteilungen.push({ id:"ko-"+p.id, ts:Date.now()-86400000, text:`Kosten über Plan: ${p.name} (${fmtEuro(ist)} von ${fmtEuro(planK)})`, tab:"kosten", farbe:"#dc2626" });
+  });
+  mitteilungen.sort((a,b)=>b.ts-a.ts);
+  const ungelesen = mitteilungen.filter(m=>m.ts>gelesenAb).length;
+  function mittOeffnen() {
+    setMittOffen(o=>!o);
+    if (!mittOffen) { const jetzt = Date.now(); localStorage.setItem(gelesenKey, String(jetzt)); setGelesenAb(jetzt); }
+  }
   useEffect(()=>{
     const h = ()=>setBreit(window.innerWidth>=1100);
     window.addEventListener("resize", h);
@@ -2341,6 +2479,7 @@ export default function EinsatzplanungInner({
     { id:"monat",        label:"Monat", Icon:CalendarRange },
     { id:"stundenzettel",label:"Stundenzettel", Icon:Clock },
     { id:"berichte",     label:"Berichte", Icon:FileText },
+    { id:"chat",         label:"Chat", Icon:MessageCircle },
     { id:"antraege",     Icon:TreePalm, label:`Anträge${antraege.filter(a=>a.status==="offen").length>0?` (${antraege.filter(a=>a.status==="offen").length})`:""}` },
     { id:"projekte",     label:"Projekte", Icon:Building2 },
     { id:"mitarbeiter",  label:"Mitarbeiter", Icon:Users },
@@ -2370,10 +2509,31 @@ export default function EinsatzplanungInner({
         <div style={{ marginLeft:"auto", display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
           {userEmail && <span className="hide-klein" style={{ fontSize:11, color:"#fff", opacity:0.85, marginLeft:8 }}>{userEmail}</span>}
           <span style={{ background:istAdmin?"#16a34a":"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"2px 9px", fontSize:10, color:"#fff", fontWeight:700, marginLeft:2 }}>{meineRolle}</span>
+          <button onClick={mittOeffnen} title="Mitteilungen" style={{ background:"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"3px 9px", color:"#fff", cursor:"pointer", marginLeft:4, position:"relative", display:"inline-flex", alignItems:"center" }}>
+            <Bell size={15} />
+            {ungelesen>0 && <span style={{ position:"absolute", top:-6, right:-6, background:"#dc2626", color:"#fff", borderRadius:99, fontSize:9.5, fontWeight:800, minWidth:16, height:16, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 4px", boxShadow:"0 1px 4px #0006" }}>{ungelesen>9?"9+":ungelesen}</span>}
+          </button>
           <button onClick={()=>setDunkel(d=>!d)} title={dunkel?"Helles Design":"Dunkles Design"} style={{ background:"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"3px 9px", fontSize:13, color:"#fff", cursor:"pointer", marginLeft:4 }}>{dunkel?<Sun size={15} />:<Moon size={15} />}</button>
           {onLogout && <button onClick={onLogout} style={{ background:"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"3px 10px", fontSize:11, color:"#fff", fontWeight:600, cursor:"pointer", marginLeft:4 }}>Abmelden</button>}
         </div>
       </div>
+
+      {mittOffen && (
+        <>
+          <div onClick={()=>setMittOffen(false)} style={{ position:"fixed", inset:0, zIndex:80 }} />
+          <div className="mitt-panel" style={{ position:"fixed", top:60, right:10, width:340, maxWidth:"calc(100vw - 20px)", maxHeight:"70vh", overflowY:"auto", background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 12px 40px #00000033", zIndex:81 }}>
+            <div style={{ padding:"11px 14px", borderBottom:"1px solid "+TH.border, fontWeight:800, fontSize:13, color:TH.text, display:"flex", alignItems:"center", gap:7 }}><Bell size={14}/> Mitteilungen</div>
+            {!mitteilungen.length && <div style={{ padding:"22px 14px", fontSize:12.5, color:TH.textMut, textAlign:"center" }}>Alles erledigt – keine Mitteilungen. 🦊</div>}
+            {mitteilungen.map(m=>(
+              <div key={m.id} onClick={()=>{ if(darfTab(meineRolle,m.tab)){ setTab(m.tab); } setMittOffen(false); }}
+                   style={{ padding:"10px 14px", borderBottom:"1px solid "+TH.border, fontSize:12.5, color:TH.text, cursor:"pointer", display:"flex", gap:9, alignItems:"flex-start" }}>
+                <span style={{ width:8, height:8, borderRadius:99, background:m.farbe, marginTop:4, flexShrink:0, boxShadow:m.ts>gelesenAb?`0 0 0 3px ${m.farbe}33`:"none" }} />
+                <span style={{ flex:1, fontWeight:m.ts>gelesenAb?700:400 }}>{m.text}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {(menueOffen || breit) && (
         <>
@@ -2417,6 +2577,7 @@ export default function EinsatzplanungInner({
         {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} />}
         {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} />}
         {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={vMitarbeiter} projekte={vProjekte} stunden={vStunden} setStunden={setStunden} rolle={meineRolle} meinMA={meinMA} />}
+        {tab==="chat" && darfTab(meineRolle,"chat") && <TeamChat meinMA={meinMA} meineRolle={meineRolle} userEmail={userEmail} />}
         {tab==="berichte"     && darfTab(meineRolle,"berichte")     && <Tagesberichte projekte={vProjekte} mitarbeiter={vMitarbeiter} berichte={vBerichte} setBerichte={setBerichte} rolle={meineRolle} meinMA={meinMA} userEmail={userEmail} />}
         {tab==="antraege"     && darfTab(meineRolle,"antraege")     && <Antraege mitarbeiter={vMitarbeiter} antraege={vAntraege} setAntraege={setAntraege} setSonder={setSonder} />}
         {tab==="projekte"     && darfTab(meineRolle,"projekte")     && <ProjektUebersicht projekte={vProjekte} fahrzeuge={fahrzeuge} mitarbeiter={mitarbeiter} />}

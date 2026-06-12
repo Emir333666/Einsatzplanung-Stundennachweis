@@ -122,3 +122,6 @@ button:hover svg { transform: scale(1.12); }
   .hide-klein { display: none !important; }
   .inhalt { padding: 12px 8px !important; }
 }
+
+/* Mitteilungs-Panel klappt weich auf */
+.mitt-panel { animation: aufpoppen 0.18s cubic-bezier(0.2, 0.8, 0.3, 1.1); transform-origin: top right; }
