@@ -33,12 +33,27 @@ function usePersist(key, initial) {
 }
 
 // ─── Farben & Konstanten ─────────────────────────────────────────────────────
-const TEAM_COLORS = {
-  "Team Alpha": { bg:"#1d4ed8", light:"#dbeafe", text:"#1e40af" },
-  "Team Beta":  { bg:"#7c3aed", light:"#ede9fe", text:"#6d28d9" },
-  "Team Gamma": { bg:"#0f766e", light:"#ccfbf1", text:"#0d9488" },
-  "Team Delta": { bg:"#b45309", light:"#fef3c7", text:"#92400e" },
-};
+// Farbpalette – Teams bekommen automatisch eine Farbe zugewiesen
+const TEAM_PALETTE = [
+  { bg:"#1d4ed8", light:"#dbeafe", text:"#1e40af" },
+  { bg:"#059669", light:"#d1fae5", text:"#047857" },
+  { bg:"#d97706", light:"#fef3c7", text:"#b45309" },
+  { bg:"#7c3aed", light:"#ede9fe", text:"#6d28d9" },
+  { bg:"#dc2626", light:"#fee2e2", text:"#b91c1c" },
+  { bg:"#0891b2", light:"#cffafe", text:"#0e7490" },
+  { bg:"#db2777", light:"#fce7f3", text:"#be185d" },
+  { bg:"#65a30d", light:"#ecfccb", text:"#4d7c0f" },
+  { bg:"#0f766e", light:"#ccfbf1", text:"#0d9488" },
+  { bg:"#9333ea", light:"#f3e8ff", text:"#7e22ce" },
+];
+let TEAM_NAMEN_AKTUELL = ["Team Alpha","Team Beta","Team Gamma","Team Delta"];
+let TEAM_FARB_MAP = {};
+function setTeamListe(teams) {
+  TEAM_NAMEN_AKTUELL = (teams||[]).map(t=>t.name).filter(Boolean);
+  TEAM_FARB_MAP = {};
+  TEAM_NAMEN_AKTUELL.forEach((n,i)=>{ TEAM_FARB_MAP[n] = TEAM_PALETTE[i % TEAM_PALETTE.length]; });
+}
+setTeamListe(TEAM_NAMEN_AKTUELL.map(n=>({name:n})));
 const EINSATZ_FARBEN = {
   "Projekt":   { bg:"#dbeafe", border:"#3b82f6", badge:"#1d4ed8" },
   "Urlaub":    { bg:"#d1fae5", border:"#10b981", badge:"#065f46" },
@@ -138,7 +153,10 @@ function calcStunden(start, end, pauseMin) {
   return Math.max(0, ((eh*60+em)-(sh*60+sm)-(pauseMin||0))/60);
 }
 function getTeamColor(team) {
-  return TEAM_COLORS[team] || { bg:"#6b7280", light:"#f3f4f6", text:"#374151" };
+  if (TEAM_FARB_MAP[team]) return TEAM_FARB_MAP[team];
+  if (!team) return { bg:"#6b7280", light:"#f3f4f6", text:"#374151" };
+  let h=0; for (const c of String(team)) h=(h*31+c.charCodeAt(0))>>>0;
+  return TEAM_PALETTE[h % TEAM_PALETTE.length];
 }
 function pruefKonflikte(projekte, sonder, mitarbeiter) {
   const warn = [];
@@ -313,7 +331,7 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
   const monday = useMemo(() => getMondayOfKW(kwYear, kw), [kwYear, kw]);
   const tage = useMemo(() => Array.from({length:7}, (_,i) => addDays(monday, i)), [monday]);
 
-  const sichtbareTeams = filterTeam==="Alle" ? Object.keys(TEAM_COLORS) : [filterTeam];
+  const sichtbareTeams = filterTeam==="Alle" ? TEAM_NAMEN_AKTUELL : [filterTeam];
   const sichtbareMA = mitarbeiter.filter(m => sichtbareTeams.includes(m.team));
 
   function prevKW() { if(kw===1){setKwYear(y=>y-1);setKw(52);}else setKw(k=>k-1); }
@@ -330,7 +348,7 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
         </div>
         <button onClick={nextKW} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>›</button>
         <select value={filterTeam} onChange={e=>setFilterTeam(e.target.value)} style={{ padding:"6px 12px", borderRadius:8, border:"1.5px solid "+TH.border, fontSize:13, marginLeft:8 }}>
-          {["Alle",...Object.keys(TEAM_COLORS)].map(t=><option key={t}>{t}</option>)}
+          {["Alle",...TEAM_NAMEN_AKTUELL].map(t=><option key={t}>{t}</option>)}
         </select>
         <button onClick={()=>{setKw(getKW(heute));setKwYear(heute.getFullYear());}} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #1d4ed8", background:"#dbeafe", color:"#1d4ed8", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
       </div>
@@ -509,7 +527,7 @@ function Monatsansicht({ mitarbeiter, projekte, sonder }) {
         </table>
       </div>
       <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:12 }}>
-        {Object.entries(TEAM_COLORS).map(([t,c])=><span key={t} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, background:c.light, border:`1px solid ${c.bg}44`, borderRadius:6, padding:"2px 8px", color:c.text }}>■ {t}</span>)}
+        {TEAM_NAMEN_AKTUELL.map(t=>{const c=getTeamColor(t);return <span key={t} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, background:c.light, border:`1px solid ${c.bg}44`, borderRadius:6, padding:"2px 8px", color:c.text }}>■ {t}</span>;})}
         {Object.entries(EINSATZ_FARBEN).slice(1).map(([k,v])=><span key={k} style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, background:v.bg, border:`1px solid ${v.border}`, borderRadius:6, padding:"2px 8px", color:v.badge }}>● {k}</span>)}
       </div>
     </div>
@@ -1119,7 +1137,7 @@ function btnPrimary(farbe="#1d4ed8") { return { padding:"10px 20px", borderRadiu
 const btnGhost = () => ({ padding:"10px 16px", borderRadius:8, background:TH.panel2, color:TH.text, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13 });
 
 // ─── VERWALTUNG (Stammdaten anlegen/bearbeiten/löschen) ───────────────────────
-function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrzeuge, setFahrzeuge, unterkuenfte, setUnterkuenfte, werkzeuge, setWerkzeuge, sonder, antraege, stunden, berichte, onReset }) {
+function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrzeuge, setFahrzeuge, unterkuenfte, setUnterkuenfte, werkzeuge, setWerkzeuge, sonder, antraege, stunden, berichte, teams, setTeams, onReset }) {
 
   function backupHerunterladen() {
     const backup = {
@@ -1138,7 +1156,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
   const [sub, setSub] = useState("projekte");
   const [modal, setModal] = useState(null); // { art, data }
 
-  const teamNamen = Object.keys(TEAM_COLORS);
+  const teamNamen = TEAM_NAMEN_AKTUELL;
   const vorarbeiterNamen = mitarbeiter.filter(m=>m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter").map(m=>m.name);
 
   function neueId(prefix, liste) {
@@ -1366,6 +1384,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     { id:"fahrzeuge", label:`Fahrzeuge (${fahrzeuge.length})`, Icon:Truck },
     { id:"unterkuenfte", label:`Unterkünfte (${(unterkuenfte||[]).length})`, Icon:BedDouble },
     { id:"werkzeuge", label:`Werkzeuge (${(werkzeuge||[]).length})`, Icon:Wrench },
+    { id:"teams", label:`Teams (${(teams||[]).length})`, Icon:Users },
   ];
 
   return (
@@ -1526,6 +1545,10 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
             </table>
           </div>
         </>
+      )}
+
+      {sub==="teams" && (
+        <TeamVerwaltung teams={teams} setTeams={setTeams} mitarbeiter={mitarbeiter} projekte={projekte} fahrzeuge={fahrzeuge} />
       )}
 
       {modal?.art==="projekt" && <ProjektForm data={modal.data} />}
@@ -1810,7 +1833,7 @@ function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeug
   }).filter(x=>x.prognose!=null);
 
   // 2. Team-Verfügbarkeit
-  const teams = Object.keys(TEAM_COLORS).map(team=>{
+  const teams = TEAM_NAMEN_AKTUELL.map(team=>{
     const aktiv = projekte.filter(p=>p.team===team && p.status!=="abgeschlossen" && p.dateEnd && parseDate(p.dateEnd)>=heute);
     if (!aktiv.length) return { team, freiAb:"sofort", projekt:null };
     const letztes = aktiv.reduce((a,b)=>parseDate(a.dateEnd)>parseDate(b.dateEnd)?a:b);
@@ -1886,6 +1909,60 @@ function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeug
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── TEAM-VERWALTUNG (eigene Namen, beliebig viele) ───────────────────────────
+function TeamVerwaltung({ teams, setTeams, mitarbeiter, projekte, fahrzeuge }) {
+  const [neuName, setNeuName] = useState("");
+
+  function anlegen() {
+    const name = neuName.trim();
+    if (!name) return;
+    if ((teams||[]).some(t=>t.name.toLowerCase()===name.toLowerCase())) { alert("Ein Team mit diesem Namen existiert bereits."); return; }
+    setTeams(prev => [...(prev||[]), { id:"T"+Date.now(), name }]);
+    setNeuName("");
+  }
+
+  function verwendung(name) {
+    return (
+      mitarbeiter.filter(m=>m.team===name).length +
+      projekte.filter(p=>p.team===name).length +
+      (fahrzeuge||[]).filter(f=>f.team===name).length
+    );
+  }
+
+  function loeschen(team) {
+    const n = verwendung(team.name);
+    if (n>0) { alert(`„${team.name}" wird noch ${n}× verwendet (Mitarbeiter/Projekte/Fahrzeuge). Bitte zuerst alle umziehen, dann löschen.`); return; }
+    if (!window.confirm(`Team „${team.name}" wirklich löschen?`)) return;
+    setTeams(prev => prev.filter(t=>t.id!==team.id));
+  }
+
+  return (
+    <div>
+      <div style={{ display:"flex", gap:10, marginBottom:16, maxWidth:420 }}>
+        <input style={inpS()} value={neuName} onChange={e=>setNeuName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&anlegen()} placeholder="Neuer Team-Name, z.B. Reparatur-Trupp Nord" />
+        <button onClick={anlegen} style={btnPrimary("#ea580c")}>+ Anlegen</button>
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))", gap:12 }}>
+        {(teams||[]).map(t=>{
+          const col = getTeamColor(t.name);
+          const n = verwendung(t.name);
+          return (
+            <div key={t.id} style={{ background:TH.panel, border:"1px solid "+TH.border, borderLeft:"5px solid "+col.bg, borderRadius:12, boxShadow:"0 1px 4px #0000000d", padding:"12px 14px", display:"flex", alignItems:"center", gap:10 }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:700, fontSize:13, color:col.bg }}>{t.name}</div>
+                <div style={{ fontSize:11, color:TH.textMut }}>{n>0?`${n}× in Verwendung`:"nicht in Verwendung"}</div>
+              </div>
+              <button onClick={()=>loeschen(t)} title="Team löschen" style={{ padding:"6px 9px", borderRadius:6, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer" }}><Trash2 size={13} /></button>
+            </div>
+          );
+        })}
+        {!(teams||[]).length && <div style={{ color:TH.textMut, fontSize:13 }}>Noch keine Teams – leg oben das erste an.</div>}
+      </div>
+      <div style={{ marginTop:14, fontSize:11, color:TH.textMut }}>Tipp: Auch kleine Trupps („2 Mann Reparatur Hamburg") einfach als Team anlegen – nach dem Einsatz wieder löschen oder behalten.</div>
     </div>
   );
 }
@@ -2138,6 +2215,7 @@ export default function EinsatzplanungInner({
   sonder, setSonder, antraege, setAntraege, fahrzeuge, setFahrzeuge,
   stunden, setStunden, unterkuenfte, setUnterkuenfte,
   berichte, setBerichte, werkzeuge, setWerkzeuge,
+  teams, setTeams,
   onReset, onLogout, userEmail
 }) {
   const { rolle: meineRolle, ma: meinMA } = useMemo(()=>ermittleRolle(userEmail, mitarbeiter), [userEmail, mitarbeiter]);
@@ -2172,6 +2250,7 @@ export default function EinsatzplanungInner({
   const [menueOffen, setMenueOffen] = useState(false);
   const [dunkel, setDunkel] = useState(()=>{ try { return localStorage.getItem("baufox-theme")==="dunkel"; } catch(e){ return false; } });
   useEffect(()=>{ try { localStorage.setItem("baufox-theme", dunkel?"dunkel":"hell"); } catch(e){} }, [dunkel]);
+  if (teams && teams.length) setTeamListe(teams);
   TH = dunkel ? THEME_DUNKEL : THEME_HELL;
   const T = dunkel
     ? { bg:"#0f172a", panel:"#1e293b", panel2:"#334155", text:"#e2e8f0", textMut:"#94a3b8", border:"#334155", tabBar:"#1e293b" }
@@ -2216,9 +2295,6 @@ export default function EinsatzplanungInner({
           <div style={{ fontSize:11, opacity:0.7, textTransform:"uppercase", letterSpacing:1 }}>{(tabs.find(t=>t.id===tab)?.label)||"Montage-Steuerung"}</div>
         </div>
         <div style={{ marginLeft:"auto", display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
-          {Object.entries(TEAM_COLORS).map(([t,c])=>(
-            <span key={t} style={{ background:c.bg+"44", border:`1px solid ${c.bg}88`, borderRadius:6, padding:"2px 8px", fontSize:10, color:"#fff", fontWeight:600 }}>{t}</span>
-          ))}
           {userEmail && <span style={{ fontSize:11, color:"#fff", opacity:0.85, marginLeft:8 }}>👤 {userEmail}</span>}
           <span style={{ background:istAdmin?"#16a34a":"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"2px 9px", fontSize:10, color:"#fff", fontWeight:700, marginLeft:2 }}>{meineRolle}</span>
           <button onClick={()=>setDunkel(d=>!d)} title={dunkel?"Helles Design":"Dunkles Design"} style={{ background:"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"3px 9px", fontSize:13, color:"#fff", cursor:"pointer", marginLeft:4 }}>{dunkel?<Sun size={15} />:<Moon size={15} />}</button>
@@ -2275,7 +2351,7 @@ export default function EinsatzplanungInner({
         {tab==="fahrzeuge"    && darfTab(meineRolle,"fahrzeuge")    && <FahrzeugUebersicht fahrzeuge={fahrzeuge} projekte={projekte} />}
         {tab==="unterkuenfte" && darfTab(meineRolle,"unterkuenfte") && <UnterkunftUebersicht unterkuenfte={vUnterkuenfte} projekte={vProjekte} />}
         {tab==="werkzeuge"    && darfTab(meineRolle,"werkzeuge")    && <WerkzeugUebersicht werkzeuge={werkzeuge} mitarbeiter={mitarbeiter} />}
-        {tab==="verwaltung"   && istAdmin                          && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte} werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge} sonder={sonder} antraege={antraege} stunden={stunden} berichte={berichte} onReset={onReset} />}
+        {tab==="verwaltung"   && istAdmin                          && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte} werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge} sonder={sonder} antraege={antraege} stunden={stunden} berichte={berichte} teams={teams} setTeams={setTeams} onReset={onReset} />}
         {tab==="warnungen"    && darfTab(meineRolle,"warnungen")    && <WarnPanel warnungen={warnungen} />}
       </div>
     </div>

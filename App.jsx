@@ -126,6 +126,7 @@ export default function App() {
   const [unterkuenfte, setUnterkuenfteState] = useState([]);
   const [berichte, setBerichteState] = useState([]);
   const [werkzeuge, setWerkzeugeState] = useState([]);
+  const [teams, setTeamsState] = useState([]);
 
   // Session prüfen
   useEffect(() => {
@@ -137,7 +138,7 @@ export default function App() {
   // Daten aus der Cloud laden, sobald eingeloggt
   const ladeDaten = useCallback(async () => {
     setLaden(true);
-    const [p, m, f, s, a, st, u, tb, wz] = await Promise.all([
+    const [p, m, f, s, a, st, u, tb, wz, tm] = await Promise.all([
       supabase.from("projekte").select("*"),
       supabase.from("mitarbeiter").select("*"),
       supabase.from("fahrzeuge").select("*"),
@@ -147,6 +148,7 @@ export default function App() {
       supabase.from("unterkuenfte").select("*"),
       supabase.from("tagesberichte").select("*"),
       supabase.from("werkzeuge").select("*"),
+      supabase.from("teams").select("*"),
     ]);
     setProjekteState((p.data||[]).map(toAppProjekt));
     setMitarbeiterState(m.data||[]);
@@ -157,6 +159,7 @@ export default function App() {
     setUnterkuenfteState((u.data||[]).map(toAppUnterkunft));
     setBerichteState((tb.data||[]).map(toAppBericht));
     setWerkzeugeState((wz.data||[]).map(toAppWerkzeug));
+    setTeamsState((tm.data||[]).sort((x,y)=>(x.created_at||"").localeCompare(y.created_at||"")));
     setLaden(false);
     setBereit(true);
   }, []);
@@ -233,6 +236,12 @@ export default function App() {
     await syncTabelle("werkzeuge", werkzeuge, arr, toDbWerkzeug);
     ladeDaten();
   };
+  const setTeams = async (next) => {
+    const arr = typeof next === "function" ? next(teams) : next;
+    setTeamsState(arr);
+    await syncTabelle("teams", teams, arr, (t)=>({ id:t.id, name:t.name }));
+    ladeDaten();
+  };
 
   // Demo-Daten in leere Cloud laden (einmalig, falls alles leer ist)
   async function demoLaden() {
@@ -265,6 +274,7 @@ export default function App() {
         unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte}
         berichte={berichte} setBerichte={setBerichte}
         werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge}
+        teams={teams} setTeams={setTeams}
         onReset={null}
         onLogout={abmelden}
         userEmail={session.user?.email}
