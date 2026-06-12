@@ -1764,6 +1764,120 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
   );
 }
 
+// ─── 🤖 SMARTER ASSISTENT (Prognosen & Vorschläge, regelbasiert) ──────────────
+function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeuge, berichte, T }) {
+  const tw = (T && T.text) || "#1e3a5f";
+  const fmtEuro = n => (Number(n)||0).toLocaleString("de-DE",{maximumFractionDigits:0})+" €";
+  const heute = new Date(); heute.setHours(0,0,0,0);
+
+  // Ist-Kosten je Projekt (wie im Kosten-Tab)
+  function istKosten(p) {
+    const eintraege = (stunden||[]).filter(e=>e.projekt===p.name);
+    const lohn = eintraege.reduce((s,e)=>{ const ma=mitarbeiter.find(m=>m.id===e.maId); return s+(Number(e.arbeitsstunden)||0)*(Number(ma?.stundensatz)||0); },0);
+    const spesen = eintraege.reduce((s,e)=>s+(Number(e.spesen)||0),0);
+    const unterkunft = (unterkuenfte||[]).filter(u=>u.projektId===p.id).reduce((s,u)=>{
+      if (!u.checkin||!u.checkout||!u.kostenNacht) return s;
+      const n = Math.max(0, Math.round((parseDate(u.checkout)-parseDate(u.checkin))/86400000));
+      return s + n*(Number(u.kostenNacht)||0)*(Number(u.zimmer)||1);
+    },0);
+    return { ist: lohn+spesen+unterkunft, anzahl: eintraege.length };
+  }
+
+  // 1. Kostenprognosen (Ist hochgerechnet über Leistungsstand aus Tagesberichten)
+  const prognosen = projekte.filter(p=>p.status!=="abgeschlossen").map(p=>{
+    const { ist, anzahl } = istKosten(p);
+    const leistungen = (berichte||[]).filter(b=>b.projektId===p.id && b.leistung).map(b=>Number(b.leistung));
+    const leistung = leistungen.length ? Math.max(...leistungen) : null;
+    const planK = Number(p.planKosten)||0;
+    let prognose=null, delta=null;
+    if (leistung && leistung>0 && ist>0) {
+      prognose = ist/(leistung/100);
+      if (planK>0) delta = (prognose-planK)/planK*100;
+    }
+    return { p, ist, anzahl, leistung, planK, prognose, delta };
+  }).filter(x=>x.prognose!=null);
+
+  // 2. Team-Verfügbarkeit
+  const teams = teamNamen.map(team=>{
+    const aktiv = projekte.filter(p=>p.team===team && p.status!=="abgeschlossen" && p.dateEnd && parseDate(p.dateEnd)>=heute);
+    if (!aktiv.length) return { team, freiAb:"sofort", projekt:null };
+    const letztes = aktiv.reduce((a,b)=>parseDate(a.dateEnd)>parseDate(b.dateEnd)?a:b);
+    const frei = new Date(parseDate(letztes.dateEnd)); frei.setDate(frei.getDate()+1);
+    return { team, freiAb: fmtDate(frei), projekt: letztes.name };
+  });
+
+  // 3. Hinweise
+  const hinweise = [];
+  (werkzeuge||[]).forEach(w=>{
+    if (!w.pruefDatum) return;
+    const tage = Math.round((parseDate(w.pruefDatum)-heute)/86400000);
+    if (tage<0) hinweise.push({ art:"rot", text:`🔧 Prüfung überfällig: ${w.name} (seit ${fmtDate(parseDate(w.pruefDatum))})` });
+    else if (tage<=30) hinweise.push({ art:"gelb", text:`🔧 Prüfung fällig in ${tage} Tagen: ${w.name}` });
+  });
+  projekte.filter(p=>p.status==="aktiv").forEach(p=>{
+    const { anzahl } = istKosten(p);
+    if (anzahl===0) hinweise.push({ art:"gelb", text:`⏱ Aktives Projekt ohne erfasste Stunden: ${p.name}` });
+    if (!(Number(p.planKosten)>0)) hinweise.push({ art:"grau", text:`📋 Keine Plankosten hinterlegt: ${p.name} (für Prognose nötig)` });
+  });
+  mitarbeiter.filter(m=>!m.stundensatz).slice(0,5).forEach(m=>{
+    hinweise.push({ art:"grau", text:`💰 Stundensatz fehlt: ${m.name}` });
+  });
+
+  const hinweisFarben = { rot:{bg:"#fef2f2",bd:"#fca5a5",tx:"#991b1b"}, gelb:{bg:"#fff7ed",bd:"#fdba74",tx:"#92400e"}, grau:{bg:TH.panel2,bd:TH.border,tx:TH.textMut} };
+
+  return (
+    <div>
+      <div style={{ fontWeight:700, fontSize:14, color:tw, marginBottom:4, textTransform:"uppercase", letterSpacing:0.5 }}>🤖 Assistent</div>
+      <div style={{ fontSize:12, color:"#6b7280", marginBottom:16 }}>Automatische Prognosen und Hinweise – berechnet aus deinen Stunden, Berichten (Leistungsstand!) und Planwerten.</div>
+
+      <div style={{ fontWeight:700, fontSize:13, color:tw, marginBottom:8 }}>📈 Kostenprognosen</div>
+      {!prognosen.length ? (
+        <div style={{ background:TH.panel2, border:"1.5px solid "+TH.border, borderRadius:10, padding:16, fontSize:12, color:TH.textMut, marginBottom:18 }}>
+          Noch keine Prognose möglich. Dafür braucht ein Projekt: erfasste Stunden + einen Tagesbericht mit Leistungsstand (%) + Plankosten.
+        </div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:18 }}>
+          {prognosen.map(({p,ist,leistung,planK,prognose,delta})=>{
+            const farbe = delta==null ? "#6b7280" : delta<=0 ? "#16a34a" : delta<=10 ? "#d97706" : "#dc2626";
+            return (
+              <div key={p.id} style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderLeft:"5px solid "+farbe, borderRadius:10, padding:"10px 14px", fontSize:12 }}>
+                <div style={{ fontWeight:700, fontSize:13, marginBottom:4 }}>{p.name}</div>
+                Stand: <b>{leistung}%</b> fertig · bisher <b>{fmtEuro(ist)}</b> → hochgerechnet <b style={{color:farbe}}>{fmtEuro(prognose)}</b>
+                {planK>0 && <> (Plan {fmtEuro(planK)}{delta!=null && <b style={{color:farbe}}> · {delta>0?"+":""}{delta.toFixed(0)} %</b>})</>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{ fontWeight:700, fontSize:13, color:tw, marginBottom:8 }}>👷 Team-Verfügbarkeit</div>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:10, marginBottom:18 }}>
+        {teams.map(t=>{
+          const col=getTeamColor(t.team);
+          return (
+            <div key={t.team} style={{ background:TH.panel, border:`1.5px solid ${col.bg}`, borderRadius:10, padding:"10px 14px", fontSize:12 }}>
+              <div style={{ fontWeight:700, color:col.bg, marginBottom:3 }}>{t.team}</div>
+              {t.freiAb==="sofort" ? <span style={{ color:"#16a34a", fontWeight:700 }}>✓ sofort verfügbar</span> : <>frei ab <b>{t.freiAb}</b><div style={{ color:TH.textMut, fontSize:11 }}>bis dahin: {t.projekt}</div></>}
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ fontWeight:700, fontSize:13, color:tw, marginBottom:8 }}>💡 Hinweise</div>
+      {!hinweise.length ? (
+        <div style={{ background:"#f0fdf4", border:"1.5px solid #86efac", borderRadius:10, padding:14, fontSize:12, color:"#166534" }}>✓ Alles im grünen Bereich – keine offenen Hinweise!</div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          {hinweise.map((h,i)=>{
+            const f=hinweisFarben[h.art];
+            return <div key={i} style={{ background:f.bg, border:"1.5px solid "+f.bd, borderRadius:8, padding:"8px 12px", fontSize:12, color:f.tx }}>{h.text}</div>;
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── KOSTEN-CONTROLLING (Plan vs. Ist mit Ampel) ──────────────────────────────
 function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) {
   const tw = (T && T.text) || "#1e3a5f";
@@ -1994,7 +2108,7 @@ function ermittleRolle(userEmail, mitarbeiter) {
 function darfTab(rolle, tabId) {
   if (rolle==="Admin") return true;
   const rechte = {
-    "Bauleiter":   ["dashboard","kosten","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Bauleiter":   ["dashboard","kosten","assistent","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
     "Vorarbeiter": ["heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Monteur":     ["heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Unbekannt":   ["heute","woche","monat"],
@@ -2038,6 +2152,7 @@ export default function EinsatzplanungInner({
   const alleTabs = [
     { id:"dashboard",    label:"📊 Dashboard" },
     { id:"kosten",       label:"💰 Kosten" },
+    { id:"assistent",    label:"🤖 Assistent" },
     { id:"heute",        label:"📆 Heute" },
     { id:"woche",        label:"📅 Woche" },
     { id:"monat",        label:"🗓 Monat" },
@@ -2117,6 +2232,7 @@ export default function EinsatzplanungInner({
         )}
         {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} antraege={antraege} warnungen={warnungen} unterkuenfte={unterkuenfte} setTab={setTab} T={T} />}
         {tab==="kosten"       && darfTab(meineRolle,"kosten")       && <KostenControlling projekte={projekte} stunden={stunden} mitarbeiter={mitarbeiter} unterkuenfte={unterkuenfte} T={T} />}
+        {tab==="assistent"    && darfTab(meineRolle,"assistent")    && <SmartAssistent projekte={projekte} stunden={stunden} mitarbeiter={mitarbeiter} unterkuenfte={unterkuenfte} werkzeuge={werkzeuge} berichte={berichte} T={T} />}
         {tab==="heute"        && darfTab(meineRolle,"heute")        && <Tagesansicht   mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} />}
         {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} />}
         {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} />}
