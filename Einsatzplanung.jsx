@@ -1114,7 +1114,22 @@ function btnPrimary(farbe="#1d4ed8") { return { padding:"10px 20px", borderRadiu
 const btnGhost = () => ({ padding:"10px 16px", borderRadius:8, background:TH.panel2, color:TH.text, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13 });
 
 // ─── VERWALTUNG (Stammdaten anlegen/bearbeiten/löschen) ───────────────────────
-function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrzeuge, setFahrzeuge, unterkuenfte, setUnterkuenfte, werkzeuge, setWerkzeuge, onReset }) {
+function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrzeuge, setFahrzeuge, unterkuenfte, setUnterkuenfte, werkzeuge, setWerkzeuge, sonder, antraege, stunden, berichte, onReset }) {
+
+  function backupHerunterladen() {
+    const backup = {
+      app: "Baufox",
+      exportiertAm: new Date().toISOString(),
+      projekte, mitarbeiter, fahrzeuge, unterkuenfte, werkzeuge,
+      sonder, antraege, stunden, berichte
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type:"application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "Baufox_Backup_" + isoDate(new Date()) + ".json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
   const [sub, setSub] = useState("projekte");
   const [modal, setModal] = useState(null); // { art, data }
 
@@ -1348,6 +1363,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
         {subTabs.map(t=>(
           <button key={t.id} onClick={()=>setSub(t.id)} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:sub===t.id?"#1e3a5f":"#fff", color:sub===t.id?"#fff":"#374151" }}>{t.label}</button>
         ))}
+        <button onClick={backupHerunterladen} title="Alle Daten als Sicherungsdatei herunterladen" style={{ marginLeft:"auto", padding:"7px 14px", borderRadius:8, border:"none", background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", cursor:"pointer", fontSize:12, fontWeight:700 }}>💾 Backup herunterladen</button>
         {onReset && <button onClick={onReset} style={{ marginLeft:"auto", padding:"7px 14px", borderRadius:8, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer", fontSize:12 }}>↺ Demo-Daten zurücksetzen</button>}
       </div>
 
@@ -2103,7 +2119,7 @@ export default function EinsatzplanungInner({
         {tab==="fahrzeuge"    && darfTab(meineRolle,"fahrzeuge")    && <FahrzeugUebersicht fahrzeuge={fahrzeuge} projekte={projekte} />}
         {tab==="unterkuenfte" && darfTab(meineRolle,"unterkuenfte") && <UnterkunftUebersicht unterkuenfte={unterkuenfte} projekte={projekte} />}
         {tab==="werkzeuge"    && darfTab(meineRolle,"werkzeuge")    && <WerkzeugUebersicht werkzeuge={werkzeuge} mitarbeiter={mitarbeiter} />}
-        {tab==="verwaltung"   && istAdmin                          && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte} werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge} onReset={onReset} />}
+        {tab==="verwaltung"   && istAdmin                          && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte} werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge} sonder={sonder} antraege={antraege} stunden={stunden} berichte={berichte} onReset={onReset} />}
         {tab==="warnungen"    && darfTab(meineRolle,"warnungen")    && <WarnPanel warnungen={warnungen} />}
       </div>
     </div>
