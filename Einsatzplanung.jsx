@@ -1712,6 +1712,60 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
   }
 
   const sortiert = [...(berichte||[])].sort((a,b)=>(b.datum||"").localeCompare(a.datum||"")||String(b.id).localeCompare(String(a.id)));
+  const [auswahl, setAuswahl] = useState([]);
+  const toggleAuswahl = id => setAuswahl(p => p.includes(id) ? p.filter(x=>x!==id) : [...p, id]);
+  const alleAusgewaehlt = sortiert.length>0 && auswahl.length===sortiert.length;
+
+  function pdfBerichte() {
+    const esc = t => String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br/>");
+    const ausgewaehlt = auswahl.length ? sortiert.filter(b=>auswahl.includes(b.id)) : sortiert;
+    const chron = [...ausgewaehlt].sort((a,b)=>(a.datum||"").localeCompare(b.datum||""));
+    const bloecke = chron.map(b=>{
+      const proj = projekte.find(p=>p.id===b.projektId);
+      const fotos = (b.fotos||[]).map(f=>`<img src="${f.url}" />`).join("");
+      return `<div class="bericht">
+        <div class="bkopf"><span>${esc(fmtDate(parseDate(b.datum)))} · ${esc(proj?.name||"Projekt")}</span><span>${esc(b.verfasser||"")}${b.leistung?` · Leistungsstand ${esc(b.leistung)} %`:""}</span></div>
+        <table class="binfo">
+          ${b.wetter?`<tr><td>Wetter</td><td>${esc(b.wetter)}</td></tr>`:""}
+          ${b.anwesende?`<tr><td>Anwesend</td><td>${esc(b.anwesende)}${b.maAnzahl?` (${b.maAnzahl} Personen)`:""}</td></tr>`:""}
+          <tr><td>Ausgeführte Arbeiten</td><td>${esc(b.fortschritt||"–")}</td></tr>
+          ${b.probleme?`<tr class="rot"><td>Besonderheiten / Behinderungen</td><td>${esc(b.probleme)}</td></tr>`:""}
+          ${b.material?`<tr><td>Materialbedarf</td><td>${esc(b.material)}</td></tr>`:""}
+        </table>
+        ${fotos?`<div class="fotos">${fotos}</div>`:""}
+      </div>`;
+    }).join("");
+    const heute = new Date();
+    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Baufox – Bautagebuch</title>
+    <style>
+      body{font-family:Arial,Helvetica,sans-serif;margin:26px;color:#1e293b;}
+      .kopf{display:flex;align-items:center;gap:12px;border-bottom:3px solid #ea580c;padding-bottom:12px;}
+      h1{font-size:20px;margin:0;}
+      .unter{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#94a3b8;margin:0;}
+      .meta{font-size:11px;color:#64748b;margin:8px 0 18px;}
+      .bericht{border:1px solid #e2e8f0;border-radius:10px;margin-bottom:18px;overflow:hidden;page-break-inside:avoid;}
+      .bkopf{background:#1e293b;color:#fff;padding:8px 12px;font-size:12px;font-weight:bold;display:flex;justify-content:space-between;gap:10px;}
+      .binfo{width:100%;border-collapse:collapse;font-size:11.5px;}
+      .binfo td{padding:6px 12px;border-bottom:1px solid #f1f5f9;vertical-align:top;}
+      .binfo td:first-child{width:190px;color:#64748b;font-weight:bold;}
+      .binfo tr.rot td{background:#fef2f2;color:#991b1b;}
+      .fotos{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;}
+      .fotos img{width:180px;height:130px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;}
+      .fuss{margin-top:30px;display:flex;gap:60px;font-size:11px;color:#64748b;}
+      .linie{border-top:1px solid #94a3b8;padding-top:4px;width:220px;}
+      @media print{ body{margin:10mm;} .fotos img{width:160px;height:115px;} }
+    </style></head><body>
+      <div class="kopf"><img src="/icon-192.png" width="44" height="44" style="border-radius:10px"/><div><h1>Baufox – Bautagebuch</h1><p class="unter">Montage-Steuerung</p></div></div>
+      <div class="meta">Erstellt am ${esc(fmtDate(heute))} · ${chron.length} Bericht(e)</div>
+      ${bloecke}
+      <div class="fuss"><div class="linie">Datum, Unterschrift Auftragnehmer</div><div class="linie">Datum, Unterschrift Auftraggeber</div></div>
+      <script>window.onload=function(){window.print();};<\/script>
+    </body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) { alert("Bitte Pop-ups für diese Seite erlauben."); return; }
+    w.document.write(html);
+    w.document.close();
+  }
 
   return (
     <div>
@@ -1757,6 +1811,16 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
         </div>
       )}
 
+      {sortiert.length>0 && (
+        <div style={{ display:"flex", gap:8, justifyContent:"flex-end", alignItems:"center", marginBottom:12, flexWrap:"wrap" }}>
+          <button onClick={()=>setAuswahl(alleAusgewaehlt?[]:sortiert.map(b=>b.id))} style={{ padding:"8px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, color:TH.text, cursor:"pointer", fontSize:12, fontWeight:600 }}>
+            {alleAusgewaehlt?"Alle abwählen":"Alle auswählen"}
+          </button>
+          <button onClick={pdfBerichte} style={{ padding:"8px 16px", borderRadius:8, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:12 }}>
+            <span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileDown size={14}/>{auswahl.length?`${auswahl.length} Bericht(e) als PDF`:"Alle als PDF"}</span>
+          </button>
+        </div>
+      )}
       {!sortiert.length ? (
         <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Tagesberichte vorhanden.</div>
       ) : (
@@ -1767,7 +1831,9 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
             return (
               <div key={b.id} style={{ border:"1px solid "+TH.border, boxShadow:"0 2px 10px #00000012", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px #0000000d", background:TH.panel }}>
                 <div style={{ background:col.bg, color:"#fff", padding:"8px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:6 }}>
-                  <span style={{ fontWeight:700, fontSize:13 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileText size={13}/>{fmtDate(parseDate(b.datum))}</span> · {proj?.name||"Projekt gelöscht"}</span>
+                  <span style={{ fontWeight:700, fontSize:13, display:"inline-flex", alignItems:"center", gap:8 }}>
+                    <input type="checkbox" checked={auswahl.includes(b.id)} onChange={()=>toggleAuswahl(b.id)} style={{ width:16, height:16, accentColor:"#ea580c", cursor:"pointer" }} />
+                    <span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileText size={13}/>{fmtDate(parseDate(b.datum))}</span> · {proj?.name||"Projekt gelöscht"}</span>
                   <span style={{ fontSize:11, opacity:0.85 }}>von {b.verfasser}{b.leistung?` · Leistung ${b.leistung}%`:""}</span>
                 </div>
                 <div style={{ padding:"10px 14px", fontSize:12, display:"flex", flexDirection:"column", gap:6 }}>
