@@ -2011,6 +2011,15 @@ export default function EinsatzplanungInner({
   onReset, onLogout, userEmail
 }) {
   const { rolle: meineRolle, ma: meinMA } = useMemo(()=>ermittleRolle(userEmail, mitarbeiter), [userEmail, mitarbeiter]);
+
+  // ── Feinere Rechte: Vorarbeiter & Monteure sehen nur ihr eigenes Team ──
+  const teamFilter = (meineRolle==="Vorarbeiter" || meineRolle==="Monteur") && meinMA ? meinMA.team : null;
+  const vMitarbeiter = teamFilter ? mitarbeiter.filter(m=>m.team===teamFilter) : mitarbeiter;
+  const vProjekte    = teamFilter ? projekte.filter(p=>p.team===teamFilter) : projekte;
+  const vSonder      = teamFilter ? sonder.filter(s=>{ const m=mitarbeiter.find(x=>x.id===s.ma); return m && m.team===teamFilter; }) : sonder;
+  const vAntraege    = teamFilter ? antraege.filter(a=>a.team===teamFilter) : antraege;
+  const vStunden     = teamFilter ? (stunden||[]).filter(e=>e.team===teamFilter) : stunden;
+  const vBerichte    = teamFilter ? (berichte||[]).filter(b=>b.team===teamFilter) : berichte;
   const istAdmin = meineRolle==="Admin";
   const istLeitung = istAdmin || meineRolle==="Bauleiter" || meineRolle==="Vorarbeiter";
 
@@ -2108,14 +2117,14 @@ export default function EinsatzplanungInner({
         )}
         {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} antraege={antraege} warnungen={warnungen} unterkuenfte={unterkuenfte} setTab={setTab} T={T} />}
         {tab==="kosten"       && darfTab(meineRolle,"kosten")       && <KostenControlling projekte={projekte} stunden={stunden} mitarbeiter={mitarbeiter} unterkuenfte={unterkuenfte} T={T} />}
-        {tab==="heute"        && darfTab(meineRolle,"heute")        && <Tagesansicht   mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} />}
-        {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
-        {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} />}
-        {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={mitarbeiter} projekte={projekte} stunden={stunden} setStunden={setStunden} rolle={meineRolle} meinMA={meinMA} />}
-        {tab==="berichte"     && darfTab(meineRolle,"berichte")     && <Tagesberichte projekte={projekte} mitarbeiter={mitarbeiter} berichte={berichte} setBerichte={setBerichte} rolle={meineRolle} meinMA={meinMA} userEmail={userEmail} />}
-        {tab==="antraege"     && darfTab(meineRolle,"antraege")     && <Antraege mitarbeiter={mitarbeiter} antraege={antraege} setAntraege={setAntraege} setSonder={setSonder} />}
-        {tab==="projekte"     && darfTab(meineRolle,"projekte")     && <ProjektUebersicht projekte={projekte} fahrzeuge={fahrzeuge} />}
-        {tab==="mitarbeiter"  && darfTab(meineRolle,"mitarbeiter")  && <MitarbeiterUebersicht mitarbeiter={mitarbeiter} projekte={projekte} />}
+        {tab==="heute"        && darfTab(meineRolle,"heute")        && <Tagesansicht   mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} />}
+        {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} />}
+        {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} />}
+        {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={vMitarbeiter} projekte={vProjekte} stunden={vStunden} setStunden={setStunden} rolle={meineRolle} meinMA={meinMA} />}
+        {tab==="berichte"     && darfTab(meineRolle,"berichte")     && <Tagesberichte projekte={vProjekte} mitarbeiter={vMitarbeiter} berichte={vBerichte} setBerichte={setBerichte} rolle={meineRolle} meinMA={meinMA} userEmail={userEmail} />}
+        {tab==="antraege"     && darfTab(meineRolle,"antraege")     && <Antraege mitarbeiter={vMitarbeiter} antraege={vAntraege} setAntraege={setAntraege} setSonder={setSonder} />}
+        {tab==="projekte"     && darfTab(meineRolle,"projekte")     && <ProjektUebersicht projekte={vProjekte} fahrzeuge={fahrzeuge} />}
+        {tab==="mitarbeiter"  && darfTab(meineRolle,"mitarbeiter")  && <MitarbeiterUebersicht mitarbeiter={vMitarbeiter} projekte={vProjekte} />}
         {tab==="fahrzeuge"    && darfTab(meineRolle,"fahrzeuge")    && <FahrzeugUebersicht fahrzeuge={fahrzeuge} projekte={projekte} />}
         {tab==="unterkuenfte" && darfTab(meineRolle,"unterkuenfte") && <UnterkunftUebersicht unterkuenfte={unterkuenfte} projekte={projekte} />}
         {tab==="werkzeuge"    && darfTab(meineRolle,"werkzeuge")    && <WerkzeugUebersicht werkzeuge={werkzeuge} mitarbeiter={mitarbeiter} />}
