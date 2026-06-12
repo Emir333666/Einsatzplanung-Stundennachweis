@@ -1985,16 +1985,34 @@ function TeamChat({ meinMA, meineRolle, userEmail }) {
   const darfSchreiben = ["Admin","Projektleiter","Bauleiter","Vorarbeiter"].includes(meineRolle);
   const kanaele = ["Alle", ...(istLeitung ? TEAM_NAMEN_AKTUELL : TEAM_NAMEN_AKTUELL.filter(t=>meinMA && t===meinMA.team))];
   const [kanal, setKanal] = useState("Alle");
-  const [nachrichten, setNachrichten] = useState([]);
+  const [alleNachrichten, setAlleNachrichten] = useState([]);
   const [text, setText] = useState("");
   const [laedt, setLaedt] = useState(true);
+  const [gelesen, setGelesen] = useState(()=>{ try { return JSON.parse(localStorage.getItem("baufox-chat-gelesen")||"{}"); } catch { return {}; } });
   const endeRef = useRef(null);
   const meinName = meinMA?.name || userEmail || "Unbekannt";
 
+  const nachrichten = alleNachrichten.filter(n=>n.kanal===kanal);
+
+  function alsGelesen(k) {
+    setGelesen(p=>{
+      const neu = { ...p, [k]: new Date().toISOString() };
+      try { localStorage.setItem("baufox-chat-gelesen", JSON.stringify(neu)); } catch (_) {}
+      return neu;
+    });
+  }
+
+  // Ungelesene Nachrichten pro Kanal (nicht eigene, max. 7 Tage zurück wenn nie geöffnet)
+  function ungelesen(k) {
+    const seit = gelesen[k] ? new Date(gelesen[k]) : new Date(Date.now() - 7*24*60*60*1000);
+    return alleNachrichten.filter(n => n.kanal===k && (!n.absender_email || n.absender_email!==userEmail) && new Date(n.created_at) > seit).length;
+  }
+
   async function laden(scrollen) {
-    const { data } = await supabase.from("nachrichten").select("*").eq("kanal", kanal).order("created_at", { ascending:true }).limit(200);
-    setNachrichten(data||[]);
+    const { data } = await supabase.from("nachrichten").select("*").order("created_at", { ascending:false }).limit(500);
+    setAlleNachrichten((data||[]).slice().reverse());
     setLaedt(false);
+    alsGelesen(kanal);
     if (scrollen) setTimeout(()=>endeRef.current?.scrollIntoView({ behavior:"smooth" }), 80);
   }
 
@@ -2010,7 +2028,7 @@ function TeamChat({ meinMA, meineRolle, userEmail }) {
     if (!t) return;
     setText("");
     const neu = { id:"N"+Date.now(), kanal, absender:meinName, absender_email:userEmail||"", text:t };
-    setNachrichten(p=>[...p, { ...neu, created_at:new Date().toISOString() }]);
+    setAlleNachrichten(p=>[...p, { ...neu, created_at:new Date().toISOString() }]);
     setTimeout(()=>endeRef.current?.scrollIntoView({ behavior:"smooth" }), 50);
     await supabase.from("nachrichten").insert(neu);
     laden(false);
@@ -2025,7 +2043,13 @@ function TeamChat({ meinMA, meineRolle, userEmail }) {
         {kanaele.map(k=>{
           const col = k==="Alle" ? { bg:"#ea580c", light:"#ffedd5" } : getTeamColor(k);
           const aktiv = kanal===k;
-          return <button key={k} onClick={()=>setKanal(k)} style={{ padding:"7px 14px", borderRadius:99, border:"1.5px solid "+(aktiv?col.bg:TH.border), background:aktiv?col.bg:TH.panel, color:aktiv?"#fff":TH.text, cursor:"pointer", fontSize:12.5, fontWeight:700 }}>{k}</button>;
+          const anz = aktiv ? 0 : ungelesen(k);
+          return (
+            <button key={k} onClick={()=>{ setKanal(k); alsGelesen(k); }} style={{ position:"relative", padding:"7px 14px", borderRadius:99, border:"1.5px solid "+(aktiv?col.bg:TH.border), background:aktiv?col.bg:TH.panel, color:aktiv?"#fff":TH.text, cursor:"pointer", fontSize:12.5, fontWeight:700 }}>
+              {k}
+              {anz>0 && <span style={{ position:"absolute", top:-7, right:-7, background:"#dc2626", color:"#fff", borderRadius:99, minWidth:19, height:19, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10.5, fontWeight:800, padding:"0 5px", border:"2px solid "+TH.panel, boxSizing:"border-box" }}>{anz>99?"99+":anz}</span>}
+            </button>
+          );
         })}
       </div>
       <div style={{ background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", display:"flex", flexDirection:"column", height:"min(62vh, 560px)" }}>
