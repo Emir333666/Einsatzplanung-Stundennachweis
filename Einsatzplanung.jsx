@@ -2404,6 +2404,59 @@ export default function EinsatzplanungInner({
   const [mittOffen, setMittOffen] = useState(false);
   const gelesenKey = "bfx_gelesen_" + (userEmail||"gast");
   const [gelesenAb, setGelesenAb] = useState(()=>Number(localStorage.getItem(gelesenKey)||0));
+  const [chatNeu, setChatNeu] = useState([]);
+  const [benachAn, setBenachAn] = useState(()=>typeof Notification!=="undefined" && Notification.permission==="granted" && localStorage.getItem("bfx_benach")==="1");
+  const benachRef = useRef(Number(localStorage.getItem("bfx_benach_ts_"+(userEmail||""))||Date.now()));
+
+  function piep() {
+    try {
+      const ctx = new (window.AudioContext||window.webkitAudioContext)();
+      [[880,0],[1175,0.12]].forEach(([f,t])=>{
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = f; o.type = "sine";
+        g.gain.setValueAtTime(0.001, ctx.currentTime+t);
+        g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime+t+0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+t+0.25);
+        o.start(ctx.currentTime+t); o.stop(ctx.currentTime+t+0.3);
+      });
+    } catch(e) {}
+  }
+
+  async function benachAktivieren() {
+    if (typeof Notification==="undefined") { alert("Dein Browser unterstützt keine Benachrichtigungen."); return; }
+    const erlaubnis = await Notification.requestPermission();
+    if (erlaubnis==="granted") {
+      localStorage.setItem("bfx_benach","1");
+      setBenachAn(true);
+      piep();
+    } else {
+      alert("Benachrichtigungen wurden im Browser blockiert. Du kannst sie in den Seiten-Einstellungen (Schloss-Symbol neben der Adresse) wieder erlauben.");
+    }
+  }
+
+  function systemBenach(text) {
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+        navigator.serviceWorker.ready.then(reg=>{
+          if (reg.showNotification) reg.showNotification("Baufox", { body:text, icon:"/icon-192.png", badge:"/icon-192.png", tag:"baufox" });
+          else new Notification("Baufox", { body:text, icon:"/icon-192.png" });
+        }).catch(()=>{ try { new Notification("Baufox", { body:text, icon:"/icon-192.png" }); } catch(e){} });
+      } else {
+        new Notification("Baufox", { body:text, icon:"/icon-192.png" });
+      }
+    } catch(e) {}
+  }
+  useEffect(()=>{
+    let aktiv = true;
+    async function holen() {
+      const { data } = await supabase.from("nachrichten").select("*").order("created_at",{ascending:false}).limit(30);
+      if (aktiv) setChatNeu(data||[]);
+    }
+    holen();
+    const iv = setInterval(holen, 10000);
+    return ()=>{ aktiv=false; clearInterval(iv); };
+  }, []);
   const istLeitungM = ["Admin","Projektleiter","Bauleiter","Vorarbeiter"].includes(meineRolle);
   const tsAusId = id => { const m = String(id||"").match(/(\d{13})/); return m ? Number(m[1]) : 0; };
   const heuteM = new Date(); heuteM.setHours(0,0,0,0);
@@ -2448,8 +2501,31 @@ export default function EinsatzplanungInner({
     },0);
     if (ist>planK) mitteilungen.push({ id:"ko-"+p.id, ts:Date.now()-86400000, text:`Kosten über Plan: ${p.name} (${fmtEuro(ist)} von ${fmtEuro(planK)})`, tab:"kosten", farbe:"#dc2626" });
   });
+  // Neue Chat-Nachrichten (nicht eigene, nur sichtbare Kanäle, max. 2 Tage alt)
+  {
+    const sichtbareKanaele = ["Alle", ...(istLeitungM ? TEAM_NAMEN_AKTUELL : (meinMA ? [meinMA.team] : []))];
+    chatNeu.forEach(n=>{
+      if (!sichtbareKanaele.includes(n.kanal)) return;
+      if (n.absender_email && n.absender_email===userEmail) return;
+      const ts = new Date(n.created_at).getTime();
+      if (Date.now()-ts > 2*86400000) return;
+      const kurz = String(n.text||"").slice(0,60) + (String(n.text||"").length>60?"…":"");
+      mitteilungen.push({ id:"ch-"+n.id, ts, text:`Chat „${n.kanal}" – ${n.absender}: ${kurz}`, tab:"chat", farbe:"#0891b2" });
+    });
+  }
   mitteilungen.sort((a,b)=>b.ts-a.ts);
   const ungelesen = mitteilungen.filter(m=>m.ts>gelesenAb).length;
+
+  useEffect(()=>{
+    const neue = mitteilungen.filter(m=>m.ts>benachRef.current);
+    if (!neue.length) return;
+    benachRef.current = Math.max(...neue.map(m=>m.ts));
+    localStorage.setItem("bfx_benach_ts_"+(userEmail||""), String(benachRef.current));
+    if (benachAn && typeof Notification!=="undefined" && Notification.permission==="granted") {
+      piep();
+      systemBenach(neue[0].text + (neue.length>1?` (+${neue.length-1} weitere)`:""));
+    }
+  }, [mitteilungen.length, benachAn]);
   function mittOeffnen() {
     setMittOffen(o=>!o);
     if (!mittOffen) { const jetzt = Date.now(); localStorage.setItem(gelesenKey, String(jetzt)); setGelesenAb(jetzt); }
@@ -2522,7 +2598,11 @@ export default function EinsatzplanungInner({
         <>
           <div onClick={()=>setMittOffen(false)} style={{ position:"fixed", inset:0, zIndex:80 }} />
           <div className="mitt-panel" style={{ position:"fixed", top:60, right:10, width:340, maxWidth:"calc(100vw - 20px)", maxHeight:"70vh", overflowY:"auto", background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 12px 40px #00000033", zIndex:81 }}>
-            <div style={{ padding:"11px 14px", borderBottom:"1px solid "+TH.border, fontWeight:800, fontSize:13, color:TH.text, display:"flex", alignItems:"center", gap:7 }}><Bell size={14}/> Mitteilungen</div>
+            <div style={{ padding:"11px 14px", borderBottom:"1px solid "+TH.border, fontWeight:800, fontSize:13, color:TH.text, display:"flex", alignItems:"center", gap:7 }}>
+              <Bell size={14}/> Mitteilungen
+              {!benachAn && <button onClick={benachAktivieren} style={{ marginLeft:"auto", padding:"5px 10px", borderRadius:99, border:"none", background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", fontSize:10.5, fontWeight:700, cursor:"pointer" }}>🔊 Ton & Banner aktivieren</button>}
+              {benachAn && <span style={{ marginLeft:"auto", fontSize:10, color:"#059669", fontWeight:700 }}>🔊 aktiv</span>}
+            </div>
             {!mitteilungen.length && <div style={{ padding:"22px 14px", fontSize:12.5, color:TH.textMut, textAlign:"center" }}>Alles erledigt – keine Mitteilungen. 🦊</div>}
             {mitteilungen.map(m=>(
               <div key={m.id} onClick={()=>{ if(darfTab(meineRolle,m.tab)){ setTab(m.tab); } setMittOffen(false); }}
