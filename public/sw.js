@@ -30,7 +30,7 @@ self.addEventListener("fetch", (e) => {
   );
 });
 
-// ─── Push-Benachrichtigungen (Ton & Banner auch bei geschlossener App) ───
+// — Push-Benachrichtigungen (Ton & Banner auch bei geschlossener App) —
 self.addEventListener("push", (e) => {
   let d = {};
   try { d = e.data.json(); } catch (_) { d = { text: e.data ? e.data.text() : "" }; }
