@@ -518,7 +518,7 @@ function Monatsansicht({ mitarbeiter, projekte, sonder }) {
 
 // ─── STUNDENZETTEL ─────────────────────────────────────────────────────────────
 function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, meinMA }) {
-  const istLeitung = rolle==="Admin" || rolle==="Bauleiter" || rolle==="Vorarbeiter";
+  const istLeitung = rolle==="Admin" || rolle==="Projektleiter" || rolle==="Bauleiter" || rolle==="Vorarbeiter";
   const vorarbeiter = mitarbeiter.filter(m=>m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter");
   const [aktVA, setAktVA] = useState(vorarbeiter[0]?.id||null);
   const [datum, setDatum] = useState(isoDate(new Date()));
@@ -795,7 +795,8 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
 }
 
 // ─── Andere Tabs (unverändert) ────────────────────────────────────────────────
-function ProjektUebersicht({ projekte, fahrzeuge }) {
+function ProjektUebersicht({ projekte, fahrzeuge, mitarbeiter }) {
+  const maName = id => (mitarbeiter||[]).find(m=>m.id===id)?.name || null;
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
       {projekte.map(p=>{
@@ -813,6 +814,9 @@ function ProjektUebersicht({ projekte, fahrzeuge }) {
               <Info label="Ende" value={fmtDate(parseDate(p.dateEnd))} />
               <Info label="Team" value={p.team} />
               <Info label="Vorarbeiter" value={p.vorarbeiter||"–"} />
+              {p.projektleiterId && <Info label="Projektleiter" value={maName(p.projektleiterId)||"–"} />}
+              {p.bauleiterId && <Info label="Bauleiter" value={maName(p.bauleiterId)||"–"} />}
+              {p.vertretungId && <Info label="Vertretung" value={<span style={{color:"#ea580c",fontWeight:700}}>{maName(p.vertretungId)||"–"}</span>} />}
               <Info label="Fahrzeug" value={fzg?`${fzg.kz} (${fzg.typ})`:"–"} />
               {p.ansprechpartner && <Info label="Ansprechpartner" value={p.ansprechpartner} />}
               {p.auftragssumme && <Info label="Auftragssumme" value={Number(p.auftragssumme).toLocaleString("de-DE")+" €"} />}
@@ -1187,6 +1191,11 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           <div style={{ flex:1 }}><Feld label="Fahrzeug"><select style={inpS()} value={f.fzg} onChange={e=>set("fzg",e.target.value)}><option value="">–</option>{fahrzeuge.map(fz=><option key={fz.id} value={fz.id}>{fz.kz}</option>)}</select></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12 }}>
+          <div style={{ flex:1 }}><Feld label="Projektleiter"><select style={inpS()} value={f.projektleiterId||""} onChange={e=>set("projektleiterId",e.target.value?Number(e.target.value):"")}><option value="">–</option>{mitarbeiter.filter(m=>m.rolle==="Projektleiter").map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Bauleiter"><select style={inpS()} value={f.bauleiterId||""} onChange={e=>set("bauleiterId",e.target.value?Number(e.target.value):"")}><option value="">–</option>{mitarbeiter.filter(m=>m.rolle==="Bauleiter").map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Vertretung (bei Ausfall)"><select style={inpS()} value={f.vertretungId||""} onChange={e=>set("vertretungId",e.target.value?Number(e.target.value):"")}><option value="">–</option>{mitarbeiter.filter(m=>m.rolle==="Projektleiter"||m.rolle==="Bauleiter").map(m=><option key={m.id} value={m.id}>{m.name} ({m.rolle})</option>)}</select></Feld></div>
+        </div>
+        <div style={{ display:"flex", gap:12 }}>
           <div style={{ flex:1 }}><Feld label="Auftragssumme (€)"><input type="number" style={inpS()} value={f.auftragssumme||""} onChange={e=>set("auftragssumme",e.target.value)} placeholder="0" /></Feld></div>
           <div style={{ flex:1 }}><Feld label="Geplante Stunden"><input type="number" style={inpS()} value={f.planStunden||""} onChange={e=>set("planStunden",e.target.value)} placeholder="0" /></Feld></div>
           <div style={{ flex:1 }}><Feld label="Geplante Kosten (€)"><input type="number" style={inpS()} value={f.planKosten||""} onChange={e=>set("planKosten",e.target.value)} placeholder="0" /></Feld></div>
@@ -1217,7 +1226,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
       <Modal titel={data?"Mitarbeiter bearbeiten":"Neuer Mitarbeiter"} onClose={()=>setModal(null)} farbe={col.bg}>
         <Feld label="Name"><input style={inpS()} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="Vor- und Nachname" /></Feld>
         <div style={{ display:"flex", gap:12 }}>
-          <div style={{ flex:1 }}><Feld label="Rolle"><select style={inpS()} value={f.rolle} onChange={e=>set("rolle",e.target.value)}><option>Monteur</option><option>Vorarbeiter</option><option>Bauleiter</option></select></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Rolle"><select style={inpS()} value={f.rolle} onChange={e=>set("rolle",e.target.value)}><option>Monteur</option><option>Vorarbeiter</option><option>Bauleiter</option><option>Projektleiter</option></select></Feld></div>
           <div style={{ flex:1 }}><Feld label="Team"><select style={inpS()} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
         </div>
         <Feld label="Login-E-Mail (für App-Zugang)"><input style={inpS()} value={f.email||""} onChange={e=>set("email",e.target.value)} placeholder="z.B. max@firma.de – muss zum Supabase-Login passen" /></Feld>
@@ -1631,7 +1640,7 @@ async function stempleFoto(file) {
 }
 
 function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, meinMA, userEmail }) {
-  const istLeitung = rolle==="Admin" || rolle==="Bauleiter" || rolle==="Vorarbeiter";
+  const istLeitung = rolle==="Admin" || rolle==="Projektleiter" || rolle==="Bauleiter" || rolle==="Vorarbeiter";
   const leer = { datum: isoDate(new Date()), projektId:"", wetter:"", fortschritt:"", probleme:"", material:"", anwesende:"", leistung:"", fotos:[] };
   const [f, setF] = useState(leer);
   const [zeigeForm, setZeigeForm] = useState(false);
@@ -2114,6 +2123,7 @@ function ermittleRolle(userEmail, mitarbeiter) {
 function darfTab(rolle, tabId) {
   if (rolle==="Admin") return true;
   const rechte = {
+    "Projektleiter": ["dashboard","kosten","assistent","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
     "Bauleiter":   ["dashboard","kosten","assistent","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
     "Vorarbeiter": ["heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Monteur":     ["heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
@@ -2132,14 +2142,29 @@ export default function EinsatzplanungInner({
 }) {
   const { rolle: meineRolle, ma: meinMA } = useMemo(()=>ermittleRolle(userEmail, mitarbeiter), [userEmail, mitarbeiter]);
 
-  // ── Feinere Rechte: Vorarbeiter & Monteure sehen nur ihr eigenes Team ──
+  // ── Rang-System: Jeder sieht nur das Relevante ──
+  // Admin: alles · Projektleiter/Bauleiter: zugeteilte Projekte (+Vertretung) · Vorarbeiter/Monteur: eigenes Team
   const teamFilter = (meineRolle==="Vorarbeiter" || meineRolle==="Monteur") && meinMA ? meinMA.team : null;
-  const vMitarbeiter = teamFilter ? mitarbeiter.filter(m=>m.team===teamFilter) : mitarbeiter;
-  const vProjekte    = teamFilter ? projekte.filter(p=>p.team===teamFilter) : projekte;
-  const vSonder      = teamFilter ? sonder.filter(s=>{ const m=mitarbeiter.find(x=>x.id===s.ma); return m && m.team===teamFilter; }) : sonder;
-  const vAntraege    = teamFilter ? antraege.filter(a=>a.team===teamFilter) : antraege;
-  const vStunden     = teamFilter ? (stunden||[]).filter(e=>e.team===teamFilter) : stunden;
-  const vBerichte    = teamFilter ? (berichte||[]).filter(b=>b.team===teamFilter) : berichte;
+  const projektFilter = (meineRolle==="Projektleiter" || meineRolle==="Bauleiter") && meinMA
+    ? projekte.filter(p => p.projektleiterId===meinMA.id || p.bauleiterId===meinMA.id || p.vertretungId===meinMA.id)
+    : null;
+  const meineTeams = projektFilter ? [...new Set(projektFilter.map(p=>p.team))] : null;
+  const meineProjektIds = projektFilter ? projektFilter.map(p=>p.id) : null;
+  const meineProjektNamen = projektFilter ? projektFilter.map(p=>p.name) : null;
+
+  const vProjekte = projektFilter ? projektFilter
+                  : teamFilter ? projekte.filter(p=>p.team===teamFilter) : projekte;
+  const vMitarbeiter = projektFilter ? mitarbeiter.filter(m=>meineTeams.includes(m.team) || m.id===meinMA.id)
+                     : teamFilter ? mitarbeiter.filter(m=>m.team===teamFilter) : mitarbeiter;
+  const vSonder = projektFilter ? sonder.filter(s=>{ const m=mitarbeiter.find(x=>x.id===s.ma); return m && meineTeams.includes(m.team); })
+                : teamFilter ? sonder.filter(s=>{ const m=mitarbeiter.find(x=>x.id===s.ma); return m && m.team===teamFilter; }) : sonder;
+  const vAntraege = projektFilter ? antraege.filter(a=>meineTeams.includes(a.team))
+                  : teamFilter ? antraege.filter(a=>a.team===teamFilter) : antraege;
+  const vStunden = projektFilter ? (stunden||[]).filter(e=>meineProjektNamen.includes(e.projekt))
+                 : teamFilter ? (stunden||[]).filter(e=>e.team===teamFilter) : stunden;
+  const vBerichte = projektFilter ? (berichte||[]).filter(b=>meineProjektIds.includes(b.projektId))
+                  : teamFilter ? (berichte||[]).filter(b=>b.team===teamFilter) : berichte;
+  const vUnterkuenfte = projektFilter ? (unterkuenfte||[]).filter(u=>meineProjektIds.includes(u.projektId)) : unterkuenfte;
   const istAdmin = meineRolle==="Admin";
   const istLeitung = istAdmin || meineRolle==="Bauleiter" || meineRolle==="Vorarbeiter";
 
@@ -2236,19 +2261,19 @@ export default function EinsatzplanungInner({
             ⚠️ Dein Login ist noch keinem Mitarbeiter zugeordnet. Bitte den Administrator, deine E-Mail (<strong>{userEmail}</strong>) in der Mitarbeiter-Verwaltung einzutragen. Bis dahin siehst du nur die Übersichten.
           </div>
         )}
-        {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={mitarbeiter} projekte={projekte} sonder={sonder} fahrzeuge={fahrzeuge} antraege={antraege} warnungen={warnungen} unterkuenfte={unterkuenfte} setTab={setTab} T={T} />}
-        {tab==="kosten"       && darfTab(meineRolle,"kosten")       && <KostenControlling projekte={projekte} stunden={stunden} mitarbeiter={mitarbeiter} unterkuenfte={unterkuenfte} T={T} />}
-        {tab==="assistent"    && darfTab(meineRolle,"assistent")    && <SmartAssistent projekte={projekte} stunden={stunden} mitarbeiter={mitarbeiter} unterkuenfte={unterkuenfte} werkzeuge={werkzeuge} berichte={berichte} T={T} />}
+        {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} antraege={vAntraege} warnungen={warnungen} unterkuenfte={vUnterkuenfte} setTab={setTab} T={T} />}
+        {tab==="kosten"       && darfTab(meineRolle,"kosten")       && <KostenControlling projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} T={T} />}
+        {tab==="assistent"    && darfTab(meineRolle,"assistent")    && <SmartAssistent projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} werkzeuge={werkzeuge} berichte={vBerichte} T={T} />}
         {tab==="heute"        && darfTab(meineRolle,"heute")        && <Tagesansicht   mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} />}
         {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} />}
         {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} />}
         {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={vMitarbeiter} projekte={vProjekte} stunden={vStunden} setStunden={setStunden} rolle={meineRolle} meinMA={meinMA} />}
         {tab==="berichte"     && darfTab(meineRolle,"berichte")     && <Tagesberichte projekte={vProjekte} mitarbeiter={vMitarbeiter} berichte={vBerichte} setBerichte={setBerichte} rolle={meineRolle} meinMA={meinMA} userEmail={userEmail} />}
         {tab==="antraege"     && darfTab(meineRolle,"antraege")     && <Antraege mitarbeiter={vMitarbeiter} antraege={vAntraege} setAntraege={setAntraege} setSonder={setSonder} />}
-        {tab==="projekte"     && darfTab(meineRolle,"projekte")     && <ProjektUebersicht projekte={vProjekte} fahrzeuge={fahrzeuge} />}
+        {tab==="projekte"     && darfTab(meineRolle,"projekte")     && <ProjektUebersicht projekte={vProjekte} fahrzeuge={fahrzeuge} mitarbeiter={mitarbeiter} />}
         {tab==="mitarbeiter"  && darfTab(meineRolle,"mitarbeiter")  && <MitarbeiterUebersicht mitarbeiter={vMitarbeiter} projekte={vProjekte} />}
         {tab==="fahrzeuge"    && darfTab(meineRolle,"fahrzeuge")    && <FahrzeugUebersicht fahrzeuge={fahrzeuge} projekte={projekte} />}
-        {tab==="unterkuenfte" && darfTab(meineRolle,"unterkuenfte") && <UnterkunftUebersicht unterkuenfte={unterkuenfte} projekte={projekte} />}
+        {tab==="unterkuenfte" && darfTab(meineRolle,"unterkuenfte") && <UnterkunftUebersicht unterkuenfte={vUnterkuenfte} projekte={vProjekte} />}
         {tab==="werkzeuge"    && darfTab(meineRolle,"werkzeuge")    && <WerkzeugUebersicht werkzeuge={werkzeuge} mitarbeiter={mitarbeiter} />}
         {tab==="verwaltung"   && istAdmin                          && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte} werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge} sonder={sonder} antraege={antraege} stunden={stunden} berichte={berichte} onReset={onReset} />}
         {tab==="warnungen"    && darfTab(meineRolle,"warnungen")    && <WarnPanel warnungen={warnungen} />}
