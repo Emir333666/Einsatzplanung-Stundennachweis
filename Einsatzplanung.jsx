@@ -1145,7 +1145,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
 
   // ── Projekt-Formular ──
   function ProjektForm({ data }) {
-    const [f, setF] = useState(data || { id:"", name:"", nummer:"", kunde:"", auftraggeber:"", ansprechpartner:"", apTel:"", apEmail:"", ort:"", land:"", dateStart:isoDate(new Date()), dateEnd:isoDate(new Date()), team:teamNamen[0], status:"geplant", fzg:"", vorarbeiter:"", auftragssumme:"", planStunden:"", planKosten:"", beschreibung:"", bemerkung:"" });
+    const [f, setF] = useState(data || { id:"", name:"", nummer:"", kunde:"", auftraggeber:"", ansprechpartner:"", apTel:"", apEmail:"", ort:"", land:"", dateStart:isoDate(new Date()), dateEnd:isoDate(new Date()), team:teamNamen[0], status:"geplant", fzg:"", vorarbeiter:"", auftragssumme:"", planStunden:"", planKosten:"", mindestlohn:"", beschreibung:"", bemerkung:"" });
     const set = (k,v) => setF(p=>({...p,[k]:v}));
     function speichern() {
       if (!f.name) return;
@@ -1172,6 +1172,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
         <div style={{ display:"flex", gap:12 }}>
           <div style={{ flex:1 }}><Feld label="Ort"><input style={inpS()} value={f.ort} onChange={e=>set("ort",e.target.value)} /></Feld></div>
           <div style={{ flex:1 }}><Feld label="Land"><input style={inpS()} value={f.land||""} onChange={e=>set("land",e.target.value)} placeholder="Deutschland" /></Feld></div>
+          <div style={{ flex:1 }}><Feld label="Mindestlohn vor Ort (€/h)"><input type="number" style={inpS()} value={f.mindestlohn||""} onChange={e=>set("mindestlohn",e.target.value)} placeholder="z.B. 24" /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12 }}>
           <div style={{ flex:1 }}><Feld label="Start"><input type="date" style={inpS()} value={f.dateStart} onChange={e=>set("dateStart",e.target.value)} /></Feld></div>
@@ -1774,7 +1775,8 @@ function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeug
   // Ist-Kosten je Projekt (wie im Kosten-Tab)
   function istKosten(p) {
     const eintraege = (stunden||[]).filter(e=>e.projekt===p.name);
-    const lohn = eintraege.reduce((s,e)=>{ const ma=mitarbeiter.find(m=>m.id===e.maId); return s+(Number(e.arbeitsstunden)||0)*(Number(ma?.stundensatz)||0); },0);
+    const minLohn = Number(p.mindestlohn)||0;
+    const lohn = eintraege.reduce((s,e)=>{ const ma=mitarbeiter.find(m=>m.id===e.maId); return s+(Number(e.arbeitsstunden)||0)*Math.max(Number(ma?.stundensatz)||0, minLohn); },0);
     const spesen = eintraege.reduce((s,e)=>s+(Number(e.spesen)||0),0);
     const unterkunft = (unterkuenfte||[]).filter(u=>u.projektId===p.id).reduce((s,u)=>{
       if (!u.checkin||!u.checkout||!u.kostenNacht) return s;
@@ -1799,7 +1801,7 @@ function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeug
   }).filter(x=>x.prognose!=null);
 
   // 2. Team-Verfügbarkeit
-  const teams = teamNamen.map(team=>{
+  const teams = Object.keys(TEAM_COLORS).map(team=>{
     const aktiv = projekte.filter(p=>p.team===team && p.status!=="abgeschlossen" && p.dateEnd && parseDate(p.dateEnd)>=heute);
     if (!aktiv.length) return { team, freiAb:"sofort", projekt:null };
     const letztes = aktiv.reduce((a,b)=>parseDate(a.dateEnd)>parseDate(b.dateEnd)?a:b);
@@ -1887,9 +1889,11 @@ function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) 
   const auswertung = useMemo(()=>projekte.map(p=>{
     const eintraege = (stunden||[]).filter(e=>e.projekt===p.name);
     const istStunden = eintraege.reduce((s,e)=>s+(Number(e.arbeitsstunden)||0),0);
+    const minLohn = Number(p.mindestlohn)||0;
     const lohn = eintraege.reduce((s,e)=>{
       const ma = mitarbeiter.find(m=>m.id===e.maId);
-      return s + (Number(e.arbeitsstunden)||0) * (Number(ma?.stundensatz)||0);
+      const satz = Math.max(Number(ma?.stundensatz)||0, minLohn);
+      return s + (Number(e.arbeitsstunden)||0) * satz;
     },0);
     const spesen = eintraege.reduce((s,e)=>s+(Number(e.spesen)||0),0);
     const unterkunft = (unterkuenfte||[]).filter(u=>u.projektId===p.id).reduce((s,u)=>{
@@ -1940,6 +1944,7 @@ function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) 
                   <Info label="Spesen" value={fmtEuro(spesen)} />
                   <Info label="Unterkunft" value={fmtEuro(unterkunft)} />
                   <Info label="Kosten Ist / Plan" value={<b style={{color:ampel}}>{fmtEuro(ist)}{planK?` / ${fmtEuro(planK)}`:""}</b>} />
+                  {Number(p.mindestlohn)>0 && <Info label="Mindestlohn" value={<span style={{color:"#ea580c",fontWeight:700}}>{p.mindestlohn} €/h{p.land?` (${p.land})`:""}</span>} />}
                   {summe>0 && <Info label="Auftragssumme" value={fmtEuro(summe)} />}
                   {db!=null && <Info label="Deckungsbeitrag" value={<b style={{color:db>=0?"#16a34a":"#dc2626"}}>{fmtEuro(db)}</b>} />}
                 </div>
