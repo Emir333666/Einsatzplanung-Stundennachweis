@@ -2453,6 +2453,13 @@ export default function EinsatzplanungInner({
     }
   }
 
+  // Automatisch als Push-Empfänger registrieren, sobald Benachrichtigungen aktiv sind
+  useEffect(()=>{
+    if (benachAn && typeof Notification!=="undefined" && Notification.permission==="granted") {
+      pushAbonnieren();
+    }
+  }, [benachAn]);
+
   function systemBenach(text) {
     try {
       if (navigator.serviceWorker && navigator.serviceWorker.ready) {
@@ -2533,6 +2540,16 @@ export default function EinsatzplanungInner({
   }
   mitteilungen.sort((a,b)=>b.ts-a.ts);
   const ungelesen = mitteilungen.filter(m=>m.ts>gelesenAb).length;
+
+  // Roter Punkt auf dem App-Symbol (installierte App)
+  useEffect(()=>{
+    try {
+      if ("setAppBadge" in navigator) {
+        if (ungelesen>0) navigator.setAppBadge(ungelesen).catch(()=>{});
+        else navigator.clearAppBadge().catch(()=>{});
+      }
+    } catch(e) {}
+  }, [ungelesen]);
 
   useEffect(()=>{
     const neue = mitteilungen.filter(m=>m.ts>benachRef.current);
