@@ -2423,6 +2423,22 @@ export default function EinsatzplanungInner({
     } catch(e) {}
   }
 
+  const VAPID_PUBLIC = "BMp4WGzVxIpgezgfyVmEUWHzZb8FQ7z_TxTecXFZJQ9-hIrdwwQhRUmtuKIbrW1YbLlOwjo8qNPMsUcN0IrtC1Y";
+  function b64ZuBytes(b64) {
+    const pad = "=".repeat((4 - b64.length % 4) % 4);
+    const roh = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+    return Uint8Array.from([...roh].map(c=>c.charCodeAt(0)));
+  }
+  async function pushAbonnieren() {
+    try {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+      const reg = await navigator.serviceWorker.ready;
+      const abo = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64ZuBytes(VAPID_PUBLIC) });
+      await supabase.from("push_abos").upsert({ endpoint:abo.endpoint, daten:abo.toJSON(), email:userEmail||"" });
+      return true;
+    } catch(e) { console.warn("Push-Abo fehlgeschlagen:", e); return false; }
+  }
+
   async function benachAktivieren() {
     if (typeof Notification==="undefined") { alert("Dein Browser unterstützt keine Benachrichtigungen."); return; }
     const erlaubnis = await Notification.requestPermission();
@@ -2430,6 +2446,8 @@ export default function EinsatzplanungInner({
       localStorage.setItem("bfx_benach","1");
       setBenachAn(true);
       piep();
+      const ok = await pushAbonnieren();
+      if (ok) console.log("Push-Benachrichtigungen aktiv – auch bei geschlossener App.");
     } else {
       alert("Benachrichtigungen wurden im Browser blockiert. Du kannst sie in den Seiten-Einstellungen (Schloss-Symbol neben der Adresse) wieder erlauben.");
     }
