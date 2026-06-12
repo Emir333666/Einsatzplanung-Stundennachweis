@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { supabase } from "./supabaseClient.js";
-import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, Thermometer, CircleSlash } from "lucide-react";
+import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Thermometer, CircleSlash } from "lucide-react";
 
 // ─── Farbschema Hell/Dunkel (wird vom Schalter im Header umgestellt) ──────────
 const THEME_HELL   = { panel:"#ffffff", panel2:"#f9fafb", text:"#1f2937", textMut:"#6b7280", border:"#e5e7eb", input:"#ffffff" };
@@ -209,12 +209,12 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
         </div>
         <button onClick={() => setDatum(isoDate(addDays(d,1)))} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>›</button>
         <input type="date" value={datum} onChange={e=>setDatum(e.target.value)} style={{ ...inpS(), width:160, marginLeft:8 }} />
-        <button onClick={() => setDatum(isoDate(new Date()))} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid #1d4ed8", background:"#dbeafe", color:"#1d4ed8", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
+        <button onClick={() => setDatum(isoDate(new Date()))} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid #ea580c", background:"#ffedd5", color:"#ea580c", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
       </div>
 
       {isWeekend(d) && (
         <div style={{ background:"#fef9c3", border:"1.5px solid #fcd34d", borderRadius:8, padding:"10px 14px", marginBottom:14, color:"#92400e", fontSize:13, fontWeight:600 }}>
-          🏖 Wochenende – kein regulärer Arbeitstag
+          Wochenende – kein regulärer Arbeitstag
         </div>
       )}
 
@@ -235,7 +235,7 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
       {/* Baustellen-Karten */}
       {aufBaustelle.length > 0 && (
         <div style={{ marginBottom:20 }}>
-          <div style={{ fontWeight:700, fontSize:13, color:TH.text, marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>🏗 Heute auf Baustelle</div>
+          <div style={{ fontWeight:700, fontSize:13, color:TH.text, marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Building2 size={15}/>Heute auf Baustelle</span></div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {Object.entries(
               aufBaustelle.reduce((acc, { ma, eintrag }) => {
@@ -251,7 +251,7 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
                 <div key={id} style={{ border:"1px solid "+TH.border, boxShadow:"0 2px 10px #00000012", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px #0000000d" }}>
                   <div style={{ background:col.bg, color:"#fff", padding:"8px 14px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                     <span style={{ fontWeight:700 }}>{p.name}</span>
-                    <span style={{ fontSize:12, opacity:0.85 }}>📍 {p.ort}</span>
+                    <span style={{ fontSize:12, opacity:0.85 }}><span style={{display:"inline-flex",alignItems:"center",gap:4}}><MapPin size={11}/>{p.ort}</span></span>
                   </div>
                   <div style={{ padding:"10px 14px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"5px 16px", fontSize:12 }}>
                     <Info label="Kunde" value={p.kunde} />
@@ -273,7 +273,7 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
                         ))}
                       </div>
                     </div>
-                    {p.bemerkung && <div style={{ gridColumn:"1/-1", marginTop:4, padding:"5px 10px", background:"#fef9c3", borderRadius:6, color:"#92400e", fontSize:11 }}>💬 {p.bemerkung}</div>}
+                    {p.bemerkung && <div style={{ gridColumn:"1/-1", marginTop:4, padding:"5px 10px", background:"#fef9c3", borderRadius:6, color:"#92400e", fontSize:11 }}>{p.bemerkung}</div>}
                   </div>
                 </div>
               );
@@ -285,7 +285,7 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
       {/* Abwesend */}
       {abwesend.length > 0 && (
         <div style={{ marginBottom:20 }}>
-          <div style={{ fontWeight:700, fontSize:13, color:TH.text, marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>🚫 Abwesend</div>
+          <div style={{ fontWeight:700, fontSize:13, color:TH.text, marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><CircleSlash size={15}/>Abwesend</span></div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
             {abwesend.map(({ ma, eintrag }) => {
               const ef = EINSATZ_FARBEN[eintrag.typ] || EINSATZ_FARBEN["Frei"];
@@ -350,7 +350,7 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
         <select value={filterTeam} onChange={e=>setFilterTeam(e.target.value)} style={{ padding:"6px 12px", borderRadius:8, border:"1.5px solid "+TH.border, fontSize:13, marginLeft:8 }}>
           {["Alle",...TEAM_NAMEN_AKTUELL].map(t=><option key={t}>{t}</option>)}
         </select>
-        <button onClick={()=>{setKw(getKW(heute));setKwYear(heute.getFullYear());}} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #1d4ed8", background:"#dbeafe", color:"#1d4ed8", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
+        <button onClick={()=>{setKw(getKW(heute));setKwYear(heute.getFullYear());}} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #ea580c", background:"#ffedd5", color:"#ea580c", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
       </div>
 
       <div style={{ overflowX:"auto" }}>
@@ -363,10 +363,10 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
                 const wend = isWeekend(d);
                 return (
                   <th key={isoDate(d)} style={{ ...thS(), minWidth:110, background: isHeuteFn ? "#eff6ff" : wend ? "#f9fafb" : "#f9fafb",
-                    color: isHeuteFn ? "#1d4ed8" : wend ? "#d1d5db" : "#6b7280",
-                    borderTop: isHeuteFn ? "2px solid #1d4ed8" : undefined }}>
+                    color: isHeuteFn ? "#ea580c" : wend ? "#d1d5db" : "#6b7280",
+                    borderTop: isHeuteFn ? "2px solid #ea580c" : undefined }}>
                     <div style={{ fontWeight:700 }}>{WOCHENTAGE[d.getDay()]}</div>
-                    <div style={{ fontSize:13, fontWeight:800, color: isHeuteFn ? "#1d4ed8" : wend ? "#9ca3af" : "#374151" }}>{fmtDateShort(d)}</div>
+                    <div style={{ fontSize:13, fontWeight:800, color: isHeuteFn ? "#ea580c" : wend ? "#9ca3af" : "#374151" }}>{fmtDateShort(d)}</div>
                   </th>
                 );
               })}
@@ -383,7 +383,7 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
                 ...teamMA.map(ma => (
                   <tr key={ma.id} style={{ borderBottom:"1px solid "+TH.border }}>
                     <td style={{ ...tdS(), position:"sticky", left:0, background:TH.panel, zIndex:1, borderRight:"2px solid #e5e7eb", borderLeft:`4px solid ${col.bg}`, whiteSpace:"nowrap" }}>
-                      <div style={{ fontWeight:ma.rolle==="Vorarbeiter"?700:400, color:ma.rolle==="Vorarbeiter"?col.bg:"#374151" }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</div>
+                      <div style={{ fontWeight:ma.rolle==="Vorarbeiter"?700:400, color:ma.rolle==="Vorarbeiter"?col.bg:TH.text }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</div>
                       <div style={{ fontSize:10, color:"#9ca3af" }}>{ma.rolle}</div>
                     </td>
                     {tage.map(d => {
@@ -396,7 +396,7 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
                       if (wend && !eintrag) return (
                         <td key={isoDate(d)} style={{ ...tdS(), background:"#fafafa", textAlign:"center", color:"#e5e7eb", fontSize:16 }}>—</td>
                       );
-                      if (!eintrag) return <td key={isoDate(d)} style={{ ...tdS(), background: isHeuteFn?"#eff6ff":"#fff" }} />;
+                      if (!eintrag) return <td key={isoDate(d)} style={{ ...tdS(), background: isHeuteFn?"#fff7ed":TH.panel }} />;
 
                       if (eintrag.typ==="Projekt") {
                         const p = eintrag.projekt;
@@ -405,7 +405,7 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
                           <td key={isoDate(d)} style={{ ...tdS(), background:col.light, padding:"2px 4px" }}>
                             <div style={{ background:col.light, border:"1px solid "+TH.border, boxShadow:"0 2px 10px #00000012", borderRadius:5, padding:"3px 6px", fontSize:10, borderLeft:isStart?`4px solid ${col.bg}`:undefined }}>
                               <div style={{ fontWeight:600, color:col.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:90 }}>{isStart?"▶ ":""}{p.name}</div>
-                              {isStart && <div style={{ fontSize:9, color:"#6b7280" }}>📍 {p.ort}</div>}
+                              {isStart && <div style={{ fontSize:9, color:"#6b7280" }}>{p.ort}</div>}
                             </div>
                           </td>
                         );
@@ -464,7 +464,7 @@ function Monatsansicht({ mitarbeiter, projekte, sonder }) {
           <option>Alle</option>
           {mitarbeiter.map(m=><option key={m.id}>{m.name}</option>)}
         </select>
-        <button onClick={()=>{setMonat(heute.getMonth());setJahr(heute.getFullYear());}} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #1d4ed8", background:"#dbeafe", color:"#1d4ed8", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
+        <button onClick={()=>{setMonat(heute.getMonth());setJahr(heute.getFullYear());}} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #ea580c", background:"#ffedd5", color:"#ea580c", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
       </div>
 
       <div style={{ overflowX:"auto" }}>
@@ -477,7 +477,7 @@ function Monatsansicht({ mitarbeiter, projekte, sonder }) {
                 const isH = isoDate(d)===isoDate(heute);
                 return (
                   <th key={d.getDate()} style={{ ...thS(), minWidth:30, padding:"4px 2px", background:isH?"#eff6ff":wend?"#f3f4f6":"#f9fafb",
-                    color:isH?"#1d4ed8":wend?"#d1d5db":"#6b7280", borderTop:isH?"2px solid #1d4ed8":undefined }}>
+                    color:isH?"#ea580c":wend?"#d1d5db":"#6b7280", borderTop:isH?"2px solid #ea580c":undefined }}>
                     <div style={{ fontSize:9 }}>{WOCHENTAGE[d.getDay()]}</div>
                     <div style={{ fontWeight:800, fontSize:12 }}>{d.getDate()}</div>
                   </th>
@@ -491,7 +491,7 @@ function Monatsansicht({ mitarbeiter, projekte, sonder }) {
               return (
                 <tr key={ma.id} style={{ borderBottom:"1px solid "+TH.border }}>
                   <td style={{ ...tdS(), position:"sticky", left:0, background:TH.panel, zIndex:1, borderRight:"2px solid #e5e7eb", borderLeft:`4px solid ${col.bg}`, whiteSpace:"nowrap" }}>
-                    <div style={{ fontWeight:ma.rolle==="Vorarbeiter"?700:400, color:ma.rolle==="Vorarbeiter"?col.bg:"#374151", fontSize:11 }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</div>
+                    <div style={{ fontWeight:ma.rolle==="Vorarbeiter"?700:400, color:ma.rolle==="Vorarbeiter"?col.bg:TH.text, fontSize:11 }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</div>
                     <div style={{ fontSize:9, color:"#9ca3af" }}>{ma.team}</div>
                   </td>
                   {tage.map(d => {
@@ -502,7 +502,7 @@ function Monatsansicht({ mitarbeiter, projekte, sonder }) {
                     const isH = isoDate(d)===isoDate(heute);
 
                     if (wend && !eintrag) return <td key={d.getDate()} style={{ background:TH.panel2, padding:0 }} />;
-                    if (!eintrag) return <td key={d.getDate()} style={{ background:isH?"#eff6ff":"#fff", padding:0 }} />;
+                    if (!eintrag) return <td key={d.getDate()} style={{ background:isH?"#fff7ed":TH.panel, padding:0 }} />;
 
                     if (eintrag.typ==="Projekt") {
                       const isStart = isoDate(d)===eintrag.projekt.dateStart;
@@ -682,8 +682,8 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
           </div>
         )}
         <div style={{ marginLeft:"auto", display:"flex", gap:8 }}>
-          {istLeitung && <button onClick={()=>setAnsicht("erfassen")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, background:ansicht==="erfassen"?col.bg:"#fff", color:ansicht==="erfassen"?"#fff":"#374151", fontWeight:600 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Pencil size={13}/>Erfassen</span></button>}
-          <button onClick={()=>setAnsicht("uebersicht")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, background:ansicht==="uebersicht"?col.bg:"#fff", color:ansicht==="uebersicht"?"#fff":"#374151", fontWeight:600 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><List size={13}/>Übersicht ({gespeichert.length})</span></button>
+          {istLeitung && <button onClick={()=>setAnsicht("erfassen")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, background:ansicht==="erfassen"?col.bg:TH.panel, color:ansicht==="erfassen"?"#fff":TH.text, fontWeight:600 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Pencil size={13}/>Erfassen</span></button>}
+          <button onClick={()=>setAnsicht("uebersicht")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, background:ansicht==="uebersicht"?col.bg:TH.panel, color:ansicht==="uebersicht"?"#fff":TH.text, fontWeight:600 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><List size={13}/>Übersicht ({gespeichert.length})</span></button>
         </div>
       </div>
 
@@ -719,7 +719,7 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
                   const netto=calcStunden(start,end,Number(pause));
                   const isVA=ma.rolle==="Vorarbeiter";
                   return (
-                    <tr key={ma.id} style={{ borderBottom:"1px solid "+TH.border, background:isVA?col.light:"#fff" }}>
+                    <tr key={ma.id} style={{ borderBottom:"1px solid "+TH.border, background:isVA?col.light:TH.panel }}>
                       <td style={{ ...tdS(), fontWeight:isVA?700:400, borderLeft:`4px solid ${col.bg}`, whiteSpace:"nowrap" }}>{isVA?"★ ":""}{ma.name}</td>
                       <td style={tdS()}><Badge color={col.bg}>{ma.rolle}</Badge></td>
                       <td style={{ ...tdS(), minWidth:90 }}><input type="time" value={start} onChange={e=>setFeld(ma.id,"start",e.target.value)} style={inpS()} /></td>
@@ -736,7 +736,7 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
               </tbody>
             </table>
           </div>
-          <div style={{ marginTop:12, background:"#f8fafc", border:"1.5px solid "+TH.border, borderRadius:8, padding:"10px 14px", display:"flex", gap:24, flexWrap:"wrap", fontSize:12 }}>
+          <div style={{ marginTop:12, background:TH.panel2, border:"1.5px solid "+TH.border, borderRadius:8, padding:"10px 14px", display:"flex", gap:24, flexWrap:"wrap", fontSize:12 }}>
             <div><span style={{ color:"#9ca3af", fontSize:10, fontWeight:600, textTransform:"uppercase" }}>Gesamt heute </span><span style={{ fontWeight:800, fontSize:16, color:col.bg }}>{teamMA.reduce((s,ma)=>s+calcStunden(getFeld(ma.id,"start"),getFeld(ma.id,"end"),Number(getFeld(ma.id,"pause",0))),0).toFixed(2)} h</span></div>
             <div><span style={{ color:"#9ca3af", fontSize:10, fontWeight:600, textTransform:"uppercase" }}>Eingetragen </span><span style={{ fontWeight:800, fontSize:16, color:col.bg }}>{teamMA.filter(ma=>getFeld(ma.id,"start")).length}/{teamMA.length}</span></div>
           </div>
@@ -840,7 +840,7 @@ function ProjektUebersicht({ projekte, fahrzeuge, mitarbeiter }) {
               {p.auftragssumme && <Info label="Auftragssumme" value={Number(p.auftragssumme).toLocaleString("de-DE")+" €"} />}
               {p.planStunden && <Info label="Geplante Stunden" value={p.planStunden+" h"} />}
               {p.beschreibung && <div style={{ gridColumn:"1/-1", marginTop:2, fontSize:11, color:"#6b7280" }}>{p.beschreibung}</div>}
-              {p.bemerkung&&<div style={{ gridColumn:"1/-1", marginTop:4, padding:"6px 10px", background:"#fef9c3", borderRadius:6, color:"#92400e", fontSize:11 }}>💬 {p.bemerkung}</div>}
+              {p.bemerkung&&<div style={{ gridColumn:"1/-1", marginTop:4, padding:"6px 10px", background:"#fef9c3", borderRadius:6, color:"#92400e", fontSize:11 }}>{p.bemerkung}</div>}
             </div>
           </div>
         );
@@ -885,7 +885,7 @@ function FahrzeugUebersicht({ fahrzeuge, projekte }) {
         const aktProj=projekte.find(p=>p.fzg===f.id&&p.status==="laufend");
         return (
           <div key={f.id} style={{ border:"1px solid "+TH.border, boxShadow:"0 2px 10px #00000012", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px #0000000d" }}>
-            <div style={{ background:col.bg, color:"#fff", padding:"7px 12px", fontWeight:700, fontSize:13 }}>🚐 {f.kz}</div>
+            <div style={{ background:col.bg, color:"#fff", padding:"7px 12px", fontWeight:700, fontSize:13 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Truck size={13}/>{f.kz}</span></div>
             <div style={{ padding:"10px 12px", fontSize:12, display:"flex", flexDirection:"column", gap:5 }}>
               <Info label="Typ" value={f.typ} />
               <Info label="Team" value={f.team} />
@@ -979,8 +979,8 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
     <div>
       {/* Umschalter */}
       <div style={{ display:"flex", gap:8, marginBottom:18 }}>
-        <button onClick={()=>setSeite("antrag")} style={{ padding:"8px 18px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:seite==="antrag"?"#1d4ed8":"#fff", color:seite==="antrag"?"#fff":"#374151" }}>📝 Antrag stellen</button>
-        <button onClick={()=>setSeite("freigabe")} style={{ padding:"8px 18px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:seite==="freigabe"?"#1d4ed8":"#fff", color:seite==="freigabe"?"#fff":"#374151" }}>
+        <button onClick={()=>setSeite("antrag")} style={{ padding:"8px 18px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:seite==="antrag"?"#ea580c":TH.panel, color:seite==="antrag"?"#fff":TH.text }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Pencil size={13}/>Antrag stellen</span></button>
+        <button onClick={()=>setSeite("freigabe")} style={{ padding:"8px 18px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:seite==="freigabe"?"#ea580c":TH.panel, color:seite==="freigabe"?"#fff":TH.text }}>
           ✅ Freigabe {offen.length>0 && <span style={{ background:"#dc2626", color:"#fff", borderRadius:99, padding:"0 7px", fontSize:11, marginLeft:4 }}>{offen.length}</span>}
         </button>
       </div>
@@ -1006,7 +1006,7 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
                     <button key={t} onClick={()=>setTyp(t)} style={{
                       flex:1, padding:"8px", borderRadius:8, cursor:"pointer", fontSize:13, fontWeight:600,
                       border:`1.5px solid ${typ===t?ef.border:"#e5e7eb"}`,
-                      background:typ===t?ef.bg:"#fff", color:typ===t?ef.badge:"#6b7280"
+                      background:typ===t?ef.bg:TH.panel, color:typ===t?ef.badge:TH.textMut
                     }}>{t}</button>
                   );
                 })}
@@ -1026,7 +1026,7 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
 
             {von && bis && parseDate(bis) >= parseDate(von) && (
               <div style={{ background:col.light, border:`1px solid ${col.bg}33`, borderRadius:8, padding:"8px 12px", marginBottom:14, fontSize:12, color:col.text }}>
-                📅 {fmtDate(parseDate(von))} – {fmtDate(parseDate(bis))} · <strong>{tageAnzahl(von,bis)} Tage</strong>
+                {fmtDate(parseDate(von))} – {fmtDate(parseDate(bis))} · <strong>{tageAnzahl(von,bis)} Tage</strong>
               </div>
             )}
 
@@ -1065,8 +1065,8 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
                     </div>
                     <div style={{ padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:12 }}>
                       <div style={{ fontSize:13 }}>
-                        <div style={{ fontWeight:600, color:TH.text }}>📅 {fmtDate(parseDate(a.dateStart))} – {fmtDate(parseDate(a.dateEnd))}</div>
-                        {a.grund && <div style={{ fontSize:12, color:"#6b7280", marginTop:3 }}>💬 {a.grund}</div>}
+                        <div style={{ fontWeight:600, color:TH.text }}>{fmtDate(parseDate(a.dateStart))} – {fmtDate(parseDate(a.dateEnd))}</div>
+                        {a.grund && <div style={{ fontSize:12, color:"#6b7280", marginTop:3 }}>{a.grund}</div>}
                         <div style={{ fontSize:11, color:"#9ca3af", marginTop:3 }}>Eingereicht: {fmtDate(parseDate(a.eingereicht))}</div>
                       </div>
                       <div style={{ display:"flex", gap:8 }}>
@@ -1112,7 +1112,7 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
 }
 
 // ─── Modal ─────────────────────────────────────────────────────────────────
-function Modal({ titel, onClose, children, farbe="#1d4ed8" }) {
+function Modal({ titel, onClose, children, farbe="#ea580c" }) {
   return (
     <div className="modal-hintergrund" onClick={onClose} style={{ position:"fixed", inset:0, background:"#0007", display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"40px 16px", zIndex:100, overflowY:"auto" }}>
       <div className="modal-fenster" onClick={e=>e.stopPropagation()} style={{ background:TH.panel, borderRadius:14, width:"100%", maxWidth:520, boxShadow:"0 10px 40px #0004" }}>
@@ -1133,7 +1133,7 @@ function Feld({ label, children }) {
     </div>
   );
 }
-function btnPrimary(farbe="#1d4ed8") { return { padding:"10px 20px", borderRadius:8, background:farbe, color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }; }
+function btnPrimary(farbe="#ea580c") { return { padding:"10px 20px", borderRadius:8, background:farbe, color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }; }
 const btnGhost = () => ({ padding:"10px 16px", borderRadius:8, background:TH.panel2, color:TH.text, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13 });
 
 // ─── VERWALTUNG (Stammdaten anlegen/bearbeiten/löschen) ───────────────────────
@@ -1391,7 +1391,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     <div>
       <div style={{ display:"flex", gap:8, marginBottom:18, flexWrap:"wrap", alignItems:"center" }}>
         {subTabs.map(t=>(
-          <button key={t.id} onClick={()=>setSub(t.id)} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:sub===t.id?"#1e3a5f":"#fff", color:sub===t.id?"#fff":"#374151" }}><span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>{t.Icon && <t.Icon size={14} />}{t.label}</span></button>
+          <button key={t.id} onClick={()=>setSub(t.id)} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:sub===t.id?"#ea580c":TH.panel, color:sub===t.id?"#fff":TH.text }}><span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>{t.Icon && <t.Icon size={14} />}{t.label}</span></button>
         ))}
         <button onClick={backupHerunterladen} title="Alle Daten als Sicherungsdatei herunterladen" style={{ marginLeft:"auto", padding:"7px 14px", borderRadius:8, border:"none", background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", cursor:"pointer", fontSize:12, fontWeight:700 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Save size={14}/>Backup herunterladen</span></button>
         {onReset && <button onClick={onReset} style={{ marginLeft:"auto", padding:"7px 14px", borderRadius:8, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer", fontSize:12 }}>↺ Demo-Daten zurücksetzen</button>}
@@ -1469,7 +1469,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
                   const col=getTeamColor(f.team);
                   return (
                     <tr key={f.id} style={{ borderBottom:"1px solid "+TH.border }}>
-                      <td style={{ ...tdS(), fontWeight:600, borderLeft:`4px solid ${col.bg}` }}>🚐 {f.kz}</td>
+                      <td style={{ ...tdS(), fontWeight:600, borderLeft:`4px solid ${col.bg}` }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Truck size={13}/>{f.kz}</span></td>
                       <td style={tdS()}>{f.typ}</td>
                       <td style={tdS()}><Badge color={col.bg}>{f.team}</Badge></td>
                       <td style={tdS()}>{f.tuev}</td>
@@ -1497,7 +1497,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
                   const proj=projekte.find(p=>p.id===u.projektId);
                   return (
                     <tr key={u.id} style={{ borderBottom:"1px solid "+TH.border }}>
-                      <td style={{ ...tdS(), fontWeight:600, borderLeft:"4px solid #0f766e" }}>🏨 {u.name}</td>
+                      <td style={{ ...tdS(), fontWeight:600, borderLeft:"4px solid #0f766e" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><BedDouble size={13}/>{u.name}</span></td>
                       <td style={tdS()}>{u.adresse||"–"}</td>
                       <td style={tdS()}>{u.checkin?fmtDateShort(parseDate(u.checkin)):"–"}</td>
                       <td style={tdS()}>{u.checkout?fmtDateShort(parseDate(u.checkout)):"–"}</td>
@@ -1721,7 +1721,7 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
 
       {istLeitung && zeigeForm && (
         <div style={{ background:TH.panel, border:"1.5px solid #ea580c", borderRadius:12, padding:16, marginBottom:20 }}>
-          <div style={{ fontWeight:700, fontSize:14, marginBottom:12, color:"#ea580c" }}>📝 Neuer Tagesbericht</div>
+          <div style={{ fontWeight:700, fontSize:14, marginBottom:12, color:"#ea580c" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileText size={14}/>Neuer Tagesbericht</span></div>
           <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
             <div style={{ minWidth:150 }}><Feld label="Datum"><input type="date" style={inpS()} value={f.datum} onChange={e=>set("datum",e.target.value)} /></Feld></div>
             <div style={{ flex:1, minWidth:200 }}><Feld label="Projekt"><select style={inpS()} value={f.projektId} onChange={e=>projektWaehlen(e.target.value)}><option value="">– wählen –</option>{projekte.map(p=><option key={p.id} value={p.id}>{p.name} ({p.ort})</option>)}</select></Feld></div>
@@ -2124,7 +2124,7 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
         {/* Projekte ohne Fahrzeug */}
         <div style={{ background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", overflow:"hidden", boxShadow:"0 1px 4px #0000000d" }}>
           <div style={{ background: projOhneFzg.length?"#fef3c7":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: projOhneFzg.length?"#92400e":"#166534", display:"flex", justifyContent:"space-between" }}>
-            <span>🚐 Projekte ohne Fahrzeug</span><span>{projOhneFzg.length}</span>
+            <span style={{display:"inline-flex",alignItems:"center",gap:6}}><Truck size={14}/>Projekte ohne Fahrzeug</span><span>{projOhneFzg.length}</span>
           </div>
           <div style={{ padding:"8px 14px", fontSize:12, color:TH.text }}>
             {projOhneFzg.length===0 ? <span style={{ color:"#9ca3af" }}>Alle aktiven Projekte haben ein Fahrzeug</span> :
@@ -2254,7 +2254,7 @@ export default function EinsatzplanungInner({
   TH = dunkel ? THEME_DUNKEL : THEME_HELL;
   const T = dunkel
     ? { bg:"#0f172a", panel:"#1e293b", panel2:"#334155", text:"#e2e8f0", textMut:"#94a3b8", border:"#334155", tabBar:"#1e293b" }
-    : { bg:"#f8fafc", panel:"#ffffff", panel2:"#f9fafb", text:"#1e293b", textMut:"#6b7280", border:"#e5e7eb", tabBar:"#ffffff" };
+    : { bg:TH.panel2, panel:"#ffffff", panel2:"#f9fafb", text:"#1e293b", textMut:"#6b7280", border:"#e5e7eb", tabBar:"#ffffff" };
   const warnungen = useMemo(()=>pruefKonflikte(projekte,sonder,mitarbeiter),[projekte,sonder,mitarbeiter]);
 
   function resetDaten() { if (onReset) onReset(); }
