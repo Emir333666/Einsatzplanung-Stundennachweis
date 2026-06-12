@@ -285,10 +285,11 @@ export default function App() {
 
 function Splash({ text }) {
   return (
-    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#f8fafc", fontFamily:"'Inter',system-ui,sans-serif", color:"#6b7280", fontSize:15 }}>
+    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"linear-gradient(135deg,#1e293b 0%,#334155 100%)", fontFamily:"'Inter',system-ui,sans-serif" }}>
       <div style={{ textAlign:"center" }}>
-        <div style={{ fontSize:36, marginBottom:10 }}>🏗</div>
-        {text}
+        <img src="/icon-192.png" alt="Baufox" className="splash-logo" style={{ width:72, height:72, borderRadius:16, boxShadow:"0 6px 24px #ea580c66" }} />
+        <div style={{ fontWeight:800, fontSize:22, color:"#fff", marginTop:14, letterSpacing:-0.5 }}>Baufox</div>
+        <div style={{ fontSize:12, color:"#94a3b8", marginTop:4 }}>{text}</div>
       </div>
     </div>
   );

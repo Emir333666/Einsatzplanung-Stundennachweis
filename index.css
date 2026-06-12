@@ -109,3 +109,10 @@ button:hover svg { transform: scale(1.12); }
 .inhalt > div { animation: einblenden 0.3s ease backwards; }
 .inhalt > div:nth-child(2) { animation-delay: 0.04s; }
 .inhalt > div:nth-child(3) { animation-delay: 0.08s; }
+
+/* Lade-Logo pulsiert sanft */
+.splash-logo { animation: pulsieren 1.4s ease-in-out infinite; }
+@keyframes pulsieren {
+  0%, 100% { transform: scale(1);    box-shadow: 0 6px 24px #ea580c66; }
+  50%      { transform: scale(1.07); box-shadow: 0 10px 34px #ea580c99; }
+}

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { supabase } from "./supabaseClient.js";
-import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Thermometer, CircleSlash } from "lucide-react";
+import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Plus, Thermometer, CircleSlash } from "lucide-react";
 
 // ─── Farbschema Hell/Dunkel (wird vom Schalter im Header umgestellt) ──────────
 const THEME_HELL   = { panel:"#ffffff", panel2:"#f9fafb", text:"#1f2937", textMut:"#6b7280", border:"#e5e7eb", input:"#ffffff" };
@@ -1399,7 +1399,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
 
       {sub==="projekte" && (
         <>
-          <button onClick={()=>setModal({art:"projekt"})} style={{ ...btnPrimary(), marginBottom:14 }}>+ Neues Projekt</button>
+          <button onClick={()=>setModal({art:"projekt"})} style={{ ...btnPrimary(), marginBottom:14 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Plus size={15}/>Neues Projekt</span></button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
               <thead><tr>{["Name","Kunde","Ort","Zeitraum","Team","Status","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
@@ -1429,7 +1429,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
 
       {sub==="mitarbeiter" && (
         <>
-          <button onClick={()=>setModal({art:"ma"})} style={{ ...btnPrimary(), marginBottom:14 }}>+ Neuer Mitarbeiter</button>
+          <button onClick={()=>setModal({art:"ma"})} style={{ ...btnPrimary(), marginBottom:14 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Plus size={15}/>Neuer Mitarbeiter</span></button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
               <thead><tr>{["Name","Rolle","Team","Login-E-Mail","Telefon","Quali.","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
@@ -1460,7 +1460,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
 
       {sub==="fahrzeuge" && (
         <>
-          <button onClick={()=>setModal({art:"fzg"})} style={{ ...btnPrimary(), marginBottom:14 }}>+ Neues Fahrzeug</button>
+          <button onClick={()=>setModal({art:"fzg"})} style={{ ...btnPrimary(), marginBottom:14 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Plus size={15}/>Neues Fahrzeug</span></button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
               <thead><tr>{["Kennzeichen","Typ","Team","TÜV","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
@@ -1488,7 +1488,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
 
       {sub==="unterkuenfte" && (
         <>
-          <button onClick={()=>setModal({art:"unterkunft"})} style={{ ...btnPrimary("#0f766e"), marginBottom:14 }}>+ Neue Unterkunft</button>
+          <button onClick={()=>setModal({art:"unterkunft"})} style={{ ...btnPrimary("#0f766e"), marginBottom:14 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Plus size={15}/>Neue Unterkunft</span></button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
               <thead><tr>{["Name","Adresse","Check-in","Check-out","Zimmer","Projekt","€/Nacht","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
@@ -1519,7 +1519,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
 
       {sub==="werkzeuge" && (
         <>
-          <button onClick={()=>setModal({art:"werkzeug"})} style={{ ...btnPrimary("#475569"), marginBottom:14 }}>+ Neues Werkzeug</button>
+          <button onClick={()=>setModal({art:"werkzeug"})} style={{ ...btnPrimary("#475569"), marginBottom:14 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Plus size={15}/>Neues Werkzeug</span></button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
               <thead><tr>{["Bezeichnung","Typ","Seriennr.","Zustand","Zugeordnet","Prüftermin","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
@@ -1716,7 +1716,7 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
   return (
     <div>
       {istLeitung && !zeigeForm && (
-        <button onClick={()=>setZeigeForm(true)} style={{ padding:"10px 20px", borderRadius:8, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13, marginBottom:16 }}>+ Neuer Tagesbericht</button>
+        <button onClick={()=>setZeigeForm(true)} style={{ padding:"10px 20px", borderRadius:8, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13, marginBottom:16 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Plus size={15}/>Neuer Tagesbericht</span></button>
       )}
 
       {istLeitung && zeigeForm && (
@@ -1944,7 +1944,7 @@ function TeamVerwaltung({ teams, setTeams, mitarbeiter, projekte, fahrzeuge }) {
     <div>
       <div style={{ display:"flex", gap:10, marginBottom:16, maxWidth:420 }}>
         <input style={inpS()} value={neuName} onChange={e=>setNeuName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&anlegen()} placeholder="Neuer Team-Name, z.B. Reparatur-Trupp Nord" />
-        <button onClick={anlegen} style={btnPrimary("#ea580c")}>+ Anlegen</button>
+        <button onClick={anlegen} style={btnPrimary("#ea580c")}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Plus size={15}/>Anlegen</span></button>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))", gap:12 }}>
         {(teams||[]).map(t=>{
@@ -2248,6 +2248,7 @@ export default function EinsatzplanungInner({
 
   const [tab, setTab] = useState(istAdmin ? "dashboard" : "heute");
   const [menueOffen, setMenueOffen] = useState(false);
+  useEffect(()=>{ window.scrollTo({ top:0, behavior:"smooth" }); }, [tab]);
   const [dunkel, setDunkel] = useState(()=>{ try { return localStorage.getItem("baufox-theme")==="dunkel"; } catch(e){ return false; } });
   useEffect(()=>{ try { localStorage.setItem("baufox-theme", dunkel?"dunkel":"hell"); } catch(e){} }, [dunkel]);
   if (teams && teams.length) setTeamListe(teams);
