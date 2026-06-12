@@ -16,6 +16,7 @@ const toDbProjekt  = p => ({
   auftragssumme: p.auftragssumme!=null && p.auftragssumme!=="" ? Number(p.auftragssumme) : null,
   plan_stunden: p.planStunden!=null && p.planStunden!=="" ? Number(p.planStunden) : null,
   plan_kosten: p.planKosten!=null && p.planKosten!=="" ? Number(p.planKosten) : null,
+  mindestlohn: p.mindestlohn!=null && p.mindestlohn!=="" ? Number(p.mindestlohn) : null,
   beschreibung:p.beschreibung||null
 });
 const toAppSonder = r => ({ ...r, dateStart:r.date_start, dateEnd:r.date_end });
