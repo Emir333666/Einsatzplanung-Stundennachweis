@@ -593,6 +593,32 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
     const sumSpesen = sorted.reduce((s,e)=>s+(Number(e.spesen)||0),0);
     const sumUeb = sorted.filter(e=>e.uebernachtung).length;
     const sumUeberstd = sorted.reduce((s,e)=>s+Math.max(0,(Number(e.arbeitsstunden)||0)-8),0);
+    // Pro Mitarbeiter zusammenfassen – über alle Teams hinweg. Die Stunden haengen
+    // am Mitarbeiter (maId), nicht am Team. Wer in mehreren Teams war, erscheint
+    // trotzdem nur einmal mit seiner Gesamtsumme.
+    const proMa = {};
+    sorted.forEach(e=>{
+      const key = e.maId!=null ? e.maId : (e.maName||"?");
+      if (!proMa[key]) proMa[key] = { name:e.maName||"–", std:0, ueber:0, fahrt:0, ueb:0, spesen:0, tage:0 };
+      const a = proMa[key];
+      a.std    += Number(e.arbeitsstunden)||0;
+      a.ueber  += Math.max(0,(Number(e.arbeitsstunden)||0)-8);
+      a.fahrt  += Number(e.fahrzeit)||0;
+      a.ueb    += e.uebernachtung?1:0;
+      a.spesen += Number(e.spesen)||0;
+      a.tage   += 1;
+    });
+    const maRows = Object.values(proMa)
+      .sort((a,b)=>String(a.name).localeCompare(String(b.name)))
+      .map(a=>`<tr>
+        <td><b>${esc(a.name)}</b></td>
+        <td class="c"><b>${esc(a.std.toFixed(2))} h</b></td>
+        <td class="c">${a.ueber>0?esc(a.ueber.toFixed(2))+" h":"–"}</td>
+        <td class="c">${a.fahrt>0?esc(a.fahrt.toFixed(1))+" h":"–"}</td>
+        <td class="c">${a.tage}</td>
+        <td class="c">${a.ueb||"–"}</td>
+        <td class="c">${a.spesen>0?esc(a.spesen.toFixed(2))+" €":"–"}</td>
+      </tr>`).join("");
     const heute = new Date();
     const rows = sorted.map(e=>`<tr>
       <td>${esc(fmtDate(parseDate(e.datum)))}</td><td>${esc(e.wochentag||"")}</td><td class="c">KW ${esc(e.kw)}</td>
@@ -614,6 +640,12 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
       td{padding:5px 7px;border-bottom:1px solid #e2e8f0;}
       td.c{text-align:center;}
       tr:nth-child(even) td{background:#f8fafc;}
+      .abschnitt{font-size:14px;margin:22px 0 8px;color:#1e293b;border-left:4px solid #ea580c;padding-left:8px;}
+      .proma{border-collapse:collapse;width:100%;font-size:11px;margin-bottom:4px;}
+      .proma th{background:#ea580c;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.4px;}
+      .proma td{padding:5px 8px;border-bottom:1px solid #e2e8f0;}
+      .proma td.c{text-align:center;}
+      .proma tr:nth-child(even) td{background:#fff7ed;}
       .summen{margin-top:14px;display:flex;gap:24px;font-size:12px;border-top:2px solid #ea580c;padding-top:10px;}
       .summen b{color:#ea580c;}
       .fuss{margin-top:34px;display:flex;gap:60px;font-size:11px;color:#64748b;}
@@ -624,6 +656,9 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
       <div class="meta">Erstellt am ${esc(fmtDate(heute))} · ${sorted.length} Einträge</div>
       <table><thead><tr><th>Datum</th><th>Tag</th><th>KW</th><th>Mitarbeiter</th><th>Projekt</th><th>Beginn</th><th>Ende</th><th>Pause</th><th>Arbeitsstd.</th><th>Fahrzeit</th><th>Übern.</th><th>Spesen</th><th>Bemerkung</th></tr></thead>
       <tbody>${rows}</tbody></table>
+      <h2 class="abschnitt">Stunden pro Mitarbeiter</h2>
+      <table class="proma"><thead><tr><th>Mitarbeiter</th><th>Arbeitsstd.</th><th>Überstd.</th><th>Fahrzeit</th><th>Tage</th><th>Übern.</th><th>Spesen</th></tr></thead>
+      <tbody>${maRows}</tbody></table>
       <div class="summen">
         <span>Arbeitsstunden gesamt: <b>${sumStd.toFixed(2)} h</b></span>
         <span>Überstunden gesamt: <b>${sumUeberstd.toFixed(2)} h</b></span>
