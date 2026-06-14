@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, memo } from "react";
 import { supabase } from "./supabaseClient.js";
 import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Plus, Bell, MessageCircle, Send, Inbox, Thermometer, CircleSlash } from "lucide-react";
 
@@ -2452,6 +2452,24 @@ function darfTab(rolle, tabId) {
 }
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
+// ── Schutz gegen Zurücksetzen offener Formulare ──────────────────────────────
+// Verhindert, dass die Verwaltungs-Seite (und damit ein offenes Formular wie
+// "Neuer Mitarbeiter") beim 10-Sekunden-Hintergrundladen neu aufgebaut wird.
+// Es wird nur dann neu aufgebaut, wenn sich echte Daten oder das Design ändern.
+const verwaltungGleich = (a, b) =>
+  a.projekte === b.projekte &&
+  a.mitarbeiter === b.mitarbeiter &&
+  a.fahrzeuge === b.fahrzeuge &&
+  a.unterkuenfte === b.unterkuenfte &&
+  a.werkzeuge === b.werkzeuge &&
+  a.sonder === b.sonder &&
+  a.antraege === b.antraege &&
+  a.stunden === b.stunden &&
+  a.berichte === b.berichte &&
+  a.teams === b.teams &&
+  a.dunkel === b.dunkel;
+const VerwaltungMemo = memo(Verwaltung, verwaltungGleich);
+
 export default function EinsatzplanungInner({
   projekte, setProjekte, mitarbeiter, setMitarbeiter,
   sonder, setSonder, antraege, setAntraege, fahrzeuge, setFahrzeuge,
@@ -2795,7 +2813,7 @@ export default function EinsatzplanungInner({
         {tab==="fahrzeuge"    && darfTab(meineRolle,"fahrzeuge")    && <FahrzeugUebersicht fahrzeuge={fahrzeuge} projekte={projekte} />}
         {tab==="unterkuenfte" && darfTab(meineRolle,"unterkuenfte") && <UnterkunftUebersicht unterkuenfte={vUnterkuenfte} projekte={vProjekte} />}
         {tab==="werkzeuge"    && darfTab(meineRolle,"werkzeuge")    && <WerkzeugUebersicht werkzeuge={werkzeuge} mitarbeiter={mitarbeiter} />}
-        {tab==="verwaltung"   && istAdmin                          && <Verwaltung projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte} werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge} sonder={sonder} antraege={antraege} stunden={stunden} berichte={berichte} teams={teams} setTeams={setTeams} onReset={onReset} />}
+        {tab==="verwaltung"   && istAdmin                          && <VerwaltungMemo projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte} werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge} sonder={sonder} antraege={antraege} stunden={stunden} berichte={berichte} teams={teams} setTeams={setTeams} onReset={onReset} dunkel={dunkel} />}
         {tab==="warnungen"    && darfTab(meineRolle,"warnungen")    && <WarnPanel warnungen={warnungen} />}
       </div>
     </div>
