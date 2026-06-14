@@ -2432,8 +2432,8 @@ const ADMIN_EMAILS = ["emircan.g@cc-schienentechnik.de"];
 
 function ermittleRolle(userEmail, mitarbeiter) {
   const mail = (userEmail||"").trim().toLowerCase();
-  if (ADMIN_EMAILS.includes(mail)) return { rolle:"Admin", ma:null };
   const ma = mitarbeiter.find(m => (m.email||"").trim().toLowerCase() === mail && mail!=="");
+  if (ADMIN_EMAILS.includes(mail)) return { rolle:"Admin", ma: ma || null };
   if (ma) return { rolle: ma.rolle, ma };
   return { rolle:"Unbekannt", ma:null };
 }
