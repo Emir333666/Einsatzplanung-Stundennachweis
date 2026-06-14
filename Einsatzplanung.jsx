@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient.js";
-import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Plus, Bell, MessageCircle, Send, Thermometer, CircleSlash } from "lucide-react";
+import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Plus, Bell, MessageCircle, Send, Inbox, Thermometer, CircleSlash } from "lucide-react";
 
 // ─── Farbschema Hell/Dunkel (wird vom Schalter im Header umgestellt) ──────────
 const THEME_HELL   = { panel:"#ffffff", panel2:"#f9fafb", text:"#1f2937", textMut:"#6b7280", border:"#e5e7eb", input:"#ffffff" };
@@ -593,32 +593,6 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
     const sumSpesen = sorted.reduce((s,e)=>s+(Number(e.spesen)||0),0);
     const sumUeb = sorted.filter(e=>e.uebernachtung).length;
     const sumUeberstd = sorted.reduce((s,e)=>s+Math.max(0,(Number(e.arbeitsstunden)||0)-8),0);
-    // Pro Mitarbeiter zusammenfassen – über alle Teams hinweg. Die Stunden haengen
-    // am Mitarbeiter (maId), nicht am Team. Wer in mehreren Teams war, erscheint
-    // trotzdem nur einmal mit seiner Gesamtsumme.
-    const proMa = {};
-    sorted.forEach(e=>{
-      const key = e.maId!=null ? e.maId : (e.maName||"?");
-      if (!proMa[key]) proMa[key] = { name:e.maName||"–", std:0, ueber:0, fahrt:0, ueb:0, spesen:0, tage:0 };
-      const a = proMa[key];
-      a.std    += Number(e.arbeitsstunden)||0;
-      a.ueber  += Math.max(0,(Number(e.arbeitsstunden)||0)-8);
-      a.fahrt  += Number(e.fahrzeit)||0;
-      a.ueb    += e.uebernachtung?1:0;
-      a.spesen += Number(e.spesen)||0;
-      a.tage   += 1;
-    });
-    const maRows = Object.values(proMa)
-      .sort((a,b)=>String(a.name).localeCompare(String(b.name)))
-      .map(a=>`<tr>
-        <td><b>${esc(a.name)}</b></td>
-        <td class="c"><b>${esc(a.std.toFixed(2))} h</b></td>
-        <td class="c">${a.ueber>0?esc(a.ueber.toFixed(2))+" h":"–"}</td>
-        <td class="c">${a.fahrt>0?esc(a.fahrt.toFixed(1))+" h":"–"}</td>
-        <td class="c">${a.tage}</td>
-        <td class="c">${a.ueb||"–"}</td>
-        <td class="c">${a.spesen>0?esc(a.spesen.toFixed(2))+" €":"–"}</td>
-      </tr>`).join("");
     const heute = new Date();
     const rows = sorted.map(e=>`<tr>
       <td>${esc(fmtDate(parseDate(e.datum)))}</td><td>${esc(e.wochentag||"")}</td><td class="c">KW ${esc(e.kw)}</td>
@@ -640,12 +614,6 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
       td{padding:5px 7px;border-bottom:1px solid #e2e8f0;}
       td.c{text-align:center;}
       tr:nth-child(even) td{background:#f8fafc;}
-      .abschnitt{font-size:14px;margin:22px 0 8px;color:#1e293b;border-left:4px solid #ea580c;padding-left:8px;}
-      .proma{border-collapse:collapse;width:100%;font-size:11px;margin-bottom:4px;}
-      .proma th{background:#ea580c;color:#fff;padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.4px;}
-      .proma td{padding:5px 8px;border-bottom:1px solid #e2e8f0;}
-      .proma td.c{text-align:center;}
-      .proma tr:nth-child(even) td{background:#fff7ed;}
       .summen{margin-top:14px;display:flex;gap:24px;font-size:12px;border-top:2px solid #ea580c;padding-top:10px;}
       .summen b{color:#ea580c;}
       .fuss{margin-top:34px;display:flex;gap:60px;font-size:11px;color:#64748b;}
@@ -656,9 +624,6 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
       <div class="meta">Erstellt am ${esc(fmtDate(heute))} · ${sorted.length} Einträge</div>
       <table><thead><tr><th>Datum</th><th>Tag</th><th>KW</th><th>Mitarbeiter</th><th>Projekt</th><th>Beginn</th><th>Ende</th><th>Pause</th><th>Arbeitsstd.</th><th>Fahrzeit</th><th>Übern.</th><th>Spesen</th><th>Bemerkung</th></tr></thead>
       <tbody>${rows}</tbody></table>
-      <h2 class="abschnitt">Stunden pro Mitarbeiter</h2>
-      <table class="proma"><thead><tr><th>Mitarbeiter</th><th>Arbeitsstd.</th><th>Überstd.</th><th>Fahrzeit</th><th>Tage</th><th>Übern.</th><th>Spesen</th></tr></thead>
-      <tbody>${maRows}</tbody></table>
       <div class="summen">
         <span>Arbeitsstunden gesamt: <b>${sumStd.toFixed(2)} h</b></span>
         <span>Überstunden gesamt: <b>${sumUeberstd.toFixed(2)} h</b></span>
@@ -2014,40 +1979,115 @@ function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeug
   );
 }
 
+// ─── MEIN POSTFACH (persönliche Stundenübersicht für jeden) ───────────────────
+function MeinPostfach({ meinMA, meineRolle, userEmail, stunden, projekte }) {
+  const [zeitraum, setZeitraum] = useState("monat"); // woche | monat | alle
+
+  if (!meinMA) {
+    return (
+      <div>
+        <h2 style={{ margin:"0 0 12px", fontSize:18, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><Inbox size={18}/> Mein Postfach</h2>
+        <div style={{ background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", padding:24, textAlign:"center", color:TH.textMut, fontSize:13 }}>
+          Dein Login ist noch keinem Mitarbeiter zugeordnet. Sobald der Administrator deine E-Mail (<strong>{userEmail}</strong>) einträgt, erscheinen hier deine Arbeitsstunden.
+        </div>
+      </div>
+    );
+  }
+
+  const meine = (stunden||[]).filter(e=>e.maId===meinMA.id);
+  const heute = new Date(); heute.setHours(0,0,0,0);
+  const jetztKW = getKW(heute);
+  const jahr = heute.getFullYear();
+
+  const gefiltert = meine.filter(e=>{
+    const d = parseDate(e.datum);
+    if (zeitraum==="woche") return getKW(d)===jetztKW && d.getFullYear()===jahr;
+    if (zeitraum==="monat") return d.getMonth()===heute.getMonth() && d.getFullYear()===jahr;
+    return true;
+  });
+
+  const sortiert = [...gefiltert].sort((a,b)=>(b.datum||"").localeCompare(a.datum||""));
+  const sumStd = gefiltert.reduce((s,e)=>s+(Number(e.arbeitsstunden)||0),0);
+  const sumUe  = gefiltert.reduce((s,e)=>s+Math.max(0,(Number(e.arbeitsstunden)||0)-8),0);
+  const tage   = new Set(gefiltert.map(e=>e.datum)).size;
+
+  const Karte = ({ label, wert, farbe }) => (
+    <div style={{ flex:1, minWidth:120, background:TH.panel, border:"1px solid "+TH.border, borderLeft:"5px solid "+farbe, borderRadius:12, boxShadow:"0 1px 4px #0000000d", padding:"12px 14px" }}>
+      <div style={{ fontSize:11, color:TH.textMut, fontWeight:600 }}>{label}</div>
+      <div style={{ fontSize:22, fontWeight:800, color:TH.text, marginTop:2 }}>{wert}</div>
+    </div>
+  );
+
+  return (
+    <div>
+      <h2 style={{ margin:"0 0 4px", fontSize:18, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><Inbox size={18}/> Mein Postfach</h2>
+      <div style={{ fontSize:12.5, color:TH.textMut, marginBottom:14 }}>{meinMA.name} · {meinMA.team} · {meineRolle}</div>
+
+      <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
+        {[["woche","Diese Woche"],["monat","Dieser Monat"],["alle","Alles"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setZeitraum(id)} style={{ padding:"7px 14px", borderRadius:99, border:"1.5px solid "+(zeitraum===id?"#ea580c":TH.border), background:zeitraum===id?"#ea580c":TH.panel, color:zeitraum===id?"#fff":TH.text, cursor:"pointer", fontSize:12.5, fontWeight:700 }}>{label}</button>
+        ))}
+      </div>
+
+      <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:16 }}>
+        <Karte label="Arbeitsstunden" wert={sumStd.toFixed(2).replace(".",",")+" h"} farbe="#ea580c" />
+        <Karte label="davon Überstunden" wert={sumUe.toFixed(2).replace(".",",")+" h"} farbe="#dc2626" />
+        <Karte label="Arbeitstage" wert={tage} farbe="#059669" />
+      </div>
+
+      <div style={{ background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", overflow:"hidden" }}>
+        <div style={{ overflowX:"auto" }}>
+          <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12.5, minWidth:540 }}>
+            <thead>
+              <tr style={{ background:TH.panel2, color:TH.textMut, textAlign:"left" }}>
+                <th style={{ padding:"9px 12px" }}>Datum</th>
+                <th style={{ padding:"9px 12px" }}>Tag</th>
+                <th style={{ padding:"9px 12px" }}>Projekt</th>
+                <th style={{ padding:"9px 12px" }}>Von–Bis</th>
+                <th style={{ padding:"9px 12px", textAlign:"right" }}>Stunden</th>
+                <th style={{ padding:"9px 12px", textAlign:"right" }}>Überstd.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortiert.map(e=>{
+                const ue = Math.max(0,(Number(e.arbeitsstunden)||0)-8);
+                return (
+                  <tr key={e.id} style={{ borderTop:"1px solid "+TH.border, color:TH.text }}>
+                    <td style={{ padding:"9px 12px" }}>{fmtDate(parseDate(e.datum))}</td>
+                    <td style={{ padding:"9px 12px" }}>{(e.wochentag||"").slice(0,2)}</td>
+                    <td style={{ padding:"9px 12px" }}>{e.projekt||"–"}</td>
+                    <td style={{ padding:"9px 12px" }}>{e.start||"–"}{e.end?"–"+e.end:""}</td>
+                    <td style={{ padding:"9px 12px", textAlign:"right", fontWeight:700 }}>{Number(e.arbeitsstunden||0).toFixed(2).replace(".",",")}</td>
+                    <td style={{ padding:"9px 12px", textAlign:"right", color:ue>0?"#dc2626":TH.textMut, fontWeight:ue>0?700:400 }}>{ue>0?ue.toFixed(2).replace(".",","):"–"}</td>
+                  </tr>
+                );
+              })}
+              {!sortiert.length && <tr><td colSpan={6} style={{ padding:22, textAlign:"center", color:TH.textMut }}>Keine Stunden in diesem Zeitraum.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div style={{ marginTop:8, fontSize:11, color:TH.textMut }}>Deine Stunden werden von deinem Vorarbeiter erfasst. Bei Unstimmigkeiten sprich ihn an.</div>
+    </div>
+  );
+}
+
 // ─── TEAM-CHAT (Alle + Team-Kanäle) ───────────────────────────────────────────
 function TeamChat({ meinMA, meineRolle, userEmail }) {
   const istLeitung = ["Admin","Projektleiter","Bauleiter"].includes(meineRolle);
   const darfSchreiben = ["Admin","Projektleiter","Bauleiter","Vorarbeiter"].includes(meineRolle);
   const kanaele = ["Alle", ...(istLeitung ? TEAM_NAMEN_AKTUELL : TEAM_NAMEN_AKTUELL.filter(t=>meinMA && t===meinMA.team))];
   const [kanal, setKanal] = useState("Alle");
-  const [alleNachrichten, setAlleNachrichten] = useState([]);
+  const [nachrichten, setNachrichten] = useState([]);
   const [text, setText] = useState("");
   const [laedt, setLaedt] = useState(true);
-  const [gelesen, setGelesen] = useState(()=>{ try { return JSON.parse(localStorage.getItem("baufox-chat-gelesen")||"{}"); } catch { return {}; } });
   const endeRef = useRef(null);
   const meinName = meinMA?.name || userEmail || "Unbekannt";
 
-  const nachrichten = alleNachrichten.filter(n=>n.kanal===kanal);
-
-  function alsGelesen(k) {
-    setGelesen(p=>{
-      const neu = { ...p, [k]: new Date().toISOString() };
-      try { localStorage.setItem("baufox-chat-gelesen", JSON.stringify(neu)); } catch (_) {}
-      return neu;
-    });
-  }
-
-  // Ungelesene Nachrichten pro Kanal (nicht eigene, max. 7 Tage zurück wenn nie geöffnet)
-  function ungelesen(k) {
-    const seit = gelesen[k] ? new Date(gelesen[k]) : new Date(Date.now() - 7*24*60*60*1000);
-    return alleNachrichten.filter(n => n.kanal===k && (!n.absender_email || n.absender_email!==userEmail) && new Date(n.created_at) > seit).length;
-  }
-
   async function laden(scrollen) {
-    const { data } = await supabase.from("nachrichten").select("*").order("created_at", { ascending:false }).limit(500);
-    setAlleNachrichten((data||[]).slice().reverse());
+    const { data } = await supabase.from("nachrichten").select("*").eq("kanal", kanal).order("created_at", { ascending:true }).limit(200);
+    setNachrichten(data||[]);
     setLaedt(false);
-    alsGelesen(kanal);
     if (scrollen) setTimeout(()=>endeRef.current?.scrollIntoView({ behavior:"smooth" }), 80);
   }
 
@@ -2063,7 +2103,7 @@ function TeamChat({ meinMA, meineRolle, userEmail }) {
     if (!t) return;
     setText("");
     const neu = { id:"N"+Date.now(), kanal, absender:meinName, absender_email:userEmail||"", text:t };
-    setAlleNachrichten(p=>[...p, { ...neu, created_at:new Date().toISOString() }]);
+    setNachrichten(p=>[...p, { ...neu, created_at:new Date().toISOString() }]);
     setTimeout(()=>endeRef.current?.scrollIntoView({ behavior:"smooth" }), 50);
     await supabase.from("nachrichten").insert(neu);
     laden(false);
@@ -2078,13 +2118,7 @@ function TeamChat({ meinMA, meineRolle, userEmail }) {
         {kanaele.map(k=>{
           const col = k==="Alle" ? { bg:"#ea580c", light:"#ffedd5" } : getTeamColor(k);
           const aktiv = kanal===k;
-          const anz = aktiv ? 0 : ungelesen(k);
-          return (
-            <button key={k} onClick={()=>{ setKanal(k); alsGelesen(k); }} style={{ position:"relative", padding:"7px 14px", borderRadius:99, border:"1.5px solid "+(aktiv?col.bg:TH.border), background:aktiv?col.bg:TH.panel, color:aktiv?"#fff":TH.text, cursor:"pointer", fontSize:12.5, fontWeight:700 }}>
-              {k}
-              {anz>0 && <span style={{ position:"absolute", top:-7, right:-7, background:"#dc2626", color:"#fff", borderRadius:99, minWidth:19, height:19, display:"inline-flex", alignItems:"center", justifyContent:"center", fontSize:10.5, fontWeight:800, padding:"0 5px", border:"2px solid "+TH.panel, boxSizing:"border-box" }}>{anz>99?"99+":anz}</span>}
-            </button>
-          );
+          return <button key={k} onClick={()=>setKanal(k)} style={{ padding:"7px 14px", borderRadius:99, border:"1.5px solid "+(aktiv?col.bg:TH.border), background:aktiv?col.bg:TH.panel, color:aktiv?"#fff":TH.text, cursor:"pointer", fontSize:12.5, fontWeight:700 }}>{k}</button>;
         })}
       </div>
       <div style={{ background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", display:"flex", flexDirection:"column", height:"min(62vh, 560px)" }}>
@@ -2408,10 +2442,10 @@ function ermittleRolle(userEmail, mitarbeiter) {
 function darfTab(rolle, tabId) {
   if (rolle==="Admin") return true;
   const rechte = {
-    "Projektleiter": ["dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
-    "Bauleiter":   ["dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
-    "Vorarbeiter": ["heute","woche","monat","stundenzettel","berichte","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
-    "Monteur":     ["heute","woche","monat","stundenzettel","berichte","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
+    "Projektleiter": ["postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Bauleiter":   ["postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Vorarbeiter": ["postfach","heute","woche","monat","stundenzettel","berichte","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
+    "Monteur":     ["postfach","heute","woche","monat","stundenzettel","berichte","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Unbekannt":   ["heute","woche","monat"],
   };
   return (rechte[rolle]||rechte["Unbekannt"]).includes(tabId);
@@ -2641,6 +2675,7 @@ export default function EinsatzplanungInner({
   function resetDaten() { if (onReset) onReset(); }
 
   const alleTabs = [
+    { id:"postfach",     label:"Mein Postfach", Icon:Inbox },
     { id:"dashboard",    label:"Dashboard", Icon:LayoutDashboard },
     { id:"kosten",       label:"Kosten", Icon:Euro },
     { id:"assistent",    label:"Assistent", Icon:Sparkles },
@@ -2751,6 +2786,7 @@ export default function EinsatzplanungInner({
         {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} />}
         {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} />}
         {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={vMitarbeiter} projekte={vProjekte} stunden={vStunden} setStunden={setStunden} rolle={meineRolle} meinMA={meinMA} />}
+        {tab==="postfach" && <MeinPostfach meinMA={meinMA} meineRolle={meineRolle} userEmail={userEmail} stunden={stunden} projekte={projekte} />}
         {tab==="chat" && darfTab(meineRolle,"chat") && <TeamChat meinMA={meinMA} meineRolle={meineRolle} userEmail={userEmail} />}
         {tab==="berichte"     && darfTab(meineRolle,"berichte")     && <Tagesberichte projekte={vProjekte} mitarbeiter={vMitarbeiter} berichte={vBerichte} setBerichte={setBerichte} rolle={meineRolle} meinMA={meinMA} userEmail={userEmail} />}
         {tab==="antraege"     && darfTab(meineRolle,"antraege")     && <Antraege mitarbeiter={vMitarbeiter} antraege={vAntraege} setAntraege={setAntraege} setSonder={setSonder} />}
