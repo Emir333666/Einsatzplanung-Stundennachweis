@@ -2586,7 +2586,7 @@ function messprotokollPDF(p) {
   oeffneDruck(html);
 }
 
-function MessprotokollEditor({ start, projekte, onSave, onCancel, onDelete }) {
+function MessprotokollEditor({ start, projekte, onSave, onSaveStay, onCancel, onDelete }) {
   const [f, setF] = useState(start);
   const set = (k,v) => setF(p=>({ ...p, [k]:v }));
   const punkte = f.punkte || [];
@@ -2669,7 +2669,7 @@ function MessprotokollEditor({ start, projekte, onSave, onCancel, onDelete }) {
 
       <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:6 }}>
         <button onClick={speichern} style={btnPrimary(MP_BLAU)}>Speichern</button>
-        <button onClick={()=>messprotokollPDF(mitName())} style={{ ...btnGhost(), display:"flex", alignItems:"center", gap:6 }}><FileDown size={15}/> PDF / Druck</button>
+        <button onClick={()=>{ const m=mitName(); onSaveStay&&onSaveStay(m); messprotokollPDF(m); }} style={{ ...btnGhost(), display:"flex", alignItems:"center", gap:6 }}><FileDown size={15}/> PDF / Druck</button>
         <button onClick={onCancel} style={btnGhost()}>Abbrechen</button>
         {onDelete && <button onClick={onDelete} style={{ ...btnGhost(), color:"#dc2626", marginLeft:"auto" }}>Löschen</button>}
       </div>
@@ -2705,6 +2705,14 @@ function Messprotokolle({ projekte, meinMA, userEmail, messprotokolle, setMesspr
     });
     setEditId(null);
   };
+  const speichernBleiben = (prot) => {
+    setMessprotokolle(prev => {
+      const arr = (prev||[]).slice();
+      const i = arr.findIndex(x=>x.id===prot.id);
+      if (i>=0) arr[i]=prot; else arr.unshift(prot);
+      return arr;
+    });
+  };
   const loeschen = (id) => {
     if (!window.confirm("Dieses Messprotokoll wirklich löschen?")) return;
     setMessprotokolle(prev => (prev||[]).filter(x=>x.id!==id));
@@ -2715,7 +2723,7 @@ function Messprotokolle({ projekte, meinMA, userEmail, messprotokolle, setMesspr
     const start = editId==="neu" ? neuesProtokoll() : liste.find(x=>x.id===editId);
     if (!start) { setEditId(null); return null; }
     return <MessprotokollEditor key={editId} start={start} projekte={projekte}
-             onSave={speichern} onCancel={()=>setEditId(null)} onDelete={editId==="neu"?null:()=>loeschen(start.id)} />;
+             onSave={speichern} onSaveStay={speichernBleiben} onCancel={()=>setEditId(null)} onDelete={editId==="neu"?null:()=>loeschen(start.id)} />;
   }
 
   const anzAuss = (p) => { let n=0; (p.punkte||[]).forEach(pt=>{ if (mpRot(mpAbw(pt.hoehe,p.hoeheSoll),p.hoeheTol)) n++; if (mpRot(mpAbw(pt.flucht,p.fluchtSoll),p.fluchtTol)) n++; }); return n; };
