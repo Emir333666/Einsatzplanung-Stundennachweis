@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect, useRef, memo } from "react";
+import { useState, useMemo, useEffect, useRef, memo, useCallback } from "react";
 import { supabase } from "./supabaseClient.js";
-import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Plus, Bell, MessageCircle, Send, Inbox, Thermometer, CircleSlash } from "lucide-react";
+import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Plus, Bell, MessageCircle, Send, Inbox, Thermometer, CircleSlash, Ruler } from "lucide-react";
 
 // ─── Farbschema Hell/Dunkel (wird vom Schalter im Header umgestellt) ──────────
 const THEME_HELL   = { panel:"#ffffff", panel2:"#f9fafb", text:"#1f2937", textMut:"#6b7280", border:"#e5e7eb", input:"#ffffff" };
@@ -2439,13 +2439,326 @@ function ermittleRolle(userEmail, mitarbeiter) {
 }
 
 // Welche Tabs darf welche Rolle sehen?
+// ─── MESSPROTOKOLLE (Höhe & Flucht, bis 300 Punkte, PDF mit Firmenlogo) ──────
+const MP_BLAU = "#2e3192";
+const FIRMENLOGO = "/firmenlogo.jpg"; // muss im Ordner public/ liegen
+
+function mpAbw(ist, soll) {
+  const i = parseFloat(String(ist).replace(",", "."));
+  const s = parseFloat(String(soll).replace(",", "."));
+  if (isNaN(i) || isNaN(s)) return null;
+  return Math.round((i - s) * 100) / 100;
+}
+function mpRot(abw, tol) {
+  if (abw == null) return false;
+  const t = parseFloat(String(tol).replace(",", "."));
+  if (isNaN(t)) return false;
+  return Math.abs(abw) > t;
+}
+
+const MesspunktRow = memo(function MesspunktRow({ idx, punkt, hoeheSoll, hoeheTol, fluchtSoll, fluchtTol, onChange, onDelete }) {
+  const aH = mpAbw(punkt.hoehe, hoeheSoll);
+  const aF = mpAbw(punkt.flucht, fluchtSoll);
+  const rH = mpRot(aH, hoeheTol);
+  const rF = mpRot(aF, fluchtTol);
+  const tdS = { padding:"3px 4px", borderBottom:"1px solid "+TH.border, fontSize:12, textAlign:"center", color:TH.text };
+  const istInp = (rot) => ({ ...inpS(), textAlign:"center", padding:"4px 4px", borderColor: rot ? "#dc2626" : TH.border, background: rot ? "#fee2e2" : TH.input, color: rot ? "#991b1b" : TH.text, fontWeight: rot ? 700 : 400 });
+  return (
+    <tr>
+      <td style={{ ...tdS, color:TH.textMut }}>{idx+1}</td>
+      <td style={tdS}><input value={punkt.pos} onChange={e=>onChange(idx,"pos",e.target.value)} inputMode="decimal" style={{ ...inpS(), textAlign:"center", padding:"4px 4px" }} /></td>
+      <td style={tdS}><input value={punkt.hoehe} onChange={e=>onChange(idx,"hoehe",e.target.value)} inputMode="decimal" style={istInp(rH)} /></td>
+      <td style={{ ...tdS, color: rH?"#dc2626":TH.textMut, fontWeight: rH?700:400 }}>{aH==null?"–":(aH>0?"+":"")+aH}</td>
+      <td style={tdS}><input value={punkt.flucht} onChange={e=>onChange(idx,"flucht",e.target.value)} inputMode="decimal" style={istInp(rF)} /></td>
+      <td style={{ ...tdS, color: rF?"#dc2626":TH.textMut, fontWeight: rF?700:400 }}>{aF==null?"–":(aF>0?"+":"")+aF}</td>
+      <td style={tdS}><button onClick={()=>onDelete(idx)} title="Punkt löschen" style={{ background:"none", border:"none", color:"#dc2626", cursor:"pointer", fontSize:15, lineHeight:1 }}>×</button></td>
+    </tr>
+  );
+});
+
+function messprotokollPDF(p) {
+  const esc = t => String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  let ausH=0, ausF=0, maxH=0, maxF=0;
+  const rows = (p.punkte||[]).map((pt,i)=>{
+    const aH=mpAbw(pt.hoehe,p.hoeheSoll), aF=mpAbw(pt.flucht,p.fluchtSoll);
+    const rH=mpRot(aH,p.hoeheTol), rF=mpRot(aF,p.fluchtTol);
+    if (rH) ausH++; if (rF) ausF++;
+    if (aH!=null) maxH=Math.max(maxH,Math.abs(aH)); if (aF!=null) maxF=Math.max(maxF,Math.abs(aF));
+    return `<tr>
+      <td class="c">${i+1}</td>
+      <td class="c">${pt.pos===""||pt.pos==null?"–":esc(pt.pos)}</td>
+      <td class="c">${pt.hoehe===""||pt.hoehe==null?"–":esc(pt.hoehe)}</td>
+      <td class="c ${rH?"rot":""}">${aH==null?"–":(aH>0?"+":"")+aH}</td>
+      <td class="c">${pt.flucht===""||pt.flucht==null?"–":esc(pt.flucht)}</td>
+      <td class="c ${rF?"rot":""}">${aF==null?"–":(aF>0?"+":"")+aF}</td>
+    </tr>`;
+  }).join("");
+  const html = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Messprotokoll – ${esc(p.bezeichnung||"")}</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;margin:24px;color:#1e293b;position:relative;}
+    .wm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:66%;opacity:0.06;z-index:0;}
+    .inhalt{position:relative;z-index:1;}
+    .kopf{display:flex;align-items:center;gap:14px;border-bottom:3px solid ${MP_BLAU};padding-bottom:10px;}
+    .kopf img{height:46px;}
+    h1{font-size:21px;margin:0;color:${MP_BLAU};}
+    .unter{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#94a3b8;margin:2px 0 0;}
+    .meta{font-size:11.5px;color:#334155;margin:12px 0 4px;display:grid;grid-template-columns:1fr 1fr;gap:3px 24px;}
+    .meta b{color:#0f172a;}
+    .soll{display:flex;gap:24px;flex-wrap:wrap;font-size:12px;margin:10px 0 12px;padding:9px 13px;background:#eef2ff;border-radius:8px;}
+    table{border-collapse:collapse;width:100%;font-size:11px;}
+    th{background:${MP_BLAU};color:#fff;padding:5px 6px;font-size:10px;text-transform:uppercase;letter-spacing:0.3px;}
+    td{padding:4px 6px;border-bottom:1px solid #e2e8f0;}
+    td.c{text-align:center;}
+    td.rot{background:#fee2e2;color:#991b1b;font-weight:bold;}
+    tr:nth-child(even) td{background:#f8fafc;}
+    tr:nth-child(even) td.rot{background:#fee2e2;}
+    .summe{margin-top:14px;font-size:12px;padding:10px 12px;border-top:2px solid ${MP_BLAU};display:flex;gap:30px;flex-wrap:wrap;}
+    .summe b{color:${MP_BLAU};}
+    .fuss{margin-top:34px;display:flex;gap:60px;font-size:11px;color:#64748b;}
+    .linie{border-top:1px solid #94a3b8;padding-top:4px;width:230px;}
+    .baufox{margin-top:24px;font-size:9.5px;color:#cbd5e1;text-align:right;}
+    @media print{ body{margin:10mm;} th,td.rot,.wm{ -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+  </style></head><body>
+    <img class="wm" src="${FIRMENLOGO}" onerror="this.style.display='none'"/>
+    <div class="inhalt">
+      <div class="kopf">
+        <img src="${FIRMENLOGO}" onerror="this.style.display='none'"/>
+        <div><h1>Messprotokoll</h1><p class="unter">Höhe &amp; Flucht · Schienenmontage</p></div>
+      </div>
+      <div class="meta">
+        <div>Projekt: <b>${esc(p.projektName||"–")}</b></div>
+        <div>Datum: <b>${esc(p.datum||"–")}</b></div>
+        <div>Bezeichnung: <b>${esc(p.bezeichnung||"–")}</b></div>
+        <div>Erstellt von: <b>${esc(p.ersteller||"–")}</b></div>
+      </div>
+      <div class="soll">
+        <div>Höhe Soll: <b>${esc(p.hoeheSoll||"–")} mm</b> &nbsp;(Toleranz ±${esc(p.hoeheTol||"–")} mm)</div>
+        <div>Flucht Soll: <b>${esc(p.fluchtSoll||"–")} mm</b> &nbsp;(Toleranz ±${esc(p.fluchtTol||"–")} mm)</div>
+      </div>
+      <table>
+        <thead><tr><th>Pkt</th><th>Pos. [m]</th><th>Höhe Ist [mm]</th><th>Höhe &#916;</th><th>Flucht Ist [mm]</th><th>Flucht &#916;</th></tr></thead>
+        <tbody>${rows||`<tr><td colspan="6" class="c">Keine Messpunkte erfasst</td></tr>`}</tbody>
+      </table>
+      <div class="summe">
+        <div>Messpunkte: <b>${(p.punkte||[]).length}</b></div>
+        <div>Außerhalb Toleranz Höhe: <b style="color:${ausH?'#dc2626':'#16a34a'}">${ausH}</b></div>
+        <div>Außerhalb Toleranz Flucht: <b style="color:${ausF?'#dc2626':'#16a34a'}">${ausF}</b></div>
+        <div>Max. Abweichung: <b>Höhe ${maxH} mm · Flucht ${maxF} mm</b></div>
+      </div>
+      <div class="fuss"><div class="linie">Datum, Unterschrift Monteur</div><div class="linie">Datum, Unterschrift Auftraggeber</div></div>
+      <div class="baufox">Erstellt mit Baufox</div>
+    </div>
+    <script>window.onload=function(){window.print();};<\/script>
+  </body></html>`;
+  const w = window.open("", "_blank");
+  if (!w) { alert("Bitte Pop-ups für diese Seite erlauben – dann öffnet sich die Druckansicht (dort „Als PDF speichern\")."); return; }
+  w.document.write(html); w.document.close();
+}
+
+function MessprotokollEditor({ start, projekte, onSave, onCancel, onDelete }) {
+  const [f, setF] = useState(start);
+  const set = (k,v) => setF(p=>({ ...p, [k]:v }));
+  const punkte = f.punkte || [];
+  const setPunkt = useCallback((i,k,v) => setF(p=>{ const arr=p.punkte.slice(); arr[i]={ ...arr[i], [k]:v }; return { ...p, punkte:arr }; }), []);
+  const delPunkt = useCallback((i) => setF(p=>({ ...p, punkte:p.punkte.filter((_,j)=>j!==i) })), []);
+  const addPunkte = (n) => setF(p=>{ const frei=300-p.punkte.length; const add=Math.max(0,Math.min(n,frei)); return { ...p, punkte:[...p.punkte, ...Array.from({length:add},()=>({pos:"",hoehe:"",flucht:""}))] }; });
+
+  let ausH=0, ausF=0, maxH=0, maxF=0;
+  punkte.forEach(pt=>{ const aH=mpAbw(pt.hoehe,f.hoeheSoll), aF=mpAbw(pt.flucht,f.fluchtSoll);
+    if (mpRot(aH,f.hoeheTol)) ausH++; if (mpRot(aF,f.fluchtTol)) ausF++;
+    if (aH!=null) maxH=Math.max(maxH,Math.abs(aH)); if (aF!=null) maxF=Math.max(maxF,Math.abs(aF)); });
+
+  const mitName = () => ({ ...f, projektName:(projekte.find(p=>p.id===f.projektId)?.name)||f.projektName||"" });
+  const speichern = () => {
+    if (!String(f.bezeichnung||"").trim()) { alert("Bitte eine Bezeichnung eingeben (z. B. „RBG Achse 1 – Schiene links\")."); return; }
+    onSave(mitName());
+  };
+
+  const lab = { fontSize:10, color:TH.textMut, fontWeight:600, marginBottom:4, textTransform:"uppercase", letterSpacing:0.5 };
+  const thS = { background:MP_BLAU, color:"#fff", padding:"6px 6px", fontSize:10, textTransform:"uppercase", letterSpacing:0.3, position:"sticky", top:0 };
+
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, gap:10, flexWrap:"wrap" }}>
+        <h2 style={{ margin:0, fontSize:18, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><Ruler size={18}/> {String(start.bezeichnung||"").trim() ? "Protokoll bearbeiten" : "Neues Messprotokoll"}</h2>
+        <button onClick={onCancel} style={{ ...btnGhost(), padding:"6px 12px", fontSize:12 }}>← Zurück zur Liste</button>
+      </div>
+
+      <div style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderRadius:12, padding:"14px 16px", marginBottom:14 }}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:12 }}>
+          <div><div style={lab}>Projekt</div>
+            <select value={f.projektId} onChange={e=>set("projektId",e.target.value)} style={inpS()}>
+              <option value="">– kein Projekt –</option>
+              {projekte.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+            </select></div>
+          <div><div style={lab}>Bezeichnung (Schiene/Achse)</div><input value={f.bezeichnung} onChange={e=>set("bezeichnung",e.target.value)} placeholder="z. B. RBG Achse 1 links" style={inpS()}/></div>
+          <div><div style={lab}>Datum</div><input type="date" value={f.datum} onChange={e=>set("datum",e.target.value)} style={inpS()}/></div>
+          <div><div style={lab}>Erstellt von</div><input value={f.ersteller} onChange={e=>set("ersteller",e.target.value)} style={inpS()}/></div>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:12, marginTop:12 }}>
+          <div><div style={lab}>Höhe Soll [mm]</div><input value={f.hoeheSoll} onChange={e=>set("hoeheSoll",e.target.value)} inputMode="decimal" style={inpS()}/></div>
+          <div><div style={lab}>Höhe Toleranz ± [mm]</div><input value={f.hoeheTol} onChange={e=>set("hoeheTol",e.target.value)} inputMode="decimal" style={inpS()}/></div>
+          <div><div style={lab}>Flucht Soll [mm]</div><input value={f.fluchtSoll} onChange={e=>set("fluchtSoll",e.target.value)} inputMode="decimal" style={inpS()}/></div>
+          <div><div style={lab}>Flucht Toleranz ± [mm]</div><input value={f.fluchtTol} onChange={e=>set("fluchtTol",e.target.value)} inputMode="decimal" style={inpS()}/></div>
+        </div>
+      </div>
+
+      <div style={{ display:"flex", gap:8, marginBottom:8, flexWrap:"wrap", alignItems:"center" }}>
+        <span style={{ fontSize:12, color:TH.textMut, marginRight:4 }}>{punkte.length}/300 Messpunkte</span>
+        <button onClick={()=>addPunkte(1)} style={{ ...btnGhost(), padding:"5px 11px", fontSize:12 }}>+1</button>
+        <button onClick={()=>addPunkte(10)} style={{ ...btnGhost(), padding:"5px 11px", fontSize:12 }}>+10</button>
+        <button onClick={()=>addPunkte(50)} style={{ ...btnGhost(), padding:"5px 11px", fontSize:12 }}>+50</button>
+      </div>
+
+      <div style={{ maxHeight:440, overflow:"auto", border:"1.5px solid "+TH.border, borderRadius:10 }}>
+        <table style={{ borderCollapse:"collapse", width:"100%", minWidth:520 }}>
+          <thead><tr>
+            <th style={thS}>#</th><th style={thS}>Pos. [m]</th>
+            <th style={thS}>Höhe Ist</th><th style={thS}>Höhe Δ</th>
+            <th style={thS}>Flucht Ist</th><th style={thS}>Flucht Δ</th><th style={thS}></th>
+          </tr></thead>
+          <tbody>
+            {punkte.map((pt,i)=>(
+              <MesspunktRow key={i} idx={i} punkt={pt} hoeheSoll={f.hoeheSoll} hoeheTol={f.hoeheTol} fluchtSoll={f.fluchtSoll} fluchtTol={f.fluchtTol} onChange={setPunkt} onDelete={delPunkt} />
+            ))}
+            {punkte.length===0 && <tr><td colSpan={7} style={{ textAlign:"center", padding:16, color:TH.textMut, fontSize:12 }}>Noch keine Punkte – oben mit „+10" hinzufügen.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ display:"flex", gap:24, flexWrap:"wrap", margin:"12px 2px", fontSize:12.5, color:TH.text }}>
+        <span>Außerhalb Toleranz: <b style={{ color:(ausH+ausF)?"#dc2626":"#16a34a" }}>Höhe {ausH} · Flucht {ausF}</b></span>
+        <span>Max. Abweichung: <b>Höhe {maxH} mm · Flucht {maxF} mm</b></span>
+      </div>
+
+      <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:6 }}>
+        <button onClick={speichern} style={btnPrimary(MP_BLAU)}>Speichern</button>
+        <button onClick={()=>messprotokollPDF(mitName())} style={{ ...btnGhost(), display:"flex", alignItems:"center", gap:6 }}><FileDown size={15}/> PDF / Druck</button>
+        <button onClick={onCancel} style={btnGhost()}>Abbrechen</button>
+        {onDelete && <button onClick={onDelete} style={{ ...btnGhost(), color:"#dc2626", marginLeft:"auto" }}>Löschen</button>}
+      </div>
+    </div>
+  );
+}
+
+function Messprotokolle({ projekte, meinMA, userEmail, messprotokolle, setMessprotokolle }) {
+  const [editId, setEditId] = useState(null); // null = Liste, "neu" = neues, sonst id
+  const liste = messprotokolle || [];
+  const ersteller = meinMA?.name || userEmail || "Unbekannt";
+  const [filterProj, setFilterProj] = useState("alle");
+
+  const neuesProtokoll = () => ({
+    id: "MP"+Date.now(),
+    projektId: projekte[0]?.id || "",
+    projektName: projekte[0]?.name || "",
+    bezeichnung: "",
+    datum: isoDate(new Date()),
+    ersteller,
+    hoeheSoll: "", hoeheTol: "2",
+    fluchtSoll: "", fluchtTol: "2",
+    punkte: Array.from({length:10},()=>({pos:"",hoehe:"",flucht:""})),
+  });
+
+  const speichern = (prot) => {
+    setMessprotokolle(prev => {
+      const arr = (prev||[]).slice();
+      const i = arr.findIndex(x=>x.id===prot.id);
+      if (i>=0) arr[i]=prot; else arr.unshift(prot);
+      return arr;
+    });
+    setEditId(null);
+  };
+  const loeschen = (id) => {
+    if (!window.confirm("Dieses Messprotokoll wirklich löschen?")) return;
+    setMessprotokolle(prev => (prev||[]).filter(x=>x.id!==id));
+    setEditId(null);
+  };
+
+  if (editId) {
+    const start = editId==="neu" ? neuesProtokoll() : liste.find(x=>x.id===editId);
+    if (!start) { setEditId(null); return null; }
+    return <MessprotokollEditor key={editId} start={start} projekte={projekte}
+             onSave={speichern} onCancel={()=>setEditId(null)} onDelete={editId==="neu"?null:()=>loeschen(start.id)} />;
+  }
+
+  const anzAuss = (p) => { let n=0; (p.punkte||[]).forEach(pt=>{ if (mpRot(mpAbw(pt.hoehe,p.hoeheSoll),p.hoeheTol)) n++; if (mpRot(mpAbw(pt.flucht,p.fluchtSoll),p.fluchtTol)) n++; }); return n; };
+  const gruppen = [];
+  projekte.forEach(pr => { const items = liste.filter(x=>x.projektId===pr.id); if (items.length) gruppen.push({ key:pr.id, name:pr.name, items }); });
+  const ohne = liste.filter(x=>!x.projektId || !projekte.some(pr=>pr.id===x.projektId));
+  if (ohne.length) gruppen.push({ key:"_ohne", name:"Ohne Projekt", items:ohne });
+  const sichtbar = filterProj==="alle" ? gruppen : gruppen.filter(g=>g.key===filterProj);
+
+  const karte = (p) => {
+    const n = anzAuss(p);
+    return (
+      <div key={p.id} style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderRadius:12, padding:"12px 14px" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", gap:10, flexWrap:"wrap", alignItems:"flex-start" }}>
+          <div>
+            <span style={{ display:"inline-block", fontSize:11, fontWeight:700, padding:"2px 9px", borderRadius:20, background:"#eef2ff", color:MP_BLAU, marginBottom:5 }}>{p.projektName||"Ohne Projekt"}</span>
+            <div style={{ fontWeight:700, color:TH.text, fontSize:14 }}>{p.bezeichnung||"(ohne Bezeichnung)"}</div>
+            <div style={{ fontSize:12, color:TH.textMut, marginTop:2 }}>{p.datum} · {(p.punkte||[]).length} Punkte · {p.ersteller}</div>
+          </div>
+          <span style={{ fontSize:11, fontWeight:700, padding:"3px 9px", borderRadius:20, whiteSpace:"nowrap", background: n? "#fee2e2":"#dcfce7", color: n? "#991b1b":"#166534" }}>
+            {n? `${n} außerhalb Toleranz` : "alle in Toleranz"}
+          </span>
+        </div>
+        <div style={{ display:"flex", gap:8, marginTop:10, flexWrap:"wrap" }}>
+          <button onClick={()=>setEditId(p.id)} style={{ ...btnGhost(), padding:"6px 12px", fontSize:12 }}>Öffnen</button>
+          <button onClick={()=>messprotokollPDF(p)} style={{ ...btnGhost(), padding:"6px 12px", fontSize:12, display:"flex", alignItems:"center", gap:5 }}><FileDown size={14}/> PDF</button>
+          <button onClick={()=>loeschen(p.id)} style={{ ...btnGhost(), padding:"6px 12px", fontSize:12, color:"#dc2626" }}>Löschen</button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, gap:10, flexWrap:"wrap" }}>
+        <h2 style={{ margin:0, fontSize:18, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><Ruler size={18}/> Messprotokolle</h2>
+        <button onClick={()=>setEditId("neu")} style={btnPrimary(MP_BLAU)}>+ Neues Protokoll</button>
+      </div>
+      {liste.length>0 && (
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12, flexWrap:"wrap" }}>
+          <span style={{ fontSize:12, color:TH.textMut, fontWeight:600 }}>Projekt:</span>
+          <select value={filterProj} onChange={e=>setFilterProj(e.target.value)} style={{ ...inpS(), width:"auto", minWidth:180 }}>
+            <option value="alle">Alle Projekte ({liste.length})</option>
+            {gruppen.map(g=><option key={g.key} value={g.key}>{g.name} ({g.items.length})</option>)}
+          </select>
+        </div>
+      )}
+      {liste.length===0 ? (
+        <div style={{ background:TH.panel, border:"1.5px dashed "+TH.border, borderRadius:12, padding:"34px 20px", textAlign:"center", color:TH.textMut, fontSize:13 }}>
+          Noch keine Messprotokolle vorhanden.<br/>Lege mit „+ Neues Protokoll" das erste an.
+        </div>
+      ) : (
+        <div style={{ display:"grid", gap:18 }}>
+          {sichtbar.map(g=>(
+            <div key={g.key}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, margin:"0 2px 8px", paddingBottom:6, borderBottom:"2px solid "+MP_BLAU }}>
+                <Building2 size={15} color={MP_BLAU}/>
+                <span style={{ fontWeight:700, color:TH.text, fontSize:14 }}>{g.name}</span>
+                <span style={{ fontSize:11, color:TH.textMut }}>· {g.items.length} Protokoll(e)</span>
+              </div>
+              <div style={{ display:"grid", gap:10 }}>{g.items.map(p=>karte(p))}</div>
+            </div>
+          ))}
+          {sichtbar.length===0 && (
+            <div style={{ color:TH.textMut, fontSize:13, padding:"10px 2px" }}>Für dieses Projekt gibt es noch keine Protokolle.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 function darfTab(rolle, tabId) {
   if (rolle==="Admin") return true;
   const rechte = {
-    "Projektleiter": ["postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
-    "Bauleiter":   ["postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
-    "Vorarbeiter": ["postfach","heute","woche","monat","stundenzettel","berichte","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
-    "Monteur":     ["postfach","heute","woche","monat","stundenzettel","berichte","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
+    "Projektleiter": ["postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Bauleiter":   ["postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Vorarbeiter": ["postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
+    "Monteur":     ["postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Unbekannt":   ["heute","woche","monat"],
   };
   return (rechte[rolle]||rechte["Unbekannt"]).includes(tabId);
@@ -2504,6 +2817,7 @@ export default function EinsatzplanungInner({
                   : teamFilter ? (berichte||[]).filter(b=>b.team===teamFilter) : berichte;
   const vUnterkuenfte = projektFilter ? (unterkuenfte||[]).filter(u=>meineProjektIds.includes(u.projektId)) : unterkuenfte;
   const istAdmin = meineRolle==="Admin";
+  const [messprotokolle, setMessprotokolle] = usePersist("baufox_messprotokolle", []);
   const istLeitung = istAdmin || meineRolle==="Bauleiter" || meineRolle==="Vorarbeiter";
 
   const [tab, setTab] = useState(istAdmin ? "dashboard" : "heute");
@@ -2702,6 +3016,7 @@ export default function EinsatzplanungInner({
     { id:"monat",        label:"Monat", Icon:CalendarRange },
     { id:"stundenzettel",label:"Stundenzettel", Icon:Clock },
     { id:"berichte",     label:"Berichte", Icon:FileText },
+    { id:"messprotokolle", label:"Messprotokolle", Icon:Ruler },
     { id:"chat",         label:"Chat", Icon:MessageCircle },
     { id:"antraege",     Icon:TreePalm, label:`Anträge${antraege.filter(a=>a.status==="offen").length>0?` (${antraege.filter(a=>a.status==="offen").length})`:""}` },
     { id:"projekte",     label:"Projekte", Icon:Building2 },
@@ -2807,6 +3122,7 @@ export default function EinsatzplanungInner({
         {tab==="postfach" && <MeinPostfach meinMA={meinMA} meineRolle={meineRolle} userEmail={userEmail} stunden={stunden} projekte={projekte} />}
         {tab==="chat" && darfTab(meineRolle,"chat") && <TeamChat meinMA={meinMA} meineRolle={meineRolle} userEmail={userEmail} />}
         {tab==="berichte"     && darfTab(meineRolle,"berichte")     && <Tagesberichte projekte={vProjekte} mitarbeiter={vMitarbeiter} berichte={vBerichte} setBerichte={setBerichte} rolle={meineRolle} meinMA={meinMA} userEmail={userEmail} />}
+        {tab==="messprotokolle" && darfTab(meineRolle,"messprotokolle") && <Messprotokolle projekte={vProjekte} meinMA={meinMA} userEmail={userEmail} messprotokolle={messprotokolle} setMessprotokolle={setMessprotokolle} />}
         {tab==="antraege"     && darfTab(meineRolle,"antraege")     && <Antraege mitarbeiter={vMitarbeiter} antraege={vAntraege} setAntraege={setAntraege} setSonder={setSonder} />}
         {tab==="projekte"     && darfTab(meineRolle,"projekte")     && <ProjektUebersicht projekte={vProjekte} fahrzeuge={fahrzeuge} mitarbeiter={mitarbeiter} />}
         {tab==="mitarbeiter"  && darfTab(meineRolle,"mitarbeiter")  && <MitarbeiterUebersicht mitarbeiter={vMitarbeiter} projekte={vProjekte} />}
