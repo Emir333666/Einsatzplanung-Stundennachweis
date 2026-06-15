@@ -2455,22 +2455,38 @@ function mpRot(abw, tol) {
   if (isNaN(t)) return false;
   return Math.abs(abw) > t;
 }
+// "rot" = außerhalb Toleranz, "gruen" = in Toleranz, "" = noch kein Wert
+function mpStatus(abw, tol) {
+  if (abw == null) return "";
+  return mpRot(abw, tol) ? "rot" : "gruen";
+}
+// Position automatisch aus Startwert + Abstand je Punkt (z. B. 0 / 0,5 / 1,0 …)
+function mpPos(start, schritt, i) {
+  const d = parseFloat(String(schritt).replace(",", "."));
+  if (isNaN(d)) return "";
+  const s = parseFloat(String(start).replace(",", "."));
+  const v = (isNaN(s) ? 0 : s) + i * d;
+  return (Math.round(v * 1000) / 1000).toString().replace(".", ",");
+}
 
-const MesspunktRow = memo(function MesspunktRow({ idx, punkt, hoeheSoll, hoeheTol, fluchtSoll, fluchtTol, onChange, onDelete }) {
+const MP_FARBE = { rot:{ bg:"#fee2e2", bd:"#dc2626", tx:"#991b1b" }, gruen:{ bg:"#dcfce7", bd:"#16a34a", tx:"#166534" } };
+
+const MesspunktRow = memo(function MesspunktRow({ idx, punkt, posText, hoeheSoll, hoeheTol, fluchtSoll, fluchtTol, onChange, onDelete }) {
   const aH = mpAbw(punkt.hoehe, hoeheSoll);
   const aF = mpAbw(punkt.flucht, fluchtSoll);
-  const rH = mpRot(aH, hoeheTol);
-  const rF = mpRot(aF, fluchtTol);
+  const sH = mpStatus(aH, hoeheTol);
+  const sF = mpStatus(aF, fluchtTol);
   const tdS = { padding:"3px 4px", borderBottom:"1px solid "+TH.border, fontSize:12, textAlign:"center", color:TH.text };
-  const istInp = (rot) => ({ ...inpS(), textAlign:"center", padding:"4px 4px", borderColor: rot ? "#dc2626" : TH.border, background: rot ? "#fee2e2" : TH.input, color: rot ? "#991b1b" : TH.text, fontWeight: rot ? 700 : 400 });
+  const istInp = (st) => { const c = MP_FARBE[st]; return { ...inpS(), textAlign:"center", padding:"4px 4px", borderColor: c?c.bd:TH.border, background: c?c.bg:TH.input, color: c?c.tx:TH.text, fontWeight: st==="rot"?700:400 }; };
+  const dCol = (st) => st==="rot" ? "#dc2626" : st==="gruen" ? "#16a34a" : TH.textMut;
   return (
     <tr>
       <td style={{ ...tdS, color:TH.textMut }}>{idx+1}</td>
-      <td style={tdS}><input value={punkt.pos} onChange={e=>onChange(idx,"pos",e.target.value)} inputMode="decimal" style={{ ...inpS(), textAlign:"center", padding:"4px 4px" }} /></td>
-      <td style={tdS}><input value={punkt.hoehe} onChange={e=>onChange(idx,"hoehe",e.target.value)} inputMode="decimal" style={istInp(rH)} /></td>
-      <td style={{ ...tdS, color: rH?"#dc2626":TH.textMut, fontWeight: rH?700:400 }}>{aH==null?"–":(aH>0?"+":"")+aH}</td>
-      <td style={tdS}><input value={punkt.flucht} onChange={e=>onChange(idx,"flucht",e.target.value)} inputMode="decimal" style={istInp(rF)} /></td>
-      <td style={{ ...tdS, color: rF?"#dc2626":TH.textMut, fontWeight: rF?700:400 }}>{aF==null?"–":(aF>0?"+":"")+aF}</td>
+      <td style={{ ...tdS, color:TH.textMut, whiteSpace:"nowrap" }}>{posText||"–"}</td>
+      <td style={tdS}><input value={punkt.hoehe} onChange={e=>onChange(idx,"hoehe",e.target.value)} inputMode="decimal" style={istInp(sH)} /></td>
+      <td style={{ ...tdS, color:dCol(sH), fontWeight: sH?700:400 }}>{aH==null?"–":(aH>0?"+":"")+aH}</td>
+      <td style={tdS}><input value={punkt.flucht} onChange={e=>onChange(idx,"flucht",e.target.value)} inputMode="decimal" style={istInp(sF)} /></td>
+      <td style={{ ...tdS, color:dCol(sF), fontWeight: sF?700:400 }}>{aF==null?"–":(aF>0?"+":"")+aF}</td>
       <td style={tdS}><button onClick={()=>onDelete(idx)} title="Punkt löschen" style={{ background:"none", border:"none", color:"#dc2626", cursor:"pointer", fontSize:15, lineHeight:1 }}>×</button></td>
     </tr>
   );
@@ -2481,22 +2497,23 @@ function messprotokollPDF(p) {
   let ausH=0, ausF=0, maxH=0, maxF=0;
   const rows = (p.punkte||[]).map((pt,i)=>{
     const aH=mpAbw(pt.hoehe,p.hoeheSoll), aF=mpAbw(pt.flucht,p.fluchtSoll);
-    const rH=mpRot(aH,p.hoeheTol), rF=mpRot(aF,p.fluchtTol);
-    if (rH) ausH++; if (rF) ausF++;
+    const sH=mpStatus(aH,p.hoeheTol), sF=mpStatus(aF,p.fluchtTol);
+    if (sH==="rot") ausH++; if (sF==="rot") ausF++;
     if (aH!=null) maxH=Math.max(maxH,Math.abs(aH)); if (aF!=null) maxF=Math.max(maxF,Math.abs(aF));
+    const pos = mpPos(p.startPos, p.schritt, i);
     return `<tr>
       <td class="c">${i+1}</td>
-      <td class="c">${pt.pos===""||pt.pos==null?"–":esc(pt.pos)}</td>
-      <td class="c">${pt.hoehe===""||pt.hoehe==null?"–":esc(pt.hoehe)}</td>
-      <td class="c ${rH?"rot":""}">${aH==null?"–":(aH>0?"+":"")+aH}</td>
-      <td class="c">${pt.flucht===""||pt.flucht==null?"–":esc(pt.flucht)}</td>
-      <td class="c ${rF?"rot":""}">${aF==null?"–":(aF>0?"+":"")+aF}</td>
+      <td class="c">${pos===""?"–":esc(pos)}</td>
+      <td class="c ${sH}">${pt.hoehe===""||pt.hoehe==null?"–":esc(pt.hoehe)}</td>
+      <td class="c ${sH}">${aH==null?"–":(aH>0?"+":"")+aH}</td>
+      <td class="c ${sF}">${pt.flucht===""||pt.flucht==null?"–":esc(pt.flucht)}</td>
+      <td class="c ${sF}">${aF==null?"–":(aF>0?"+":"")+aF}</td>
     </tr>`;
   }).join("");
   const html = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Messprotokoll – ${esc(p.bezeichnung||"")}</title>
   <style>
     body{font-family:Arial,Helvetica,sans-serif;margin:24px;color:#1e293b;position:relative;}
-    .wm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:66%;opacity:0.06;z-index:0;}
+    .wm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:70%;opacity:0.08;z-index:0;}
     .inhalt{position:relative;z-index:1;}
     .kopf{display:flex;align-items:center;gap:14px;border-bottom:3px solid ${MP_BLAU};padding-bottom:10px;}
     .kopf img{height:46px;}
@@ -2510,14 +2527,17 @@ function messprotokollPDF(p) {
     td{padding:4px 6px;border-bottom:1px solid #e2e8f0;}
     td.c{text-align:center;}
     td.rot{background:#fee2e2;color:#991b1b;font-weight:bold;}
+    td.gruen{background:#dcfce7;color:#166534;font-weight:bold;}
     tr:nth-child(even) td{background:#f8fafc;}
     tr:nth-child(even) td.rot{background:#fee2e2;}
+    tr:nth-child(even) td.gruen{background:#dcfce7;}
     .summe{margin-top:14px;font-size:12px;padding:10px 12px;border-top:2px solid ${MP_BLAU};display:flex;gap:30px;flex-wrap:wrap;}
     .summe b{color:${MP_BLAU};}
     .fuss{margin-top:34px;display:flex;gap:60px;font-size:11px;color:#64748b;}
     .linie{border-top:1px solid #94a3b8;padding-top:4px;width:230px;}
-    .baufox{margin-top:24px;font-size:9.5px;color:#cbd5e1;text-align:right;}
-    @media print{ body{margin:10mm;} th,td.rot,.wm{ -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+    .baufox{margin-top:24px;font-size:9.5px;color:#94a3b8;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:6px;}
+    .baufox img{height:16px;width:16px;border-radius:4px;}
+    @media print{ body{margin:10mm;} th,td.rot,td.gruen,.wm{ -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
   </style></head><body>
     <img class="wm" src="${FIRMENLOGO}" onerror="this.style.display='none'"/>
     <div class="inhalt">
@@ -2546,7 +2566,7 @@ function messprotokollPDF(p) {
         <div>Max. Abweichung: <b>Höhe ${maxH} mm · Flucht ${maxF} mm</b></div>
       </div>
       <div class="fuss"><div class="linie">Datum, Unterschrift Monteur</div><div class="linie">Datum, Unterschrift Auftraggeber</div></div>
-      <div class="baufox">Erstellt mit Baufox</div>
+      <div class="baufox"><img src="/icon-192.png" onerror="this.style.display='none'"/> Erstellt mit Baufox</div>
     </div>
     <script>window.onload=function(){window.print();};<\/script>
   </body></html>`;
@@ -2601,6 +2621,11 @@ function MessprotokollEditor({ start, projekte, onSave, onCancel, onDelete }) {
           <div><div style={lab}>Flucht Soll [mm]</div><input value={f.fluchtSoll} onChange={e=>set("fluchtSoll",e.target.value)} inputMode="decimal" style={inpS()}/></div>
           <div><div style={lab}>Flucht Toleranz ± [mm]</div><input value={f.fluchtTol} onChange={e=>set("fluchtTol",e.target.value)} inputMode="decimal" style={inpS()}/></div>
         </div>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:12, marginTop:12 }}>
+          <div><div style={lab}>Startposition [m]</div><input value={f.startPos} onChange={e=>set("startPos",e.target.value)} inputMode="decimal" placeholder="0" style={inpS()}/></div>
+          <div><div style={lab}>Abstand je Punkt [m]</div><input value={f.schritt} onChange={e=>set("schritt",e.target.value)} inputMode="decimal" placeholder="z. B. 0,5" style={inpS()}/></div>
+          <div style={{ gridColumn:"1 / -1", fontSize:11, color:TH.textMut, marginTop:-2 }}>Die Position jedes Punktes wird automatisch berechnet (Start + Abstand). Beispiel: Start 0, Abstand 0,5 → 0 · 0,5 · 1,0 · 1,5 …</div>
+        </div>
       </div>
 
       <div style={{ display:"flex", gap:8, marginBottom:8, flexWrap:"wrap", alignItems:"center" }}>
@@ -2619,7 +2644,7 @@ function MessprotokollEditor({ start, projekte, onSave, onCancel, onDelete }) {
           </tr></thead>
           <tbody>
             {punkte.map((pt,i)=>(
-              <MesspunktRow key={i} idx={i} punkt={pt} hoeheSoll={f.hoeheSoll} hoeheTol={f.hoeheTol} fluchtSoll={f.fluchtSoll} fluchtTol={f.fluchtTol} onChange={setPunkt} onDelete={delPunkt} />
+              <MesspunktRow key={i} idx={i} punkt={pt} posText={mpPos(f.startPos, f.schritt, i)} hoeheSoll={f.hoeheSoll} hoeheTol={f.hoeheTol} fluchtSoll={f.fluchtSoll} fluchtTol={f.fluchtTol} onChange={setPunkt} onDelete={delPunkt} />
             ))}
             {punkte.length===0 && <tr><td colSpan={7} style={{ textAlign:"center", padding:16, color:TH.textMut, fontSize:12 }}>Noch keine Punkte – oben mit „+10" hinzufügen.</td></tr>}
           </tbody>
@@ -2654,8 +2679,9 @@ function Messprotokolle({ projekte, meinMA, userEmail, messprotokolle, setMesspr
     bezeichnung: "",
     datum: isoDate(new Date()),
     ersteller,
-    hoeheSoll: "", hoeheTol: "2",
-    fluchtSoll: "", fluchtTol: "2",
+    hoeheSoll: "0", hoeheTol: "2",
+    fluchtSoll: "0", fluchtTol: "2",
+    startPos: "0", schritt: "1",
     punkte: Array.from({length:10},()=>({pos:"",hoehe:"",flucht:""})),
   });
 
