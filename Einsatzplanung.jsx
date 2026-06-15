@@ -2526,7 +2526,8 @@ function messprotokollPDF(p) {
   const html = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Messprotokoll – ${esc(p.bezeichnung||"")}</title>
   <style>
     body{font-family:Arial,Helvetica,sans-serif;margin:24px;color:#1e293b;position:relative;}
-    .wm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:70%;opacity:0.08;z-index:0;}
+    .wm{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:0;}
+    .wm img{width:60%;opacity:0.08;}
     .inhalt{position:relative;z-index:1;}
     .kopf{display:flex;align-items:center;gap:14px;border-bottom:3px solid ${MP_BLAU};padding-bottom:10px;}
     .kopf img{height:46px;}
@@ -2550,9 +2551,9 @@ function messprotokollPDF(p) {
     .linie{border-top:1px solid #94a3b8;padding-top:4px;width:230px;}
     .baufox{margin-top:24px;font-size:9.5px;color:#94a3b8;text-align:right;display:flex;align-items:center;justify-content:flex-end;gap:6px;}
     .baufox img{height:16px;width:16px;border-radius:4px;}
-    @media print{ body{margin:10mm;} th,td.rot,td.gruen,.wm{ -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+    @media print{ body{margin:10mm;} th,td.rot,td.gruen,.wm img{ -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
   </style></head><body>
-    <img class="wm" src="${FIRMENLOGO}" onerror="this.style.display='none'"/>
+    <div class="wm"><img src="${FIRMENLOGO}" onerror="this.parentNode.style.display='none'"/></div>
     <div class="inhalt">
       <div class="kopf">
         <img src="${FIRMENLOGO}" onerror="this.style.display='none'"/>
