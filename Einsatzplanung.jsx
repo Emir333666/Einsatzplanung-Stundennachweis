@@ -2491,10 +2491,11 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
 // ─── Rollen & Rechte ──────────────────────────────────────────────────────────
 const ADMIN_EMAILS = ["emircan.g@cc-schienentechnik.de"];
 
-function ermittleRolle(userEmail, mitarbeiter) {
+function ermittleRolle(userEmail, mitarbeiter, dbRolle) {
   const mail = (userEmail||"").trim().toLowerCase();
   const ma = mitarbeiter.find(m => (m.email||"").trim().toLowerCase() === mail && mail!=="");
-  if (ADMIN_EMAILS.includes(mail)) return { rolle:"Admin", ma: ma || null };
+  // Admin kommt aus der Datenbank (benutzer.rolle); ADMIN_EMAILS bleibt als Notfall-Absicherung
+  if (dbRolle==="Admin" || ADMIN_EMAILS.includes(mail)) return { rolle:"Admin", ma: ma || null };
   if (ma) return { rolle: ma.rolle, ma };
   return { rolle:"Unbekannt", ma:null };
 }
@@ -2886,7 +2887,14 @@ export default function EinsatzplanungInner({
   teams, setTeams,
   onReset, onLogout, userEmail
 }) {
-  const { rolle: meineRolle, ma: meinMA } = useMemo(()=>ermittleRolle(userEmail, mitarbeiter), [userEmail, mitarbeiter]);
+  // Rolle aus der Datenbank holen (benutzer.rolle des eingeloggten Kontos)
+  const [dbRolle, setDbRolle] = useState(null);
+  useEffect(() => {
+    let aktiv = true;
+    supabase.rpc("meine_rolle").then(({ data }) => { if (aktiv) setDbRolle(data || null); });
+    return () => { aktiv = false; };
+  }, [userEmail]);
+  const { rolle: meineRolle, ma: meinMA } = useMemo(()=>ermittleRolle(userEmail, mitarbeiter, dbRolle), [userEmail, mitarbeiter, dbRolle]);
 
   // ── Rang-System: Jeder sieht nur das Relevante ──
   // Admin: alles · Projektleiter/Bauleiter: zugeteilte Projekte (+Vertretung) · Vorarbeiter/Monteur: eigenes Team
