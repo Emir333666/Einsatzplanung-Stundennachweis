@@ -120,26 +120,48 @@ function Login({ onLogin }) {
     <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#1e293b 0%,#334155 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Inter',system-ui,sans-serif", padding:16 }}>
       <form onSubmit={absenden} style={{ background:"#fff", borderRadius:16, padding:"32px 28px", width:"100%", maxWidth:380, boxShadow:"0 10px 40px #0004" }}>
         <div style={{ textAlign:"center", marginBottom:24 }}>
-          <img src="/icon-192.png" alt="Baufox" style={{ width:64, height:64, borderRadius:14, boxShadow:"0
+          <img src="/icon-192.png" alt="Baufox" style={{ width:64, height:64, borderRadius:14, boxShadow:"0 4px 12px #ea580c55" }} />
+          <div style={{ fontWeight:800, fontSize:26, color:"#1e293b", marginTop:10, letterSpacing:-0.5 }}>Baufox</div>
+          <div style={{ fontSize:12, color:"#94a3b8", marginTop:2, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>Montage-Steuerung</div>
+        </div>
 
-// ─── Haupt-App mit Login-Schutz und Cloud-Daten ──────────────────────────────
-export default function App() {
-  const [session, setSession] = useState(null);
-  const [pruefe, setPruefe] = useState(true);
-  const [laden, setLaden] = useState(false);
-  const [bereit, setBereit] = useState(false);
+        {istReg && (
+          <div style={{ marginBottom:14 }}>
+            <div style={{ fontSize:11, color:"#6b7280", fontWeight:600, marginBottom:5, textTransform:"uppercase" }}>Firmenname</div>
+            <input type="text" value={firmaName} onChange={e=>setFirmaName(e.target.value)} required
+              style={{ width:"100%", padding:"11px 12px", borderRadius:9, border:"1.5px solid #e5e7eb", fontSize:14, boxSizing:"border-box" }} placeholder="Mustermann Montage GmbH" />
+          </div>
+        )}
 
-  const [projekte, setProjekteState] = useState([]);
-  const [mitarbeiter, setMitarbeiterState] = useState([]);
-  const [sonder, setSonderState] = useState([]);
-  const [antraege, setAntraegeState] = useState([]);
-  const [fahrzeuge, setFahrzeugeState] = useState([]);
-  const [stunden, setStundenState] = useState([]);
-  const [unterkuenfte, setUnterkuenfteState] = useState([]);
-  const [berichte, setBerichteState] = useState([]);
-  const [werkzeuge, setWerkzeugeState] = useState([]);
-  const [teams, setTeamsState] = useState([]);
+        <div style={{ marginBottom:14 }}>
+          <div style={{ fontSize:11, color:"#6b7280", fontWeight:600, marginBottom:5, textTransform:"uppercase" }}>E-Mail</div>
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required
+            style={{ width:"100%", padding:"11px 12px", borderRadius:9, border:"1.5px solid #e5e7eb", fontSize:14, boxSizing:"border-box" }} placeholder="name@firma.de" />
+        </div>
+        <div style={{ marginBottom:18 }}>
+          <div style={{ fontSize:11, color:"#6b7280", fontWeight:600, marginBottom:5, textTransform:"uppercase" }}>Passwort</div>
+          <input type="password" value={pw} onChange={e=>setPw(e.target.value)} required
+            style={{ width:"100%", padding:"11px 12px", borderRadius:9, border:"1.5px solid #e5e7eb", fontSize:14, boxSizing:"border-box" }} placeholder="••••••••" />
+        </div>
 
+        {fehler && <div style={{ background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"9px 12px", fontSize:13, marginBottom:14 }}>{fehler}</div>}
+        {hinweis && <div style={{ background:"#dcfce7", color:"#166534", borderRadius:8, padding:"9px 12px", fontSize:13, marginBottom:14 }}>{hinweis}</div>}
+
+        <button type="submit" disabled={laden} style={{ width:"100%", padding:"12px", borderRadius:9, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", fontWeight:700, fontSize:15, cursor:"pointer", opacity:laden?0.6:1 }}>
+          {laden ? (istReg ? "Registrieren…" : "Anmelden…") : (istReg ? "Firma registrieren" : "Anmelden")}
+        </button>
+
+        <div style={{ textAlign:"center", marginTop:16, fontSize:13, color:"#6b7280" }}>
+          {istReg ? "Schon ein Konto? " : "Noch keine Firma? "}
+          <span onClick={()=>{ setModus(istReg ? "login" : "register"); setFehler(""); setHinweis(""); }}
+                style={{ color:"#ea580c", fontWeight:700, cursor:"pointer" }}>
+            {istReg ? "Anmelden" : "Jetzt registrieren"}
+          </span>
+        </div>
+      </form>
+    </div>
+  );
+}
 
 // ─── Haupt-App mit Login-Schutz und Cloud-Daten ──────────────────────────────
 export default function App() {
