@@ -2894,6 +2894,15 @@ export default function EinsatzplanungInner({
     supabase.rpc("meine_rolle").then(({ data }) => { if (aktiv) setDbRolle(data || null); });
     return () => { aktiv = false; };
   }, [userEmail]);
+
+  // ── Abo-/Testphase-Info der eigenen Firma laden ──
+  const [abo, setAbo] = useState(null);
+  useEffect(() => {
+    let aktiv = true;
+    supabase.rpc("mein_abo").then(({ data }) => { if (aktiv) setAbo(data && data[0] ? data[0] : null); });
+    return () => { aktiv = false; };
+  }, [userEmail]);
+  
   const { rolle: meineRolle, ma: meinMA } = useMemo(()=>ermittleRolle(userEmail, mitarbeiter, dbRolle), [userEmail, mitarbeiter, dbRolle]);
 
   // ── Rang-System: Jeder sieht nur das Relevante ──
