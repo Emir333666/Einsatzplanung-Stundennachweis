@@ -67,48 +67,79 @@ const toDbStunde  = s => ({
   arbeitsstunden: s.arbeitsstunden!=null && s.arbeitsstunden!=="" ? Number(s.arbeitsstunden) : null
 });
 
-// ─── Login-Bildschirm ────────────────────────────────────────────────────────
+
+// ─── Login- / Registrierungs-Bildschirm ──────────────────────────────────────
 function Login({ onLogin }) {
+  const [modus, setModus] = useState("login");   // "login" | "register"
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
+  const [firmaName, setFirmaName] = useState("");
   const [fehler, setFehler] = useState("");
+  const [hinweis, setHinweis] = useState("");
   const [laden, setLaden] = useState(false);
 
-  async function anmelden(e) {
+  const istReg = modus === "register";
+
+  async function absenden(e) {
     e.preventDefault();
-    setFehler(""); setLaden(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
+    setFehler(""); setHinweis(""); setLaden(true);
+
+    if (!istReg) {
+      // ── Anmelden (unverändert) ──
+      const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
+      setLaden(false);
+      if (error) setFehler("Anmeldung fehlgeschlagen. E-Mail oder Passwort falsch.");
+      else onLogin();
+      return;
+    }
+
+    // ── Registrieren: neue Firma + erster Admin ──
+    const name = firmaName.trim();
+    if (!name) { setLaden(false); setFehler("Bitte einen Firmennamen eingeben."); return; }
+    if (pw.length < 6) { setLaden(false); setFehler("Das Passwort muss mindestens 6 Zeichen haben."); return; }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: pw,
+      options: { data: { firma_name: name } }   // <- wird vom DB-Trigger gelesen
+    });
     setLaden(false);
-    if (error) setFehler("Anmeldung fehlgeschlagen. E-Mail oder Passwort falsch.");
-    else onLogin();
+
+    if (error) { setFehler(error.message || "Registrierung fehlgeschlagen."); return; }
+
+    if (data.session) {
+      onLogin();   // E-Mail-Bestätigung aus -> direkt drin
+    } else {
+      // E-Mail-Bestätigung an -> erst bestätigen, dann anmelden
+      setHinweis("Fast fertig! Wir haben dir eine Bestätigungs-E-Mail geschickt. Bitte bestätige deine Adresse und melde dich anschließend an.");
+      setModus("login"); setPw(""); setFirmaName("");
+    }
   }
 
   return (
     <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#1e293b 0%,#334155 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Inter',system-ui,sans-serif", padding:16 }}>
-      <form onSubmit={anmelden} style={{ background:"#fff", borderRadius:16, padding:"32px 28px", width:"100%", maxWidth:380, boxShadow:"0 10px 40px #0004" }}>
+      <form onSubmit={absenden} style={{ background:"#fff", borderRadius:16, padding:"32px 28px", width:"100%", maxWidth:380, boxShadow:"0 10px 40px #0004" }}>
         <div style={{ textAlign:"center", marginBottom:24 }}>
-          <img src="/icon-192.png" alt="Baufox" style={{ width:64, height:64, borderRadius:14, boxShadow:"0 4px 12px #ea580c55" }} />
-          <div style={{ fontWeight:800, fontSize:26, color:"#1e293b", marginTop:10, letterSpacing:-0.5 }}>Baufox</div>
-          <div style={{ fontSize:12, color:"#94a3b8", marginTop:2, fontWeight:600, textTransform:"uppercase", letterSpacing:1 }}>Montage-Steuerung</div>
-        </div>
-        <div style={{ marginBottom:14 }}>
-          <div style={{ fontSize:11, color:"#6b7280", fontWeight:600, marginBottom:5, textTransform:"uppercase" }}>E-Mail</div>
-          <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required
-            style={{ width:"100%", padding:"11px 12px", borderRadius:9, border:"1.5px solid #e5e7eb", fontSize:14, boxSizing:"border-box" }} placeholder="name@firma.de" />
-        </div>
-        <div style={{ marginBottom:18 }}>
-          <div style={{ fontSize:11, color:"#6b7280", fontWeight:600, marginBottom:5, textTransform:"uppercase" }}>Passwort</div>
-          <input type="password" value={pw} onChange={e=>setPw(e.target.value)} required
-            style={{ width:"100%", padding:"11px 12px", borderRadius:9, border:"1.5px solid #e5e7eb", fontSize:14, boxSizing:"border-box" }} placeholder="••••••••" />
-        </div>
-        {fehler && <div style={{ background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"9px 12px", fontSize:13, marginBottom:14 }}>{fehler}</div>}
-        <button type="submit" disabled={laden} style={{ width:"100%", padding:"12px", borderRadius:9, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", fontWeight:700, fontSize:15, cursor:"pointer", opacity:laden?0.6:1 }}>
-          {laden ? "Anmelden…" : "Anmelden"}
-        </button>
-      </form>
-    </div>
-  );
-}
+          <img src="/icon-192.png" alt="Baufox" style={{ width:64, height:64, borderRadius:14, boxShadow:"0
+
+// ─── Haupt-App mit Login-Schutz und Cloud-Daten ──────────────────────────────
+export default function App() {
+  const [session, setSession] = useState(null);
+  const [pruefe, setPruefe] = useState(true);
+  const [laden, setLaden] = useState(false);
+  const [bereit, setBereit] = useState(false);
+
+  const [projekte, setProjekteState] = useState([]);
+  const [mitarbeiter, setMitarbeiterState] = useState([]);
+  const [sonder, setSonderState] = useState([]);
+  const [antraege, setAntraegeState] = useState([]);
+  const [fahrzeuge, setFahrzeugeState] = useState([]);
+  const [stunden, setStundenState] = useState([]);
+  const [unterkuenfte, setUnterkuenfteState] = useState([]);
+  const [berichte, setBerichteState] = useState([]);
+  const [werkzeuge, setWerkzeugeState] = useState([]);
+  const [teams, setTeamsState] = useState([]);
+
 
 // ─── Haupt-App mit Login-Schutz und Cloud-Daten ──────────────────────────────
 export default function App() {
