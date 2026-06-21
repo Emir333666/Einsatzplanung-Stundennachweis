@@ -3207,7 +3207,7 @@ export default function EinsatzplanungInner({
       {(menueOffen || breit) && (
         <>
           {!breit && <div className="abdunkler" onClick={()=>setMenueOffen(false)} style={{ position:"fixed", inset:0, background:"#0008", zIndex:90 }} />}
-          <div className={breit?"":"seitenmenue"} style={{ position:"fixed", left:0, top:breit?63:0, bottom:0, width:250, background:T.tabBar, zIndex:breit?40:91, boxShadow:breit?("2px 0 10px #00000014"):"4px 0 20px #0004", borderRight:"1px solid "+T.border, display:"flex", flexDirection:"column" }}>
+          <div className={breit?"":"seitenmenue"} style={{ position:"fixed", left:0, top:breit?(abo&&abo.status==="trial"?100:63):0, bottom:0, width:250, background:T.tabBar, zIndex:breit?40:91, boxShadow:breit?("2px 0 10px #00000014"):"4px 0 20px #0004", borderRight:"1px solid "+T.border, display:"flex", flexDirection:"column" }}>
             {!breit && <div style={{ background:"linear-gradient(135deg, #1e293b 0%, #334155 100%)", color:"#fff", padding:"14px 16px", display:"flex", alignItems:"center", gap:10 }}>
               <img src="/icon-192.png" alt="" style={{ width:30, height:30, borderRadius:8 }} />
               <div style={{ fontWeight:800, fontSize:16, flex:1 }}>Baufox</div>
