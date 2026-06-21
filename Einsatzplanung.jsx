@@ -3138,7 +3138,7 @@ export default function EinsatzplanungInner({
     { id:"fahrzeuge",    label:"Fahrzeuge", Icon:Truck },
     { id:"unterkuenfte", label:"Unterkünfte", Icon:BedDouble },
     { id:"werkzeuge",    label:"Werkzeuge", Icon:Wrench },
-    { id:"verwaltung",   label:"Verwaltung", Icon:Settings },     { id:"abo",          label:"Abo & Pakete", Icon:Euro },     { id:"abo",          label:"Abo & Pakete", Icon:Euro },
+    { id:"verwaltung",   label:"Verwaltung", Icon:Settings },     { id:"abo",          label:"Abo & Pakete", Icon:Euro },
     { id:"warnungen",    label:`⚠️${warnungen.length>0?` (${warnungen.length})`:""}`},
   ];
   // Verwaltung nur für Admin
