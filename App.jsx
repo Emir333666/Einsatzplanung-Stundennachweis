@@ -152,7 +152,7 @@ function Login({ onLogin }) {
         </button>
 
         <div style={{ textAlign:"center", marginTop:16, fontSize:13, color:"#6b7280" }}>
-          {istReg ? "Schon ein Konto? " : "Noch keine Firma? "}
+          {istReg ? "Schon ein Konto? " : "Neu hier? "}
           <span onClick={()=>{ setModus(istReg ? "login" : "register"); setFehler(""); setHinweis(""); }}
                 style={{ color:"#ea580c", fontWeight:700, cursor:"pointer" }}>
             {istReg ? "Anmelden" : "Jetzt registrieren"}
