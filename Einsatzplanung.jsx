@@ -3170,7 +3170,7 @@ export default function EinsatzplanungInner({
 
       {abo && abo.status === "trial" && (
         <div style={{
-          position:"sticky", top:62, zIndex:49,
+        position:"relative", zIndex:49,
           background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)",
           color:"#fff", padding:"8px 16px", display:"flex", alignItems:"center",
           justifyContent:"center", gap:10, fontSize:13, fontWeight:600,
