@@ -3178,7 +3178,7 @@ export default function EinsatzplanungInner({
         }}>
           <span>
             ⏳ Testphase – {abo.tage_uebrig != null ? `noch ${abo.tage_uebrig} Tag${abo.tage_uebrig === 1 ? "" : "e"}` : "läuft"}.
-            {istAdmin ? <button onClick={()=>setTab("abo")} style={{ background:"#fff", color:"#ea580c", border:"none", borderRadius:6, padding:"3px 10px", marginLeft:6, fontWeight:700, fontSize:12.5, cursor:"pointer" }}>Paket wählen →</button> : " Frag deinen Admin wegen der Paketwahl."}
+            {istAdmin ? " Wähle ein Paket, um Baufox dauerhaft zu nutzen." : " Frag deinen Admin wegen der Paketwahl."}
           </span>
         </div>
       )}
