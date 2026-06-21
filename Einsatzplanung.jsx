@@ -3159,6 +3159,21 @@ export default function EinsatzplanungInner({
         </div>
       </div>
 
+      {abo && abo.status === "trial" && (
+        <div style={{
+          position:"sticky", top:62, zIndex:49,
+          background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)",
+          color:"#fff", padding:"8px 16px", display:"flex", alignItems:"center",
+          justifyContent:"center", gap:10, fontSize:13, fontWeight:600,
+          boxShadow:"0 2px 6px #ea580c44", flexWrap:"wrap", textAlign:"center"
+        }}>
+          <span>
+            ⏳ Testphase – {abo.tage_uebrig != null ? `noch ${abo.tage_uebrig} Tag${abo.tage_uebrig === 1 ? "" : "e"}` : "läuft"}.
+            {istAdmin ? " Wähle ein Paket, um Baufox dauerhaft zu nutzen." : " Frag deinen Admin wegen der Paketwahl."}
+          </span>
+        </div>
+      )}
+
       {mittOffen && (
         <>
           <div onClick={()=>setMittOffen(false)} style={{ position:"fixed", inset:0, zIndex:80 }} />
