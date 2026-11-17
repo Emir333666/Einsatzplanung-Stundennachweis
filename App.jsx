@@ -276,6 +276,19 @@ function FirmencodeBox() {
   );
 }
 
+// ─── Alle Zeilen einer Tabelle laden (Supabase liefert pro Abfrage max. 1000) ─
+async function holeAlle(tabelle) {
+  const SEITE = 1000;
+  let alle = [];
+  for (let von = 0; ; von += SEITE) {
+    const { data, error } = await supabase.from(tabelle).select("*").order("id", { ascending: true }).range(von, von + SEITE - 1);
+    if (error) return { data: null, error };
+    alle = alle.concat(data || []);
+    if (!data || data.length < SEITE) break;
+  }
+  return { data: alle, error: null };
+}
+
 // ─── Haupt-App mit Login-Schutz und Cloud-Daten ──────────────────────────────
 export default function App() {
   const [session, setSession] = useState(null);
@@ -293,6 +306,7 @@ export default function App() {
   const [berichte, setBerichteState] = useState([]);
   const [werkzeuge, setWerkzeugeState] = useState([]);
   const [teams, setTeamsState] = useState([]);
+  const [speicherFehler, setSpeicherFehler] = useState("");
 
   // Session prüfen
   useEffect(() => {
@@ -304,18 +318,18 @@ export default function App() {
   // Daten aus der Cloud laden, sobald eingeloggt
   const ladeDaten = useCallback(async () => {
     setLaden(true);
-    const [p, m, f, s, a, st, u, tb, wz, tm] = await Promise.all([
-      supabase.from("projekte").select("*"),
-      supabase.from("mitarbeiter").select("*"),
-      supabase.from("fahrzeuge").select("*"),
-      supabase.from("sonder").select("*"),
-      supabase.from("antraege").select("*"),
-      supabase.from("stunden").select("*"),
-      supabase.from("unterkuenfte").select("*"),
-      supabase.from("tagesberichte").select("*"),
-      supabase.from("werkzeuge").select("*"),
-      supabase.from("teams").select("*"),
-    ]);
+    const namen = ["projekte","mitarbeiter","fahrzeuge","sonder","antraege","stunden","unterkuenfte","tagesberichte","werkzeuge","teams"];
+    const erg = await Promise.all(namen.map(holeAlle));
+    const fehlerhaft = namen.filter((n,i)=>erg[i].error);
+    if (fehlerhaft.length) {
+      // Nichts überschreiben: lieber alter Stand als leere Listen
+      setSpeicherFehler(navigator.onLine === false
+        ? "Keine Internetverbindung. Die Daten konnten nicht geladen werden."
+        : "Daten konnten nicht vollständig geladen werden (" + fehlerhaft.join(", ") + "). Bitte Seite neu laden.");
+      setLaden(false);
+      return;
+    }
+    const [p, m, f, s, a, st, u, tb, wz, tm] = erg;
     setProjekteState((p.data||[]).map(toAppProjekt));
     setMitarbeiterState(m.data||[]);
     setFahrzeugeState(f.data||[]);
@@ -335,17 +349,30 @@ export default function App() {
   // ── Speicher-Funktionen: schreiben in die Cloud, dann neu laden ──
   // ── Hilfsfunktion: Unterschiede berechnen und gezielt speichern ──
   async function syncTabelle(tabelle, alt, neu, toDb = (x)=>x, idFeld = "id") {
+    const fehler = [];
+    const pruefe = (res) => { if (res && res.error) fehler.push(res.error.message || "Unbekannter Fehler"); };
     const altIds = new Set(alt.map(x=>x[idFeld]).filter(v=>v!=null));
     const neuIds = new Set(neu.map(x=>x[idFeld]).filter(v=>v!=null));
-    // Gelöschte: waren in alt, sind nicht mehr in neu
-    const geloescht = [...altIds].filter(id=>!neuIds.has(id));
-    if (geloescht.length) await supabase.from(tabelle).delete().in(idFeld, geloescht);
-    // Neue (ohne id) einfügen
-    const neueOhneId = neu.filter(x=>x[idFeld]==null).map(x=>{ const d=toDb(x); delete d[idFeld]; return d; });
-    if (neueOhneId.length) await supabase.from(tabelle).insert(neueOhneId);
-    // Bestehende (mit id) aktualisieren/einfügen
-    const mitId = neu.filter(x=>x[idFeld]!=null).map(toDb);
-    if (mitId.length) await supabase.from(tabelle).upsert(mitId);
+    try {
+      // Gelöschte: waren in alt, sind nicht mehr in neu
+      const geloescht = [...altIds].filter(id=>!neuIds.has(id));
+      if (geloescht.length) pruefe(await supabase.from(tabelle).delete().in(idFeld, geloescht));
+      // Neue (ohne id) einfügen
+      const neueOhneId = neu.filter(x=>x[idFeld]==null).map(x=>{ const d=toDb(x); delete d[idFeld]; return d; });
+      if (neueOhneId.length) pruefe(await supabase.from(tabelle).insert(neueOhneId));
+      // Bestehende (mit id) aktualisieren/einfügen
+      const mitId = neu.filter(x=>x[idFeld]!=null).map(toDb);
+      if (mitId.length) pruefe(await supabase.from(tabelle).upsert(mitId));
+    } catch (e) {
+      fehler.push(e && e.message ? e.message : "Verbindung fehlgeschlagen");
+    }
+    if (fehler.length) {
+      setSpeicherFehler(navigator.onLine === false
+        ? "Keine Internetverbindung. Deine letzte Änderung wurde NICHT gespeichert. Bitte erneut versuchen, sobald du wieder Netz hast."
+        : "Deine letzte Änderung konnte nicht gespeichert werden (" + tabelle + "): " + fehler[0]);
+    } else {
+      setSpeicherFehler("");
+    }
   }
 
   const setProjekte = async (next) => {
@@ -430,6 +457,12 @@ export default function App() {
 
   return (
     <>
+      {speicherFehler && (
+        <div role="alert" style={{ position:"fixed", top:0, left:0, right:0, zIndex:10000, background:"#991b1b", color:"#fff", padding:"10px 14px", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, boxShadow:"0 2px 10px #0006", fontFamily:"'Inter',system-ui,sans-serif" }}>
+          <span>⚠️ {speicherFehler}</span>
+          <button onClick={()=>setSpeicherFehler("")} style={{ background:"#fff3", color:"#fff", border:"none", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontWeight:700 }}>OK</button>
+        </div>
+      )}
       <EinsatzplanungInner
         projekte={projekte} setProjekte={setProjekte}
         mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter}
