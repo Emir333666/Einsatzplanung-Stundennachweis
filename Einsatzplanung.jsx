@@ -1240,6 +1240,171 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
 }
 
 // ─── Andere Tabs (unverändert) ────────────────────────────────────────────────
+// ─── BAUSTELLEN-HUB ───────────────────────────────────────────────────────────
+// Alles zu einer Baustelle an einem Ort: Crew, Stunden, Berichte, Infos.
+function Baustellen({ projekte, mitarbeiter, einsaetze, stunden, berichte, unterkuenfte, fahrzeuge, kannPlanen, setTab }) {
+  const [selId, setSelId] = useState(null);
+  const [seg, setSeg] = useState("crew");
+  const [zeigeAlle, setZeigeAlle] = useState(false);
+  const heuteIso = isoDate(new Date());
+  const maById = useMemo(() => new Map((mitarbeiter || []).map(m => [m.id, m])), [mitarbeiter]);
+  const farbeVon = p => PROJ_PALETTE[Math.max(0, (projekte || []).findIndex(x => x.id === p.id)) % PROJ_PALETTE.length];
+  const istAktiv = p => p.status !== "abgeschlossen" && p.status !== "storniert";
+  const crewHeute = p => [...new Set((einsaetze || []).filter(e => e.projektId === p.id && e.dateStart <= heuteIso && heuteIso <= e.dateEnd).map(e => e.ma))];
+  const stundenVon = p => (stunden || []).filter(s => s.projekt === p.name);
+  const gemeldetAnz = p => stundenVon(p).filter(s => s.status === "gemeldet").length;
+  const fortschritt = p => {
+    if (!p.dateStart || !p.dateEnd) return null;
+    const a = parseDate(p.dateStart), b = parseDate(p.dateEnd), h = parseDate(heuteIso);
+    const gesamt = Math.round((b - a) / 86400000) + 1;
+    const tag = Math.round((h - a) / 86400000) + 1;
+    if (gesamt < 1) return null;
+    return { gesamt, tag, prozent: Math.max(0, Math.min(100, Math.round(tag / gesamt * 100))), noch: tag < 1, vorbei: tag > gesamt };
+  };
+  const karte = { background:TH.panel, border:"1px solid "+TH.border, borderRadius:14 };
+  const knopf = { background:"#ea580c", color:"#fff", border:"none", borderRadius:8, padding:"8px 14px", fontSize:13, fontWeight:700, cursor:"pointer" };
+
+  const sichtbar = (projekte || []).filter(p => zeigeAlle || istAktiv(p));
+  const proj = (projekte || []).find(p => p.id === selId);
+
+  // ── Liste ──
+  if (!proj) {
+    return (
+      <div style={{ maxWidth:720, margin:"0 auto" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
+          <div style={{ fontSize:20, fontWeight:800, color:TH.text }}>Baustellen</div>
+          <label style={{ marginLeft:"auto", fontSize:12, color:TH.textMut, display:"flex", alignItems:"center", gap:6, cursor:"pointer" }}>
+            <input type="checkbox" checked={zeigeAlle} onChange={e=>setZeigeAlle(e.target.checked)} /> auch abgeschlossene
+          </label>
+        </div>
+        {sichtbar.length === 0 && <div style={{ ...karte, padding:24, textAlign:"center", color:TH.textMut }}>Keine Baustellen vorhanden.</div>}
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {sichtbar.map(p => {
+            const col = farbeVon(p), crew = crewHeute(p), fo = fortschritt(p), gm = gemeldetAnz(p);
+            const sc = STATUS_FARBEN[p.status] || "#6b7280";
+            return (
+              <div key={p.id} onClick={()=>{ setSelId(p.id); setSeg("crew"); }} style={{ ...karte, borderLeft:"8px solid "+col, padding:"12px 14px", cursor:"pointer" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <div style={{ fontWeight:800, fontSize:15, color:TH.text }}>{p.name}</div>
+                  <span style={{ marginLeft:"auto", border:"1px solid "+sc, color:sc, borderRadius:99, padding:"1px 9px", fontSize:11, fontWeight:700 }}>{p.status}</span>
+                </div>
+                <div style={{ fontSize:12, color:TH.textMut, marginTop:2 }}>{[p.ort, p.kunde].filter(Boolean).join(" · ") || "–"}</div>
+                {fo && (
+                  <div style={{ marginTop:8 }}>
+                    <div style={{ height:6, background:TH.border, borderRadius:99, overflow:"hidden" }}><div style={{ width:fo.prozent+"%", height:"100%", background:col }} /></div>
+                    <div style={{ fontSize:11, color:TH.textMut, marginTop:3 }}>{fo.noch ? "startet "+fmtDate(parseDate(p.dateStart)) : fo.vorbei ? "Zeitraum vorbei" : `Tag ${fo.tag} von ${fo.gesamt}`}</div>
+                  </div>
+                )}
+                <div style={{ display:"flex", gap:8, marginTop:8, flexWrap:"wrap", fontSize:12 }}>
+                  <span style={{ background:crew.length?"#dcfce7":TH.panel2, color:crew.length?"#166534":TH.textMut, borderRadius:8, padding:"2px 9px", fontWeight:700 }}>👷 {crew.length} heute</span>
+                  {gm > 0 && <span style={{ background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"2px 9px", fontWeight:700 }}>⚠ {gm} Stunden gemeldet</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Detail ──
+  const col = farbeVon(proj), crew = crewHeute(proj), fo = fortschritt(proj);
+  const st = stundenVon(proj);
+  const sumH = st.reduce((a, s) => a + (Number(s.arbeitsstunden) || 0), 0);
+  const nachStatus = k => st.filter(s => (s.status || "offen") === k).length;
+  const proPerson = (() => {
+    const m = new Map();
+    st.forEach(s => { const k = s.ma_name || s.maName || (maById.get(s.ma_id || s.maId)?.name) || "?"; m.set(k, (m.get(k) || 0) + (Number(s.arbeitsstunden) || 0)); });
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  })();
+  const ber = (berichte || []).filter(b => b.projektId === proj.id).sort((a, b) => String(b.datum || "").localeCompare(String(a.datum || ""))).slice(0, 15);
+  const unt = (unterkuenfte || []).filter(u => u.projektId === proj.id);
+  const fzg = (fahrzeuge || []).find(f => f.id === proj.fzg);
+  const segs = [["crew","Crew"],["stunden","Stunden"],["berichte","Berichte"],["infos","Infos"]];
+  const std = h => (Math.round(h * 10) / 10).toLocaleString("de-DE") + " h";
+  const zeile = { display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderBottom:"1px solid "+TH.border, fontSize:13, color:TH.text };
+
+  return (
+    <div style={{ maxWidth:720, margin:"0 auto" }}>
+      <button onClick={()=>setSelId(null)} style={{ background:"none", border:"none", color:TH.textMut, fontSize:13, cursor:"pointer", padding:"0 0 8px" }}>← alle Baustellen</button>
+      <div style={{ ...karte, borderTop:"8px solid "+col, padding:"12px 14px", marginBottom:12 }}>
+        <div style={{ fontWeight:800, fontSize:18, color:TH.text }}>{proj.name}</div>
+        <div style={{ fontSize:12, color:TH.textMut }}>{[proj.ort, proj.kunde].filter(Boolean).join(" · ") || "–"}</div>
+        {fo && <div style={{ fontSize:12, color:TH.textMut, marginTop:4 }}>{fmtDate(parseDate(proj.dateStart))} – {fmtDate(parseDate(proj.dateEnd))} · {fo.noch ? "noch nicht gestartet" : fo.vorbei ? "Zeitraum vorbei" : `Tag ${fo.tag} von ${fo.gesamt}`}</div>}
+      </div>
+      <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+        {segs.map(([k, l]) => (
+          <button key={k} onClick={()=>setSeg(k)} style={{ flex:1, padding:"9px 4px", borderRadius:10, border:"1.5px solid "+(seg===k?col:TH.border), background:seg===k?col:TH.panel, color:seg===k?"#fff":TH.text, fontWeight:700, fontSize:13, cursor:"pointer" }}>{l}</button>
+        ))}
+      </div>
+      <div style={{ ...karte, padding:"4px 14px 12px" }}>
+        {seg === "crew" && (
+          <div>
+            <div style={{ fontSize:12, color:TH.textMut, padding:"8px 0" }}>Heute auf dieser Baustelle ({crew.length})</div>
+            {crew.length === 0 && <div style={{ color:TH.textMut, fontSize:13, padding:"6px 0" }}>Heute ist niemand eingeplant.</div>}
+            {crew.map(id => {
+              const m = maById.get(id);
+              const hh = st.filter(s => (s.ma_id || s.maId) === id && s.datum === heuteIso);
+              const h = hh.reduce((a, s) => a + (Number(s.arbeitsstunden) || 0), 0);
+              const stt = hh[0] ? STUNDEN_STATUS[hh[0].status || "offen"] : null;
+              return (
+                <div key={id} style={zeile}>
+                  <span style={{ fontWeight:700 }}>{m ? m.name : id}</span>
+                  <span style={{ marginLeft:"auto", color:TH.textMut }}>{hh.length ? std(h) : "noch keine Stunden"}</span>
+                  {stt && <span style={{ background:stt.bg, color:stt.fg, borderRadius:99, padding:"1px 8px", fontSize:11, fontWeight:700 }}>{stt.text}</span>}
+                </div>
+              );
+            })}
+            {kannPlanen && <button onClick={()=>setTab("woche")} style={{ ...knopf, marginTop:12 }}>Einplanen →</button>}
+          </div>
+        )}
+        {seg === "stunden" && (
+          <div>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap", padding:"10px 0", fontSize:12 }}>
+              <span style={{ fontWeight:800, fontSize:15, color:TH.text }}>{std(sumH)} gesamt</span>
+              <span style={{ background:"#fef3c7", color:"#92400e", borderRadius:8, padding:"2px 9px", fontWeight:700 }}>{nachStatus("offen")} offen</span>
+              <span style={{ background:"#dcfce7", color:"#166534", borderRadius:8, padding:"2px 9px", fontWeight:700 }}>{nachStatus("bestaetigt")} bestätigt</span>
+              <span style={{ background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"2px 9px", fontWeight:700 }}>{nachStatus("gemeldet")} gemeldet</span>
+            </div>
+            {proPerson.length === 0 && <div style={{ color:TH.textMut, fontSize:13 }}>Noch keine Stunden erfasst.</div>}
+            {proPerson.map(([n, h]) => <div key={n} style={zeile}><span>{n}</span><span style={{ marginLeft:"auto", fontWeight:700 }}>{std(h)}</span></div>)}
+            <button onClick={()=>setTab("stundenzettel")} style={{ ...knopf, marginTop:12 }}>Zum Stundenzettel →</button>
+          </div>
+        )}
+        {seg === "berichte" && (
+          <div>
+            {ber.length === 0 && <div style={{ color:TH.textMut, fontSize:13, padding:"10px 0" }}>Noch keine Berichte.</div>}
+            {ber.map(b => (
+              <div key={b.id} style={{ padding:"10px 0", borderBottom:"1px solid "+TH.border, fontSize:13, color:TH.text }}>
+                <div style={{ display:"flex", gap:8 }}>
+                  <b>{b.datum ? fmtDate(parseDate(b.datum)) : "–"}</b>
+                  <span style={{ color:TH.textMut }}>{b.verfasser || ""}</span>
+                  {b.fotos.length > 0 && <span style={{ marginLeft:"auto", color:TH.textMut }}>📷 {b.fotos.length}</span>}
+                </div>
+                {b.fortschritt && <div style={{ marginTop:3 }}>{b.fortschritt}</div>}
+                {b.probleme && <div style={{ marginTop:3, background:"#fee2e2", color:"#991b1b", borderRadius:6, padding:"4px 8px", fontSize:12 }}>⚠ {b.probleme}</div>}
+              </div>
+            ))}
+            <button onClick={()=>setTab("berichte")} style={{ ...knopf, marginTop:12 }}>Zu den Berichten →</button>
+          </div>
+        )}
+        {seg === "infos" && (
+          <div style={{ display:"flex", flexDirection:"column", gap:8, paddingTop:10, fontSize:13 }}>
+            <Info label="Kunde" value={proj.kunde || "–"} />
+            <Info label="Ort" value={proj.ort || "–"} />
+            <Info label="Ansprechpartner" value={proj.ansprechpartner || "–"} />
+            {proj.apTel && <Info label="Telefon" value={<a href={"tel:"+proj.apTel} style={{ color:"#ea580c" }}>{proj.apTel}</a>} />}
+            {proj.apEmail && <Info label="E-Mail" value={<a href={"mailto:"+proj.apEmail} style={{ color:"#ea580c" }}>{proj.apEmail}</a>} />}
+            <Info label="Fahrzeug" value={fzg ? `${fzg.kz} (${fzg.typ})` : "–"} />
+            {unt.map(u => <Info key={u.id} label="Unterkunft" value={[u.name, u.adresse].filter(Boolean).join(", ")} />)}
+            {proj.bemerkung && <div style={{ padding:"6px 10px", background:"#fef9c3", borderRadius:6, color:"#92400e", fontSize:12 }}>{proj.bemerkung}</div>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ProjektUebersicht({ projekte, fahrzeuge, mitarbeiter }) {
   const maName = id => (mitarbeiter||[]).find(m=>m.id===id)?.name || null;
   return (
@@ -3425,10 +3590,10 @@ function AboPakete({ abo }) {   const [pakete, setPakete] = useState([]);   cons
 function darfTab(rolle, tabId) {
   if (rolle==="Admin") return true;
   const rechte = {
-    "Projektleiter": ["postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
-    "Bauleiter":   ["postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
-    "Vorarbeiter": ["postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
-    "Monteur":     ["postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
+    "Projektleiter": ["baustellen","postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Bauleiter":   ["baustellen","postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Vorarbeiter": ["baustellen","postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
+    "Monteur":     ["baustellen","postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Unbekannt":   ["heute","woche","monat"],
   };
   return (rechte[rolle]||rechte["Unbekannt"]).includes(tabId);
@@ -3702,6 +3867,7 @@ export default function EinsatzplanungInner({
   function resetDaten() { if (onReset) onReset(); }
 
   const alleTabs = [
+    { id:"baustellen",   label:"Baustellen", Icon:HardHat },
     { id:"postfach",     label:"Mein Postfach", Icon:Inbox },
     { id:"dashboard",    label:"Dashboard", Icon:LayoutDashboard },
     { id:"kosten",       label:"Kosten", Icon:Euro },
@@ -3825,6 +3991,7 @@ export default function EinsatzplanungInner({
         {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} antraege={vAntraege} warnungen={warnungen} unterkuenfte={vUnterkuenfte} setTab={setTab} T={T} />}
         {tab==="kosten"       && darfTab(meineRolle,"kosten")       && <KostenControlling projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} T={T} />}
         {tab==="assistent"    && darfTab(meineRolle,"assistent")    && <SmartAssistent projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} werkzeuge={werkzeuge} berichte={vBerichte} T={T} />}
+        {tab==="baustellen"   && darfTab(meineRolle,"baustellen")   && <Baustellen projekte={vProjekte} mitarbeiter={mitarbeiter} einsaetze={einsaetze} stunden={vStunden} berichte={vBerichte} unterkuenfte={vUnterkuenfte} fahrzeuge={fahrzeuge} kannPlanen={kannPlanen} setTab={setTab} />}
         {tab==="heute"        && darfTab(meineRolle,"heute")        && (kannPlanen || !meinMA ? <Tagesansicht   mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} /> : <MeinTag meinMA={meinMA} mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setTab={setTab} />)}
         {tab==="woche"        && darfTab(meineRolle,"woche")        && <Timeline key="woche" modus="woche" mitarbeiter={vMitarbeiter} alleMA={mitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setEinsaetze={setEinsaetze} kannPlanen={kannPlanen} meinMaId={meinMA?.id} />}
         {tab==="monat"        && darfTab(meineRolle,"monat")        && <Timeline key="monat" modus="monat" mitarbeiter={vMitarbeiter} alleMA={mitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setEinsaetze={setEinsaetze} kannPlanen={kannPlanen} meinMaId={meinMA?.id} />}
