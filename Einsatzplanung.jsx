@@ -4188,21 +4188,58 @@ export default function EinsatzplanungInner({
               <button onClick={()=>setMenueOffen(false)} style={{ background:"#fff2", border:"1px solid #fff4", borderRadius:6, padding:"4px 10px", color:"#fff", cursor:"pointer", fontSize:14, display:"flex", alignItems:"center" }}><X size={15} /></button>
             </div>}
             <div style={{ flex:1, overflowY:"auto", padding:"10px 0" }}>
-              {tabs.map(t=>(
-                <button key={t.id} onClick={()=>{setTab(t.id);setMenueOffen(false);}} style={{
-                  display:"block", width:"100%", textAlign:"left", padding:"12px 18px", border:"none", cursor:"pointer", fontSize:14,
-                  fontWeight:tab===t.id?700:500,
-                  color:tab===t.id?"#ea580c":T.textMut,
-                  background:tab===t.id?(dunkel?"#33415588":"#fff7ed"):"transparent",
-                  borderLeft:tab===t.id?"4px solid #ea580c":"4px solid transparent"
-                }}><span style={{ display:"flex", alignItems:"center", gap:10 }}>{t.Icon && <t.Icon size={17} strokeWidth={2.2} />}{t.label}</span></button>
-              ))}
+              {(() => {
+                const GRUPPEN = [
+                  ["Heute", ["karte","verlauf","heute","postfach","dashboard"]],
+                  ["Planen", ["woche","monat","antraege"]],
+                  ["Arbeiten", ["baustellen","stundenzettel","berichte","messprotokolle","chat"]],
+                  ["Auswerten", ["kosten","assistent","warnungen"]],
+                  ["Bestand", ["projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"]],
+                  ["Einstellungen", ["verwaltung","abo"]],
+                ];
+                const inGruppe = new Set(GRUPPEN.flatMap(g => g[1]));
+                const rest = tabs.filter(t => !inGruppe.has(t.id));
+                const liste = GRUPPEN.map(([titel, ids]) => [titel, ids.map(id => tabs.find(t => t.id === id)).filter(Boolean)]);
+                if (rest.length) liste.push(["Weitere", rest]);
+                return liste.filter(([, ts]) => ts.length).map(([titel, ts]) => (
+                  <div key={titel}>
+                    <div style={{ fontSize:10.5, fontWeight:800, letterSpacing:1, textTransform:"uppercase", color:T.textMut, opacity:0.75, padding:"12px 18px 4px" }}>{titel}</div>
+                    {ts.map(t => (
+                      <button key={t.id} onClick={()=>{setTab(t.id);setMenueOffen(false);}} style={{
+                        display:"block", width:"calc(100% - 16px)", margin:"1px 8px", textAlign:"left", padding:"10px 12px", border:"none", cursor:"pointer", fontSize:14, borderRadius:10,
+                        fontWeight:tab===t.id?800:500,
+                        color:tab===t.id?"#fff":T.textMut,
+                        background:tab===t.id?"#ea580c":"transparent",
+                      }}><span style={{ display:"flex", alignItems:"center", gap:10 }}>{t.Icon && <t.Icon size={17} strokeWidth={2.2} />}{t.label}</span></button>
+                    ))}
+                  </div>
+                ));
+              })()}
             </div>
           </div>
         </>
       )}
 
-      <div key={tab} className="inhalt" style={{ padding:"18px 14px", maxWidth:1400, margin:"0 auto", marginLeft: breit ? 264 : "auto" }}>
+      {!breit && (() => {
+        const leiste = (kannPlanen
+          ? [["karte","Start",MapPin],["woche","Plan",Calendar],["stundenzettel","Stunden",Clock],["__mehr","Mehr",Menu]]
+          : [["heute","Heute",CalendarDays],["woche","Plan",Calendar],["stundenzettel","Stunden",Clock],["chat","Chat",MessageCircle]]
+        ).filter(([id]) => id === "__mehr" || tabs.some(t => t.id === id));
+        return (
+          <div style={{ position:"fixed", left:0, right:0, bottom:0, zIndex:80, background:T.tabBar, borderTop:"3px solid #ea580c", display:"flex", paddingBottom:"env(safe-area-inset-bottom)" }}>
+            {leiste.map(([id, label, Ico]) => {
+              const aktiv = id !== "__mehr" && (tab === id || (id === "karte" && tab === "verlauf"));
+              return (
+                <button key={id} onClick={()=> id === "__mehr" ? setMenueOffen(true) : setTab(id)} style={{ flex:1, border:"none", background:aktiv?(dunkel?"#33415588":"#fff7ed"):"transparent", color:aktiv?"#ea580c":T.textMut, padding:"8px 2px 7px", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:2, fontSize:11, fontWeight:aktiv?800:600 }}>
+                  <Ico size={22} strokeWidth={aktiv?2.6:2} />{label}
+                </button>
+              );
+            })}
+          </div>
+        );
+      })()}
+
+      <div key={tab} className="inhalt" style={{ padding: breit ? "18px 14px" : "18px 14px 96px", maxWidth:1400, margin:"0 auto", marginLeft: breit ? 264 : "auto" }}>
         {meinMA && !istAdmin && (
           <div style={{ background:"#eff6ff", border:"1.5px solid #bfdbfe", borderRadius:8, padding:"8px 14px", marginBottom:14, fontSize:12, color:"#1e40af" }}>
             👋 Angemeldet als <strong>{meinMA.name}</strong> · {meinMA.team} · Rolle: <strong>{meineRolle}</strong>
