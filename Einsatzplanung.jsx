@@ -141,6 +141,35 @@ function dateInRange(d, start, end) {
 function getProjektForTeamDate(projekte, team, date) {
   return projekte.find(p => p.team === team && dateInRange(date, p.dateStart, p.dateEnd));
 }
+// ── Einsätze: wer ist an welchem Tag auf welchem Projekt (pro Person, unabhängig vom Team) ──
+let EINSAETZE = [];
+function setEinsaetzeListe(l) { EINSAETZE = Array.isArray(l) ? l : []; }
+function projekteFuerMa(projekte, maId, d) {
+  const iso = isoDate(d);
+  const ids = new Set(EINSAETZE.filter(e => e.ma === maId && e.dateStart <= iso && iso <= e.dateEnd).map(e => e.projektId));
+  return projekte.filter(p => ids.has(p.id));
+}
+function neueEinsatzId() { return "E" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function werktagBloecke(von, bis, mitWochenende) {
+  if (mitWochenende) return [[von, bis]];
+  const bloecke = []; let start = null, letzter = null;
+  for (let d = parseDate(von); isoDate(d) <= bis; d = addDays(d, 1)) {
+    if (!isWeekend(d)) { if (!start) start = isoDate(d); letzter = isoDate(d); }
+    else if (start) { bloecke.push([start, letzter]); start = null; }
+  }
+  if (start) bloecke.push([start, letzter]);
+  return bloecke;
+}
+function einsatzTagEntfernen(liste, maId, projektId, iso, abHier) {
+  const vor = isoDate(addDays(parseDate(iso), -1)), nach = isoDate(addDays(parseDate(iso), 1));
+  const out = [];
+  liste.forEach(e => {
+    if (e.ma !== maId || e.projektId !== projektId || e.dateStart > iso || e.dateEnd < iso) { out.push(e); return; }
+    if (e.dateStart < iso) out.push({ ...e, dateEnd: vor });
+    if (!abHier && e.dateEnd > iso) out.push(e.dateStart < iso ? { ...e, id: neueEinsatzId(), dateStart: nach } : { ...e, dateStart: nach });
+  });
+  return out;
+}
 function getSonderForMaDate(sonder, maId, date) {
   return sonder.find(s => s.ma === maId && dateInRange(date, s.dateStart, s.dateEnd));
 }
@@ -163,7 +192,7 @@ function pruefKonflikte(projekte, sonder, mitarbeiter) {
   projekte.forEach(p => { if (!p.vorarbeiter && p.status!=="storniert") warn.push({ typ:"Vorarbeiter", msg:`Projekt "${p.name}" hat keinen Vorarbeiter` }); });
   sonder.forEach(s => {
     const ma = mitarbeiter.find(m => m.id===s.ma); if (!ma) return;
-    const proj = projekte.find(p => p.team===ma.team && p.dateStart<=s.dateEnd && p.dateEnd>=s.dateStart && p.status!=="storniert");
+    const proj = projekte.find(p => p.status!=="storniert" && EINSAETZE.some(e => e.ma===ma.id && e.projektId===p.id && e.dateStart<=s.dateEnd && e.dateEnd>=s.dateStart));
     if (proj && (s.typ==="Urlaub"||s.typ==="Krank")) warn.push({ typ:"Konflikt", msg:`${ma.name} ist ${s.typ} (${fmtDate(parseDate(s.dateStart))}–${fmtDate(parseDate(s.dateEnd))}), aber im Projekt "${proj.name}" eingeplant` });
   });
   return warn;
@@ -188,9 +217,9 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
   const kw = getKW(d);
 
   const eintraege = mitarbeiter.map(ma => {
-    const proj = getProjektForTeamDate(projekte, ma.team, d);
+    const projs = projekteFuerMa(projekte, ma.id, d);
     const se = getSonderForMaDate(sonder, ma.id, d);
-    const eintrag = se || (proj ? { typ:"Projekt", projekt:proj } : null);
+    const eintrag = se || (projs.length ? { typ:"Projekt", projekte:projs } : null);
     return { ma, eintrag };
   });
 
@@ -238,9 +267,9 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
           <div style={{ fontWeight:700, fontSize:13, color:TH.text, marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Building2 size={15}/>Heute auf Baustelle</span></div>
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {Object.entries(
-              aufBaustelle.reduce((acc, { ma, eintrag }) => {
-                const key = eintrag.projekt.id;
-                if (!acc[key]) acc[key] = { projekt:eintrag.projekt, team:[] };
+              aufBaustelle.flatMap(({ ma, eintrag }) => eintrag.projekte.map(pr => ({ ma, projekt:pr }))).reduce((acc, { ma, projekt }) => {
+                const key = projekt.id;
+                if (!acc[key]) acc[key] = { projekt, team:[] };
                 acc[key].team.push(ma);
                 return acc;
               }, {})
@@ -259,7 +288,7 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
                     <Info label="Bis" value={fmtDate(parseDate(p.dateEnd))} />
                     <Info label="Status" value={p.status} />
                     <div style={{ gridColumn:"1/-1", marginTop:6 }}>
-                      <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, textTransform:"uppercase", marginBottom:4 }}>Team</div>
+                      <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, textTransform:"uppercase", marginBottom:4 }}>Eingeplant ({team.length})</div>
                       <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
                         {team.map(ma => (
                           <span key={ma.id} style={{
@@ -322,24 +351,37 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
 }
 
 // ─── WOCHENANSICHT (mit echten Daten) ────────────────────────────────────────
-function Wochenansicht({ mitarbeiter, projekte, sonder }) {
+function Wochenansicht({ mitarbeiter, alleMA, projekte, sonder, einsaetze, setEinsaetze, kannPlanen }) {
   const heute = new Date();
   const [kwYear, setKwYear] = useState(heute.getFullYear());
   const [kw, setKw] = useState(getKW(heute));
   const [filterTeam, setFilterTeam] = useState("Alle");
+  const [dialog, setDialog] = useState(null);
+  const [entf, setEntf] = useState(null);
 
   const monday = useMemo(() => getMondayOfKW(kwYear, kw), [kwYear, kw]);
   const tage = useMemo(() => Array.from({length:7}, (_,i) => addDays(monday, i)), [monday]);
+  const isoTage = tage.map(isoDate);
+  const woVon = isoTage[0], woBis = isoTage[6];
+  const liste = einsaetze || [];
 
-  const sichtbareTeams = filterTeam==="Alle" ? TEAM_NAMEN_AKTUELL : [filterTeam];
-  const sichtbareMA = mitarbeiter.filter(m => sichtbareTeams.includes(m.team));
+  const inGruppe = m => filterTeam==="Alle" || m.team===filterTeam;
+  const maById = useMemo(() => new Map(mitarbeiter.map(m => [m.id, m])), [mitarbeiter]);
+
+  const mitEinsatz = new Set(liste.filter(e => e.dateStart<=woBis && e.dateEnd>=woVon && maById.has(e.ma) && inGruppe(maById.get(e.ma))).map(e => e.projektId));
+  const zeilen = projekte
+    .filter(p => p.status!=="storniert" && (mitEinsatz.has(p.id) || (p.status!=="abgeschlossen" && p.dateStart<=woBis && p.dateEnd>=woVon && (filterTeam==="Alle" || p.team===filterTeam))))
+    .sort((x,y) => String(x.dateStart).localeCompare(String(y.dateStart)) || String(x.name).localeCompare(String(y.name)));
 
   function prevKW() { if(kw===1){setKwYear(y=>y-1);setKw(52);}else setKw(k=>k-1); }
   function nextKW() { if(kw===52){setKwYear(y=>y+1);setKw(1);}else setKw(k=>k+1); }
 
+  const sichtbar = mitarbeiter.filter(inGruppe);
+  const chip = (col, fett) => ({ display:"inline-block", margin:"1px 2px", padding:"2px 8px", borderRadius:99, fontSize:11, fontWeight:600, whiteSpace:"nowrap",
+    background: fett ? col.bg : col.light, color: fett ? "#fff" : col.text, border:"1px solid "+col.bg+"55", cursor: kannPlanen ? "pointer" : "default" });
+
   return (
     <div>
-      {/* Navigation */}
       <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14, flexWrap:"wrap" }}>
         <button onClick={prevKW} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>‹</button>
         <div style={{ textAlign:"center" }}>
@@ -348,21 +390,22 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
         </div>
         <button onClick={nextKW} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>›</button>
         <select value={filterTeam} onChange={e=>setFilterTeam(e.target.value)} style={{ padding:"6px 12px", borderRadius:8, border:"1.5px solid "+TH.border, fontSize:13, marginLeft:8 }}>
-          {["Alle",...TEAM_NAMEN_AKTUELL].map(t=><option key={t}>{t}</option>)}
+          {["Alle",...TEAM_NAMEN_AKTUELL].map(t=><option key={t} value={t}>{t==="Alle" ? "Alle Gruppen" : t}</option>)}
         </select>
         <button onClick={()=>{setKw(getKW(heute));setKwYear(heute.getFullYear());}} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #ea580c", background:"#ffedd5", color:"#ea580c", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
+        {kannPlanen && <button onClick={()=>setDialog({ projektId:(zeilen[0]||projekte[0]||{}).id||"", von:woVon, bis:woVon })} style={{ ...btnPrimary("#2563eb"), padding:"7px 14px", marginLeft:"auto" }}>＋ Einplanen</button>}
       </div>
 
       <div style={{ overflowX:"auto" }}>
-        <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12, minWidth:700 }}>
+        <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12, minWidth:900 }}>
           <thead>
             <tr>
-              <th style={{ ...thS(), textAlign:"left", position:"sticky", left:0, background:TH.panel2, zIndex:2, minWidth:140 }}>Mitarbeiter</th>
+              <th style={{ ...thS(), textAlign:"left", position:"sticky", left:0, background:TH.panel2, zIndex:2, minWidth:150 }}>Projekt</th>
               {tage.map(d => {
                 const isHeuteFn = isoDate(d) === isoDate(new Date());
                 const wend = isWeekend(d);
                 return (
-                  <th key={isoDate(d)} style={{ ...thS(), minWidth:110, background: isHeuteFn ? "#eff6ff" : wend ? "#f9fafb" : "#f9fafb",
+                  <th key={isoDate(d)} style={{ ...thS(), minWidth:120, background:"#f9fafb",
                     color: isHeuteFn ? "#ea580c" : wend ? "#d1d5db" : "#6b7280",
                     borderTop: isHeuteFn ? "2px solid #ea580c" : undefined }}>
                     <div style={{ fontWeight:700 }}>{WOCHENTAGE[d.getDay()]}</div>
@@ -373,68 +416,174 @@ function Wochenansicht({ mitarbeiter, projekte, sonder }) {
             </tr>
           </thead>
           <tbody>
-            {sichtbareTeams.map(team => {
-              const teamMA = sichtbareMA.filter(m=>m.team===team);
-              const col = getTeamColor(team);
-              return [
-                <tr key={`th-${team}`}>
-                  <td colSpan={8} style={{ background:col.bg, color:"#fff", fontWeight:700, fontSize:11, padding:"4px 10px", letterSpacing:0.5 }}>▸ {team}</td>
-                </tr>,
-                ...teamMA.map(ma => (
-                  <tr key={ma.id} style={{ borderBottom:"1px solid "+TH.border }}>
-                    <td style={{ ...tdS(), position:"sticky", left:0, background:TH.panel, zIndex:1, borderRight:"2px solid #e5e7eb", borderLeft:`4px solid ${col.bg}`, whiteSpace:"nowrap" }}>
-                      <div style={{ fontWeight:ma.rolle==="Vorarbeiter"?700:400, color:ma.rolle==="Vorarbeiter"?col.bg:TH.text }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</div>
-                      <div style={{ fontSize:10, color:"#9ca3af" }}>{ma.rolle}</div>
-                    </td>
-                    {tage.map(d => {
-                      const wend = isWeekend(d);
-                      const isHeuteFn = isoDate(d)===isoDate(new Date());
-                      const proj = getProjektForTeamDate(projekte, team, d);
-                      const se = getSonderForMaDate(sonder, ma.id, d);
-                      const eintrag = se || (proj ? { typ:"Projekt", projekt:proj } : null);
-
-                      if (wend && !eintrag) return (
-                        <td key={isoDate(d)} style={{ ...tdS(), background:"#fafafa", textAlign:"center", color:"#e5e7eb", fontSize:16 }}>—</td>
-                      );
-                      if (!eintrag) return <td key={isoDate(d)} style={{ ...tdS(), background: isHeuteFn?"#fff7ed":TH.panel }} />;
-
-                      if (eintrag.typ==="Projekt") {
-                        const p = eintrag.projekt;
-                        const isStart = isoDate(d)===p.dateStart;
-                        return (
-                          <td key={isoDate(d)} style={{ ...tdS(), background:col.light, padding:"2px 4px" }}>
-                            <div style={{ background:col.light, border:"1px solid "+TH.border, boxShadow:"0 2px 10px #00000012", borderRadius:5, padding:"3px 6px", fontSize:10, borderLeft:isStart?`4px solid ${col.bg}`:undefined }}>
-                              <div style={{ fontWeight:600, color:col.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", maxWidth:90 }}>{isStart?"▶ ":""}{p.name}</div>
-                              {isStart && <div style={{ fontSize:9, color:"#6b7280" }}>{p.ort}</div>}
-                            </div>
-                          </td>
-                        );
-                      } else {
-                        const ef = EINSATZ_FARBEN[eintrag.typ]||EINSATZ_FARBEN["Frei"];
-                        return (
-                          <td key={isoDate(d)} style={{ ...tdS(), background:ef.bg, padding:"2px 4px" }}>
-                            <div style={{ border:`1.5px solid ${ef.border}`, borderRadius:5, padding:"3px 6px", fontSize:10, textAlign:"center" }}>
-                              <span style={{ color:ef.badge, fontWeight:600 }}>{eintrag.typ}</span>
-                            </div>
-                          </td>
-                        );
-                      }
-                    })}
-                  </tr>
-                ))
-              ];
+            {zeilen.length===0 && (
+              <tr><td colSpan={8} style={{ ...tdS(), textAlign:"center", color:"#9ca3af", padding:24 }}>Keine Projekte in dieser Woche</td></tr>
+            )}
+            {zeilen.map(p => {
+              const col = getTeamColor(p.team);
+              return (
+                <tr key={p.id} style={{ borderBottom:"1px solid "+TH.border }}>
+                  <td style={{ ...tdS(), position:"sticky", left:0, background:TH.panel, zIndex:1, borderRight:"2px solid #e5e7eb", borderLeft:`4px solid ${col.bg}`, verticalAlign:"top" }}>
+                    <div style={{ fontWeight:700, color:TH.text }}>{p.name}</div>
+                    <div style={{ fontSize:10, color:"#9ca3af" }}>{p.ort}{p.dateEnd ? " · bis "+fmtDateShort(parseDate(p.dateEnd)) : ""}</div>
+                  </td>
+                  {tage.map(d => {
+                    const iso = isoDate(d);
+                    const wend = isWeekend(d);
+                    const isH = iso === isoDate(new Date());
+                    const ids = [...new Set(liste.filter(e => e.projektId===p.id && e.dateStart<=iso && e.dateEnd>=iso).map(e => e.ma))];
+                    const pers = ids.map(id => maById.get(id)).filter(m => m && inGruppe(m));
+                    return (
+                      <td key={iso} onClick={kannPlanen ? ()=>setDialog({ projektId:p.id, von:iso, bis:iso }) : undefined}
+                        style={{ ...tdS(), verticalAlign:"top", background: wend ? "#fafafa" : isH ? "#fff7ed" : TH.panel, cursor: kannPlanen ? "pointer" : "default" }}>
+                        {pers.map(m => (
+                          <span key={m.id} onClick={ev => { if (!kannPlanen) return; ev.stopPropagation(); setEntf({ ma:m, projekt:p, iso }); }}
+                            style={chip(col, m.rolle==="Vorarbeiter")} title={m.rolle}>{m.rolle==="Vorarbeiter"?"★ ":""}{m.name}</span>
+                        ))}
+                        {!pers.length && kannPlanen && !wend && <span style={{ color:"#d1d5db", fontSize:13 }}>＋</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
             })}
+
+            <tr><td colSpan={8} style={{ background:"#991b1b", color:"#fff", fontWeight:700, fontSize:11, padding:"4px 10px", letterSpacing:0.5 }}>▸ Abwesend</td></tr>
+            <tr style={{ borderBottom:"1px solid "+TH.border }}>
+              <td style={{ ...tdS(), position:"sticky", left:0, background:TH.panel, zIndex:1, borderRight:"2px solid #e5e7eb", fontSize:11, color:"#6b7280" }}>Urlaub · Krank · Frei</td>
+              {tage.map(d => {
+                const wend = isWeekend(d);
+                const abw = sichtbar.map(m => ({ m, se:getSonderForMaDate(sonder, m.id, d) })).filter(x => x.se);
+                return (
+                  <td key={isoDate(d)} style={{ ...tdS(), verticalAlign:"top", background: wend ? "#fafafa" : TH.panel }}>
+                    {abw.map(({ m, se }) => {
+                      const ef = EINSATZ_FARBEN[se.typ] || EINSATZ_FARBEN["Frei"];
+                      return <span key={m.id} style={{ display:"inline-block", margin:"1px 2px", padding:"2px 8px", borderRadius:99, fontSize:11, fontWeight:600, background:ef.bg, color:ef.badge, border:`1px solid ${ef.border}`, whiteSpace:"nowrap" }}>{m.name} · {se.typ}</span>;
+                    })}
+                  </td>
+                );
+              })}
+            </tr>
+
+            <tr><td colSpan={8} style={{ background:"#6b7280", color:"#fff", fontWeight:700, fontSize:11, padding:"4px 10px", letterSpacing:0.5 }}>▸ Nicht eingeplant (verfügbar)</td></tr>
+            <tr style={{ borderBottom:"1px solid "+TH.border }}>
+              <td style={{ ...tdS(), position:"sticky", left:0, background:TH.panel, zIndex:1, borderRight:"2px solid #e5e7eb", fontSize:11, color:"#6b7280" }}>Ohne Projekt</td>
+              {tage.map(d => {
+                const iso = isoDate(d);
+                const wend = isWeekend(d);
+                if (wend) return <td key={iso} style={{ ...tdS(), background:"#fafafa", textAlign:"center", color:"#e5e7eb", fontSize:16 }}>—</td>;
+                const frei = sichtbar.filter(m => !getSonderForMaDate(sonder, m.id, d) && !liste.some(e => e.ma===m.id && e.dateStart<=iso && e.dateEnd>=iso));
+                return (
+                  <td key={iso} style={{ ...tdS(), verticalAlign:"top", background: TH.panel }}>
+                    {frei.map(m => { const c = getTeamColor(m.team); return <span key={m.id} style={{ display:"inline-block", margin:"1px 2px", padding:"2px 8px", borderRadius:99, fontSize:11, background:TH.panel2, color:"#6b7280", border:"1px dashed "+c.bg+"88", whiteSpace:"nowrap" }}>{m.name}</span>; })}
+                  </td>
+                );
+              })}
+            </tr>
           </tbody>
         </table>
       </div>
-      {/* Legende */}
-      <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:14 }}>
-        {Object.entries(EINSATZ_FARBEN).map(([k,v]) => (
+      <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:14, alignItems:"center" }}>
+        {kannPlanen && <span style={{ fontSize:11, color:"#6b7280" }}>Auf ein Feld klicken = Person einplanen · auf einen Namen klicken = entfernen.</span>}
+        {Object.entries(EINSATZ_FARBEN).slice(1).map(([k,v]) => (
           <span key={k} style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, background:v.bg, border:`1px solid ${v.border}`, borderRadius:6, padding:"2px 8px", color:v.badge }}>● {k}</span>
         ))}
-        <span style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, background:"#fafafa", border:"1px solid "+TH.border, borderRadius:6, padding:"2px 8px", color:"#9ca3af" }}>— Wochenende</span>
       </div>
+
+      {dialog && <EinsatzDialog projekte={projekte} personen={alleMA || mitarbeiter} sonder={sonder} einsaetze={liste} setEinsaetze={setEinsaetze} vorgabe={dialog} onClose={()=>setDialog(null)} />}
+      {entf && (
+        <Modal titel="Einsatz ändern" onClose={()=>setEntf(null)} farbe="#2563eb">
+          <div style={{ fontSize:14, color:TH.text, marginBottom:14 }}>
+            <b>{entf.ma.name}</b> ist am <b>{fmtDate(parseDate(entf.iso))}</b> auf <b>{entf.projekt.name}</b> eingeplant.
+          </div>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            <button style={btnPrimary("#dc2626")} onClick={()=>{ setEinsaetze(prev => einsatzTagEntfernen(prev, entf.ma.id, entf.projekt.id, entf.iso, false)); setEntf(null); }}>Nur an diesem Tag entfernen</button>
+            <button style={btnPrimary("#ea580c")} onClick={()=>{ setEinsaetze(prev => einsatzTagEntfernen(prev, entf.ma.id, entf.projekt.id, entf.iso, true)); setEntf(null); }}>Ab diesem Tag entfernen</button>
+            <button style={btnGhost()} onClick={()=>setEntf(null)}>Abbrechen</button>
+          </div>
+        </Modal>
+      )}
     </div>
+  );
+}
+
+// ─── Einplanen-Dialog: Personen (einzeln oder als Gruppe) auf ein Projekt setzen ───
+function EinsatzDialog({ projekte, personen, sonder, einsaetze, setEinsaetze, vorgabe, onClose }) {
+  const aktive = projekte.filter(p => p.status!=="storniert");
+  const [projektId, setProjektId] = useState(vorgabe.projektId || (aktive[0] && aktive[0].id) || "");
+  const [von, setVon] = useState(vorgabe.von);
+  const [bis, setBis] = useState(vorgabe.bis || vorgabe.von);
+  const [wochenende, setWochenende] = useState(false);
+  const [gewaehlt, setGewaehlt] = useState([]);
+
+  function toggle(id) { setGewaehlt(g => g.includes(id) ? g.filter(x=>x!==id) : [...g, id]); }
+  function gruppeToggle(team) {
+    const ids = personen.filter(m => m.team===team).map(m => m.id);
+    const alle = ids.length>0 && ids.every(i => gewaehlt.includes(i));
+    setGewaehlt(g => alle ? g.filter(i => !ids.includes(i)) : [...new Set([...g, ...ids])]);
+  }
+  const hinweise = gewaehlt.map(id => {
+    const m = personen.find(x => x.id===id);
+    const se = sonder.find(x => x.ma===id && (x.typ==="Urlaub"||x.typ==="Krank") && x.dateStart<=bis && x.dateEnd>=von);
+    return m && se ? `${m.name}: ${se.typ} (${fmtDate(parseDate(se.dateStart))}–${fmtDate(parseDate(se.dateEnd))})` : null;
+  }).filter(Boolean);
+  const ok = projektId && gewaehlt.length>0 && von && bis && bis>=von;
+
+  function speichern() {
+    if (!ok) return;
+    const neue = [];
+    gewaehlt.forEach(maId => {
+      werktagBloecke(von, bis, wochenende).forEach(([a, b]) => {
+        const schon = einsaetze.some(e => e.ma===maId && e.projektId===projektId && e.dateStart<=a && e.dateEnd>=b);
+        if (!schon) neue.push({ id:neueEinsatzId(), ma:maId, projektId, dateStart:a, dateEnd:b });
+      });
+    });
+    if (neue.length) setEinsaetze(prev => [...prev, ...neue]);
+    onClose();
+  }
+
+  return (
+    <Modal titel="Personen einplanen" onClose={onClose} farbe="#2563eb">
+      <Feld label="Projekt">
+        <select value={projektId} onChange={e=>setProjektId(e.target.value)} style={inpS()}>
+          {aktive.map(p => <option key={p.id} value={p.id}>{p.name} ({p.ort})</option>)}
+        </select>
+      </Feld>
+      <div style={{ display:"flex", gap:10 }}>
+        <div style={{ flex:1 }}><Feld label="Von"><input type="date" value={von} onChange={e=>{ setVon(e.target.value); if (bis < e.target.value) setBis(e.target.value); }} style={inpS()} /></Feld></div>
+        <div style={{ flex:1 }}><Feld label="Bis"><input type="date" value={bis} min={von} onChange={e=>setBis(e.target.value)} style={inpS()} /></Feld></div>
+      </div>
+      <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:TH.text, marginBottom:12 }}>
+        <input type="checkbox" checked={wochenende} onChange={e=>setWochenende(e.target.checked)} /> Wochenenden mit einplanen
+      </label>
+      <Feld label="Gruppe auf einmal wählen">
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+          {TEAM_NAMEN_AKTUELL.map(t => { const c = getTeamColor(t); return (
+            <button key={t} type="button" onClick={()=>gruppeToggle(t)} style={{ padding:"4px 12px", borderRadius:99, border:"1.5px solid "+c.bg, background:c.light, color:c.text, cursor:"pointer", fontSize:12, fontWeight:600 }}>{t}</button>
+          ); })}
+        </div>
+      </Feld>
+      <Feld label={"Personen (" + gewaehlt.length + " gewählt)"}>
+        <div style={{ maxHeight:220, overflowY:"auto", border:"1.5px solid "+TH.border, borderRadius:8, padding:"6px 10px" }}>
+          {personen.map(m => (
+            <label key={m.id} style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, padding:"3px 0", color:TH.text, cursor:"pointer" }}>
+              <input type="checkbox" checked={gewaehlt.includes(m.id)} onChange={()=>toggle(m.id)} />
+              <span>{m.rolle==="Vorarbeiter"?"★ ":""}{m.name}</span>
+              <span style={{ fontSize:10, color:"#9ca3af", marginLeft:"auto" }}>{m.team}</span>
+            </label>
+          ))}
+        </div>
+      </Feld>
+      {hinweise.length>0 && (
+        <div style={{ background:"#fef9c3", border:"1.5px solid #fcd34d", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#92400e", marginBottom:12 }}>
+          ⚠️ Achtung, in diesem Zeitraum abwesend:<br/>{hinweise.map(h => <div key={h}>• {h}</div>)}
+        </div>
+      )}
+      <div style={{ display:"flex", gap:10, marginTop:4 }}>
+        <button onClick={speichern} disabled={!ok} style={{ ...btnPrimary("#2563eb"), opacity: ok ? 1 : 0.5 }}>Einplanen</button>
+        <button onClick={onClose} style={btnGhost()}>Abbrechen</button>
+      </div>
+    </Modal>
   );
 }
 
@@ -496,19 +645,22 @@ function Monatsansicht({ mitarbeiter, projekte, sonder }) {
                   </td>
                   {tage.map(d => {
                     const wend = isWeekend(d);
-                    const proj = getProjektForTeamDate(projekte, ma.team, d);
+                    const projs = projekteFuerMa(projekte, ma.id, d);
                     const se = getSonderForMaDate(sonder, ma.id, d);
-                    const eintrag = se || (proj?{typ:"Projekt",projekt:proj}:null);
+                    const eintrag = se || (projs.length?{typ:"Projekt",projekte:projs}:null);
                     const isH = isoDate(d)===isoDate(heute);
 
                     if (wend && !eintrag) return <td key={d.getDate()} style={{ background:TH.panel2, padding:0 }} />;
                     if (!eintrag) return <td key={d.getDate()} style={{ background:isH?"#fff7ed":TH.panel, padding:0 }} />;
 
                     if (eintrag.typ==="Projekt") {
-                      const isStart = isoDate(d)===eintrag.projekt.dateStart;
+                      const mehr = eintrag.projekte.length > 1;
                       return (
-                        <td key={d.getDate()} style={{ background:col.light, padding:1 }} title={eintrag.projekt.name + " · " + eintrag.projekt.ort}>
-                          <div style={{ background:col.bg, height:22, borderRadius:isStart?3:0, borderLeft:isStart?`3px solid ${col.text}`:undefined, opacity:0.85 }} />
+                        <td key={d.getDate()} style={{ background:col.light, padding:1 }} title={eintrag.projekte.map(pr=>pr.name+" · "+pr.ort).join("  |  ")}>
+                          {eintrag.projekte.map(pr => {
+                            const pc = getTeamColor(pr.team);
+                            return <div key={pr.id} style={{ background:pc.bg, height: mehr ? 10 : 22, marginBottom: mehr ? 1 : 0, borderRadius:2, opacity:0.85 }} />;
+                          })}
                         </td>
                       );
                     } else {
@@ -547,9 +699,14 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
   const [lohnMonat, setLohnMonat] = useState(() => { const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); });
 
   const va = mitarbeiter.find(m=>m.id===aktVA);
-  const teamMA = va ? mitarbeiter.filter(m=>m.team===va.team) : [];
   const d = parseDate(datum);
-  const teamProjekt = va ? projekte.find(p=>p.team===va.team && dateInRange(d, p.dateStart, p.dateEnd)) : null;
+  // Mannschaft des Tages: alle, die mit dem Vorarbeiter auf einem Projekt eingeplant sind (sonst sein Team)
+  const vaProjs = va ? projekteFuerMa(projekte, va.id, d) : [];
+  const vaProjIds = new Set(vaProjs.map(p=>p.id));
+  const crewIds = new Set();
+  if (vaProjIds.size) EINSAETZE.forEach(e => { if (vaProjIds.has(e.projektId) && e.dateStart<=datum && datum<=e.dateEnd) crewIds.add(e.ma); });
+  const teamMA = va ? (vaProjIds.size ? mitarbeiter.filter(m=>crewIds.has(m.id)||m.id===va.id) : mitarbeiter.filter(m=>m.team===va.team)) : [];
+  const teamProjekt = vaProjs[0] || null;
   const col = va ? getTeamColor(va.team) : { bg:"#6b7280", light:"#f3f4f6", text:"#374151" };
 
   function setFeld(maId,feld,wert){ setEntwurf(p=>({...p,[maId]:{...(p[maId]||{}),[feld]:wert}})); }
@@ -559,7 +716,7 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
     const eintraege = teamMA.map(ma => {
       const s = entwurf[ma.id]||{};
       const h = calcStunden(s.start, s.end, Number(s.pause)||0);
-      return { id:"H"+Date.now()+"_"+ma.id, maId:ma.id, maName:ma.name, team:va.team, datum, wochentag:WOCHENTAGE_LANG[d.getDay()], kw:getKW(d), projekt:teamProjekt?.name||"–", ...s, arbeitsstunden:h.toFixed(2) };
+      return { id:"H"+Date.now()+"_"+ma.id, maId:ma.id, maName:ma.name, team:va.team, datum, wochentag:WOCHENTAGE_LANG[d.getDay()], kw:getKW(d), projekt:((projekteFuerMa(projekte, ma.id, d).find(p=>vaProjIds.has(p.id)))||teamProjekt)?.name||"–", ...s, arbeitsstunden:h.toFixed(2) };
     }).filter(e=>e.start);
     if (!eintraege.length) return;
     setStunden(prev => [...(prev||[]), ...eintraege]);
@@ -887,7 +1044,7 @@ function MitarbeiterUebersicht({ mitarbeiter, projekte }) {
         <tbody>
           {mitarbeiter.map(ma=>{
             const col=getTeamColor(ma.team);
-            const aktProj=projekte.find(p=>p.team===ma.team&&p.status==="laufend");
+            const aktProj=projekteFuerMa(projekte, ma.id, new Date())[0];
             return (
               <tr key={ma.id} style={{ borderBottom:"1px solid "+TH.border }}>
                 <td style={{ ...tdS(), fontWeight:ma.rolle==="Vorarbeiter"?700:400, borderLeft:`4px solid ${col.bg}` }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</td>
@@ -2470,9 +2627,10 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
 
   // Wer ist heute wo?
   const eintraege = mitarbeiter.map(ma => {
-    const proj = getProjektForTeamDate(projekte, ma.team, d);
+    const projs = projekteFuerMa(projekte, ma.id, d);
+    const proj = projs[0] || null;
     const se = getSonderForMaDate(sonder, ma.id, d);
-    return { ma, proj, se };
+    return { ma, proj, projs, se };
   });
   const imEinsatz = eintraege.filter(e => e.proj && !e.se);
   const imUrlaub  = eintraege.filter(e => e.se && e.se.typ==="Urlaub");
@@ -2576,7 +2734,7 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:12 }}>
           {aktiveProjekte.map(p=>{
             const col=getTeamColor(p.team);
-            const team=imEinsatz.filter(e=>e.ma.team===p.team);
+            const team=imEinsatz.filter(e=>e.projs.some(pr=>pr.id===p.id));
             const fzg=fahrzeuge.find(f=>f.id===p.fzg);
             return (
               <div key={p.id} style={{ border:"1px solid "+TH.border, boxShadow:"0 2px 10px #00000012", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px #0000000d" }}>
@@ -3062,8 +3220,10 @@ export default function EinsatzplanungInner({
   stunden, setStunden, unterkuenfte, setUnterkuenfte,
   berichte, setBerichte, werkzeuge, setWerkzeuge,
   teams, setTeams,
+  einsaetze, setEinsaetze,
   onReset, onLogout, userEmail
 }) {
+  setEinsaetzeListe(einsaetze);
   // Rolle aus der Datenbank holen (benutzer.rolle des eingeloggten Kontos)
   const [dbRolle, setDbRolle] = useState(null);
   useEffect(() => {
@@ -3092,12 +3252,18 @@ export default function EinsatzplanungInner({
   const meineProjektIds = projektFilter ? projektFilter.map(p=>p.id) : null;
   const meineProjektNamen = projektFilter ? projektFilter.map(p=>p.name) : null;
 
+  // Einsätze: wer mit mir (bzw. auf meinen Projekten) eingeplant ist, gehört auch zu meiner Sicht
+  const eigeneProjIds = teamFilter && meinMA ? new Set((einsaetze||[]).filter(e=>e.ma===meinMA.id).map(e=>e.projektId)) : new Set();
+  const projektIdsFuerKollegen = projektFilter ? new Set(projektFilter.map(p=>p.id)) : eigeneProjIds;
+  const kollegenIds = new Set((einsaetze||[]).filter(e=>projektIdsFuerKollegen.has(e.projektId)).map(e=>e.ma));
   const vProjekte = projektFilter ? projektFilter
-                  : teamFilter ? projekte.filter(p=>p.team===teamFilter) : projekte;
-  const vMitarbeiter = projektFilter ? mitarbeiter.filter(m=>meineTeams.includes(m.team) || m.id===meinMA.id)
-                     : teamFilter ? mitarbeiter.filter(m=>m.team===teamFilter) : mitarbeiter;
-  const vSonder = projektFilter ? sonder.filter(s=>{ const m=mitarbeiter.find(x=>x.id===s.ma); return m && meineTeams.includes(m.team); })
-                : teamFilter ? sonder.filter(s=>{ const m=mitarbeiter.find(x=>x.id===s.ma); return m && m.team===teamFilter; }) : sonder;
+                  : teamFilter ? projekte.filter(p=>p.team===teamFilter || eigeneProjIds.has(p.id)) : projekte;
+  const vMitarbeiter = projektFilter ? mitarbeiter.filter(m=>meineTeams.includes(m.team) || m.id===meinMA.id || kollegenIds.has(m.id))
+                     : teamFilter ? mitarbeiter.filter(m=>m.team===teamFilter || kollegenIds.has(m.id)) : mitarbeiter;
+  const vMaIds = new Set(vMitarbeiter.map(m=>m.id));
+  const vSonder = projektFilter ? sonder.filter(s=>vMaIds.has(s.ma))
+                : teamFilter ? sonder.filter(s=>vMaIds.has(s.ma)) : sonder;
+  const kannPlanen = ["Admin","Projektleiter","Bauleiter","Vorarbeiter"].includes(meineRolle);
   const vAntraege = projektFilter ? antraege.filter(a=>meineTeams.includes(a.team))
                   : teamFilter ? antraege.filter(a=>a.team===teamFilter) : antraege;
   const vStunden = projektFilter ? (stunden||[]).filter(e=>meineProjektNamen.includes(e.projekt))
@@ -3292,7 +3458,7 @@ export default function EinsatzplanungInner({
   const T = dunkel
     ? { bg:"#0f172a", panel:"#1e293b", panel2:"#334155", text:"#e2e8f0", textMut:"#94a3b8", border:"#334155", tabBar:"#1e293b" }
     : { bg:TH.panel2, panel:"#ffffff", panel2:"#f9fafb", text:"#1e293b", textMut:"#6b7280", border:"#e5e7eb", tabBar:"#ffffff" };
-  const warnungen = useMemo(()=>pruefKonflikte(projekte,sonder,mitarbeiter),[projekte,sonder,mitarbeiter]);
+  const warnungen = useMemo(()=>pruefKonflikte(projekte,sonder,mitarbeiter),[projekte,sonder,mitarbeiter,einsaetze]);
 
   function resetDaten() { if (onReset) onReset(); }
 
@@ -3421,7 +3587,7 @@ export default function EinsatzplanungInner({
         {tab==="kosten"       && darfTab(meineRolle,"kosten")       && <KostenControlling projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} T={T} />}
         {tab==="assistent"    && darfTab(meineRolle,"assistent")    && <SmartAssistent projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} werkzeuge={werkzeuge} berichte={vBerichte} T={T} />}
         {tab==="heute"        && darfTab(meineRolle,"heute")        && <Tagesansicht   mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} />}
-        {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} />}
+        {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={vMitarbeiter} alleMA={mitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setEinsaetze={setEinsaetze} kannPlanen={kannPlanen} />}
         {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} />}
         {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={vMitarbeiter} projekte={vProjekte} stunden={vStunden} setStunden={setStunden} rolle={meineRolle} meinMA={meinMA} />}
         {tab==="postfach" && <MeinPostfach meinMA={meinMA} meineRolle={meineRolle} userEmail={userEmail} stunden={stunden} projekte={projekte} />}
