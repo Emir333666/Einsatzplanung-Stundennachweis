@@ -1240,6 +1240,110 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
 }
 
 // ─── Andere Tabs (unverändert) ────────────────────────────────────────────────
+// ─── VERLAUF (Meldungen mit Knöpfen) ──────────────────────────────────────────
+// Oben: was jetzt zu tun ist. Darunter: was zuletzt passiert ist. Alles aus vorhandenen Daten abgeleitet.
+function Verlauf({ projekte, mitarbeiter, einsaetze, stunden, berichte, antraege, warnungen, setTab }) {
+  const heuteIso = isoDate(new Date());
+  const jetzt = Date.now();
+  const projName = id => (projekte || []).find(p => p.id === id)?.name || "Baustelle";
+  const maName = id => (mitarbeiter || []).find(m => m.id === id)?.name || "?";
+  const kurz = d => fmtDateShort ? fmtDateShort(parseDate(d)) : fmtDate(parseDate(d));
+
+  // Was jetzt zu tun ist
+  const todo = [];
+  const gem = (stunden || []).filter(s => s.status === "gemeldet");
+  gem.slice(0, 8).forEach(s => todo.push({
+    key: "g" + s.id, farbe: "#dc2626", icon: "⚠️",
+    titel: `${s.maName || s.ma_name || "Mitarbeiter"} meldet ein Problem bei den Stunden`,
+    text: `${s.projekt || ""} · ${s.datum ? fmtDate(parseDate(s.datum)) : ""}${s.meldung ? " – „" + s.meldung + "“" : ""}`,
+    knopf: { label: "Stundenzettel öffnen", tab: "stundenzettel" },
+  }));
+  if (gem.length > 8) todo.push({ key: "gmehr", farbe: "#dc2626", icon: "⚠️", titel: `… und ${gem.length - 8} weitere gemeldete Stunden`, text: "", knopf: { label: "Stundenzettel öffnen", tab: "stundenzettel" } });
+  const offenAlt = (stunden || []).filter(s => (s.status || "offen") === "offen" && s.datum && s.datum < heuteIso);
+  if (offenAlt.length) todo.push({
+    key: "offen", farbe: "#d97706", icon: "🕒",
+    titel: `${offenAlt.length} Stunden-Einträge warten auf Bestätigung`,
+    text: `von ${new Set(offenAlt.map(s => s.ma_id || s.maId)).size} Personen`,
+    knopf: { label: "Stundenzettel öffnen", tab: "stundenzettel" },
+  });
+  (antraege || []).filter(a => a.status === "offen").forEach(a => todo.push({
+    key: "a" + a.id, farbe: "#2563eb", icon: "🌴",
+    titel: `${a.typ}-Antrag von ${a.maName || maName(a.ma)}`,
+    text: `${kurz(a.dateStart)} – ${kurz(a.dateEnd)}${a.grund ? " · " + a.grund : ""}`,
+    knopf: { label: "Anträge öffnen", tab: "antraege" },
+  }));
+  (warnungen || []).slice(0, 6).forEach((w, i) => todo.push({
+    key: "w" + i, farbe: "#ea580c", icon: "🚧", titel: w.typ, text: w.msg,
+    knopf: { label: "Planung öffnen", tab: "woche" },
+  }));
+
+  // Was zuletzt passiert ist
+  const ereignisse = [];
+  const gruppen = new Map();
+  (einsaetze || []).forEach(e => {
+    const ts = parseInt(String(e.id || "").slice(1, -4), 36);
+    if (!/^E/.test(String(e.id || "")) || !(ts > 1577836800000 && ts < jetzt + 86400000)) return;
+    if (jetzt - ts > 14 * 86400000) return;
+    const k = e.projektId + "|" + Math.floor(ts / 600000);
+    const g = gruppen.get(k) || { ts, projektId: e.projektId, mas: new Set(), von: e.dateStart, bis: e.dateEnd };
+    g.mas.add(e.ma); if (e.dateStart < g.von) g.von = e.dateStart; if (e.dateEnd > g.bis) g.bis = e.dateEnd;
+    gruppen.set(k, g);
+  });
+  gruppen.forEach((g, k) => {
+    const namen = [...g.mas].map(maName);
+    ereignisse.push({
+      key: "e" + k, ts: g.ts, farbe: "#16a34a", icon: "👷",
+      titel: `${namen.length > 2 ? namen.length + " Personen" : namen.join(" und ")} eingeplant auf ${projName(g.projektId)}`,
+      text: `${kurz(g.von)} – ${kurz(g.bis)}`,
+      knopf: { label: "Zur Baustelle", tab: "baustellen" },
+    });
+  });
+  (berichte || []).forEach(b => {
+    if (!b.datum) return;
+    const ts = parseDate(b.datum).getTime();
+    if (jetzt - ts > 7 * 86400000) return;
+    ereignisse.push({
+      key: "b" + b.id, ts: ts + 43200000, farbe: b.probleme ? "#dc2626" : "#2563eb", icon: b.probleme ? "⚠️" : "📝",
+      titel: `Bericht ${projName(b.projektId)}${b.verfasser ? " von " + b.verfasser : ""}`,
+      text: b.probleme ? "Problem: " + b.probleme : (b.fortschritt || ""),
+      knopf: { label: "Berichte öffnen", tab: "berichte" },
+    });
+  });
+  ereignisse.sort((a, b) => b.ts - a.ts);
+
+  const karte = { background:TH.panel, border:"1px solid "+TH.border, borderRadius:14 };
+  const zeigeZeit = ts => {
+    const t = Math.round((jetzt - ts) / 3600000);
+    if (t < 1) return "gerade eben";
+    if (t < 24) return `vor ${t} Std.`;
+    return `vor ${Math.round(t / 24)} Tg.`;
+  };
+  const Karte = ({ x }) => (
+    <div style={{ ...karte, borderLeft:"8px solid "+x.farbe, padding:"10px 14px", marginBottom:8 }}>
+      <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
+        <span style={{ fontSize:18 }}>{x.icon}</span>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontWeight:700, fontSize:13, color:TH.text }}>{x.titel}</div>
+          {x.text && <div style={{ fontSize:12, color:TH.textMut, marginTop:2 }}>{x.text}</div>}
+        </div>
+        {x.ts && <span style={{ fontSize:11, color:TH.textMut, whiteSpace:"nowrap" }}>{zeigeZeit(x.ts)}</span>}
+      </div>
+      {x.knopf && <button onClick={()=>setTab(x.knopf.tab)} style={{ marginTop:8, background:"#ea580c", color:"#fff", border:"none", borderRadius:8, padding:"6px 12px", fontSize:12, fontWeight:700, cursor:"pointer" }}>{x.knopf.label} →</button>}
+    </div>
+  );
+  return (
+    <div style={{ maxWidth:720, margin:"0 auto" }}>
+      <div style={{ fontSize:20, fontWeight:800, color:TH.text, marginBottom:10 }}>Verlauf</div>
+      <div style={{ fontSize:12, fontWeight:700, color:TH.textMut, textTransform:"uppercase", letterSpacing:0.5, margin:"4px 0 8px" }}>Jetzt zu tun ({todo.length})</div>
+      {todo.length === 0 && <div style={{ ...karte, padding:16, color:"#166534", background:"#f0fdf4", borderColor:"#86efac", fontSize:13, marginBottom:8 }}>✅ Nichts offen. Alles erledigt.</div>}
+      {todo.map(x => <Karte key={x.key} x={x} />)}
+      <div style={{ fontSize:12, fontWeight:700, color:TH.textMut, textTransform:"uppercase", letterSpacing:0.5, margin:"16px 0 8px" }}>Zuletzt passiert</div>
+      {ereignisse.length === 0 && <div style={{ ...karte, padding:16, color:TH.textMut, fontSize:13 }}>In den letzten Tagen ist nichts Neues passiert.</div>}
+      {ereignisse.slice(0, 30).map(x => <Karte key={x.key} x={x} />)}
+    </div>
+  );
+}
+
 // ─── KARTE ALLER BAUSTELLEN ───────────────────────────────────────────────────
 // Karte mit OpenStreetMap-Kacheln (Leaflet wird beim ersten Öffnen nachgeladen).
 // Koordinaten werden aus dem Ort der Baustelle über Nominatim ermittelt und auf dem Gerät zwischengespeichert.
@@ -3709,9 +3813,9 @@ function AboPakete({ abo }) {   const [pakete, setPakete] = useState([]);   cons
 function darfTab(rolle, tabId) {
   if (rolle==="Admin") return true;
   const rechte = {
-    "Projektleiter": ["karte","baustellen","postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
-    "Bauleiter":   ["karte","baustellen","postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
-    "Vorarbeiter": ["karte","baustellen","postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
+    "Projektleiter": ["karte","verlauf","baustellen","postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Bauleiter":   ["karte","verlauf","baustellen","postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Vorarbeiter": ["karte","verlauf","baustellen","postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Monteur":     ["baustellen","postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Unbekannt":   ["heute","woche","monat"],
   };
@@ -3987,6 +4091,7 @@ export default function EinsatzplanungInner({
 
   const alleTabs = [
     { id:"karte",        label:"Karte", Icon:MapPin },
+    { id:"verlauf",      label:"Verlauf", Icon:Bell },
     { id:"baustellen",   label:"Baustellen", Icon:HardHat },
     { id:"postfach",     label:"Mein Postfach", Icon:Inbox },
     { id:"dashboard",    label:"Dashboard", Icon:LayoutDashboard },
@@ -4111,6 +4216,7 @@ export default function EinsatzplanungInner({
         {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} antraege={vAntraege} warnungen={warnungen} unterkuenfte={vUnterkuenfte} setTab={setTab} T={T} />}
         {tab==="kosten"       && darfTab(meineRolle,"kosten")       && <KostenControlling projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} T={T} />}
         {tab==="assistent"    && darfTab(meineRolle,"assistent")    && <SmartAssistent projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} werkzeuge={werkzeuge} berichte={vBerichte} T={T} />}
+        {tab==="verlauf"      && darfTab(meineRolle,"verlauf")      && <Verlauf projekte={vProjekte} mitarbeiter={mitarbeiter} einsaetze={einsaetze} stunden={vStunden} berichte={vBerichte} antraege={vAntraege} warnungen={warnungen} setTab={setTab} />}
         {tab==="karte"        && darfTab(meineRolle,"karte")        && <KartenStart projekte={vProjekte} einsaetze={einsaetze} setTab={setTab} />}
         {tab==="baustellen"   && darfTab(meineRolle,"baustellen")   && <Baustellen projekte={vProjekte} mitarbeiter={mitarbeiter} einsaetze={einsaetze} stunden={vStunden} berichte={vBerichte} unterkuenfte={vUnterkuenfte} fahrzeuge={fahrzeuge} kannPlanen={kannPlanen} setTab={setTab} />}
         {tab==="heute"        && darfTab(meineRolle,"heute")        && (kannPlanen || !meinMA ? <Tagesansicht   mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} /> : <MeinTag meinMA={meinMA} mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setTab={setTab} />)}
