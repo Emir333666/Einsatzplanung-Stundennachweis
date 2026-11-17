@@ -75,6 +75,7 @@ function Login({ onLogin }) {
   const [pw, setPw] = useState("");
   const [firmaName, setFirmaName] = useState("");
   const [firmenCode, setFirmenCode] = useState("");
+  const [maName, setMaName] = useState("");
   const [fehler, setFehler] = useState("");
   const [hinweis, setHinweis] = useState("");
   const [laden, setLaden] = useState(false);
@@ -107,13 +108,14 @@ function Login({ onLogin }) {
       // ── Mitarbeiter tritt mit Firmencode bei ──
       const code = firmenCode.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
       if (code.length !== 8) { setLaden(false); setFehler("Bitte den 8-stelligen Firmencode eingeben."); return; }
+      if (maName.trim().length < 2) { setLaden(false); setFehler("Bitte deinen Namen eingeben."); return; }
       const { data: gueltig, error: codeFehler } = await supabase.rpc("firmencode_gueltig", { p_code: code });
       if (codeFehler || !gueltig) {
         setLaden(false);
         setFehler("Dieser Firmencode ist ungültig oder die Firma ist nicht aktiv.");
         return;
       }
-      metaDaten = { firmencode: code };
+      metaDaten = { firmencode: code, name: maName.trim() };
     }
 
     const { data, error } = await supabase.auth.signUp({
@@ -135,7 +137,7 @@ function Login({ onLogin }) {
     } else {
       // E-Mail-Bestätigung an -> erst bestätigen, dann anmelden
       setHinweis("Fast fertig! Wir haben dir eine Bestätigungs-E-Mail geschickt. Bitte bestätige deine Adresse und melde dich anschließend an.");
-      setModus("login"); setPw(""); setFirmaName(""); setFirmenCode("");
+      setModus("login"); setPw(""); setFirmaName(""); setFirmenCode(""); setMaName("");
     }
   }
 
@@ -169,6 +171,14 @@ function Login({ onLogin }) {
               autoCapitalize="characters" autoComplete="off" maxLength={12}
               style={{ ...inputStyle, letterSpacing:2, fontWeight:700 }} placeholder="ABCD-EFGH" />
             <div style={{ fontSize:11, color:"#94a3b8", marginTop:4 }}>Den Code bekommst du von deinem Chef.</div>
+          </div>
+        )}
+
+        {istBeitritt && (
+          <div style={{ marginBottom:14 }}>
+            <div style={labelStyle}>Dein Name</div>
+            <input type="text" value={maName} onChange={e=>setMaName(e.target.value)} required maxLength={80}
+              style={inputStyle} placeholder="Max Mustermann" />
           </div>
         )}
 
