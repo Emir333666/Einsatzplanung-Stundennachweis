@@ -898,7 +898,7 @@ function MitarbeiterUebersicht({ mitarbeiter, projekte }) {
                 <td style={{ ...tdS(), textAlign:"center" }}>{ma.stapler?"✅":"❌"}</td>
                 <td style={{ ...tdS(), textAlign:"center" }}>{ma.schweisser?"✅":"❌"}</td>
                 <td style={{ ...tdS(), textAlign:"center" }}>{ma.urlaub}d</td>
-                <td style={{ ...tdS(), textAlign:"center", color:ma.krank>3?"#dc2626":"#374151" }}>{ma.krank}d</td>
+                <td style={{ ...tdS(), textAlign:"center", color:ma.krank>3?"#dc2626":"#374151" }}>{ma.krank==null?"–":ma.krank+"d"}</td>
                 <td style={tdS()}>{aktProj?<Badge color={col.bg}>{aktProj.name}</Badge>:<span style={{ color:"#9ca3af" }}>–</span>}</td>
               </tr>
             );
@@ -1409,7 +1409,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
         </Feld>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
           <div style={{ flex:1, minWidth:150 }}><Feld label="Urlaubstage"><input type="number" style={inpS()} value={f.urlaub} onChange={e=>set("urlaub",Number(e.target.value))} /></Feld></div>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Krankheitstage"><input type="number" style={inpS()} value={f.krank} onChange={e=>set("krank",Number(e.target.value))} /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Krankheitstage"><input type="number" style={inpS()} value={f.krank??0} onChange={e=>set("krank",Number(e.target.value))} /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:10, marginTop:6 }}>
           <button onClick={speichern} style={btnPrimary(col.bg)}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Save size={14}/>Speichern</span></button>
