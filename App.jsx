@@ -47,6 +47,8 @@ const toDbBericht  = b => ({
   leistung: b.leistung!=null && b.leistung!=="" ? Number(b.leistung) : null,
   fotos: b.fotos||[]
 });
+const toAppEinsatz = r => ({ id:r.id, ma:r.ma, projektId:r.projekt_id, dateStart:r.date_start, dateEnd:r.date_end });
+const toDbEinsatz  = e => ({ id:e.id, ma:e.ma, projekt_id:e.projektId, date_start:e.dateStart, date_end:e.dateEnd });
 const toAppWerkzeug = r => ({ ...r, zugeordnetMa:r.zugeordnet_ma, pruefDatum:r.pruef_datum });
 const toDbWerkzeug  = w => ({
   id:w.id, name:w.name, typ:w.typ||null, seriennummer:w.seriennummer||null,
@@ -282,6 +284,7 @@ export default function App() {
   const [berichte, setBerichteState] = useState([]);
   const [werkzeuge, setWerkzeugeState] = useState([]);
   const [teams, setTeamsState] = useState([]);
+  const [einsaetze, setEinsaetzeState] = useState([]);
   const [speicherFehler, setSpeicherFehler] = useState("");
   const [offline, setOffline] = useState(typeof navigator !== "undefined" && navigator.onLine === false);
   const [offen, setOffen] = useState(0);
@@ -304,7 +307,7 @@ export default function App() {
     setProjekteState(c.projekte||[]); setMitarbeiterState(c.mitarbeiter||[]); setFahrzeugeState(c.fahrzeuge||[]);
     setSonderState(c.sonder||[]); setAntraegeState(c.antraege||[]); setStundenState(c.stunden||[]);
     setUnterkuenfteState(c.unterkuenfte||[]); setBerichteState(c.berichte||[]); setWerkzeugeState(c.werkzeuge||[]);
-    setTeamsState(c.teams||[]);
+    setTeamsState(c.teams||[]); setEinsaetzeState(c.einsaetze||[]);
   };
   const ladeDaten = useCallback(async () => {
     const u = uidRef.current;
@@ -315,7 +318,7 @@ export default function App() {
     }
     setLaden(true);
     try {
-    const namen = ["projekte","mitarbeiter","fahrzeuge","sonder","antraege","stunden","unterkuenfte","tagesberichte","werkzeuge","teams"];
+    const namen = ["projekte","mitarbeiter","fahrzeuge","sonder","antraege","stunden","unterkuenfte","tagesberichte","werkzeuge","teams","einsaetze"];
     const [erg, saetze, krankR] = await Promise.all([
       Promise.all(namen.map(n => holeAlle(n, n === "mitarbeiter" ? MA_SPALTEN : "*"))),
       supabase.rpc("meine_saetze"),
@@ -340,7 +343,7 @@ export default function App() {
       setLaden(false);
       return;
     }
-    const [p, m, f, s, a, st, u, tb, wz, tm] = erg;
+    const [p, m, f, s, a, st, u, tb, wz, tm, ei] = erg;
     setProjekteState((p.data||[]).map(toAppProjekt));
     // Stundensätze liefert die Datenbank nur an Admin, Projektleiter und Bauleiter
     const satzMap = new Map((saetze.data||[]).map(x=>[x.id, x.stundensatz]));
@@ -355,6 +358,7 @@ export default function App() {
     setBerichteState((tb.data||[]).map(toAppBericht));
     setWerkzeugeState((wz.data||[]).map(toAppWerkzeug));
     setTeamsState((tm.data||[]).sort((x,y)=>(x.created_at||"").localeCompare(y.created_at||"")));
+    setEinsaetzeState((ei.data||[]).map(toAppEinsatz));
     setLaden(false);
     setBereit(true);
     } catch (e) {
@@ -373,9 +377,9 @@ export default function App() {
   // Zwischenspeicher für Offline-Start (nach kurzer Ruhe schreiben)
   useEffect(() => {
     if (!bereit || !uid) return;
-    const t = setTimeout(() => cacheSchreiben(uid, { projekte, mitarbeiter, fahrzeuge, sonder, antraege, stunden, unterkuenfte, berichte, werkzeuge, teams }), 1500);
+    const t = setTimeout(() => cacheSchreiben(uid, { projekte, mitarbeiter, fahrzeuge, sonder, antraege, stunden, unterkuenfte, berichte, werkzeuge, teams, einsaetze }), 1500);
     return () => clearTimeout(t);
-  }, [bereit, uid, projekte, mitarbeiter, fahrzeuge, sonder, antraege, stunden, unterkuenfte, berichte, werkzeuge, teams]);
+  }, [bereit, uid, projekte, mitarbeiter, fahrzeuge, sonder, antraege, stunden, unterkuenfte, berichte, werkzeuge, teams, einsaetze]);
 
   // Warteschlange abarbeiten
   const flush = useCallback(async () => {
@@ -508,6 +512,12 @@ export default function App() {
     await syncTabelle("werkzeuge", werkzeuge, arr, toDbWerkzeug);
     ladeDaten();
   };
+  const setEinsaetze = async (next) => {
+    const arr = typeof next === "function" ? next(einsaetze) : next;
+    setEinsaetzeState(arr);
+    await syncTabelle("einsaetze", einsaetze, arr, toDbEinsatz);
+    ladeDaten();
+  };
   const setTeams = async (next) => {
     const arr = typeof next === "function" ? next(teams) : next;
     setTeamsState(arr);
@@ -562,6 +572,7 @@ export default function App() {
         berichte={berichte} setBerichte={setBerichte}
         werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge}
         teams={teams} setTeams={setTeams}
+        einsaetze={einsaetze} setEinsaetze={setEinsaetze}
         onReset={null}
         onLogout={abmelden}
         userEmail={session.user?.email}
