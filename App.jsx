@@ -361,7 +361,9 @@ export default function App() {
       const neueOhneId = neu.filter(x=>x[idFeld]==null).map(x=>{ const d=toDb(x); delete d[idFeld]; return d; });
       if (neueOhneId.length) pruefe(await supabase.from(tabelle).insert(neueOhneId));
       // Bestehende (mit id) aktualisieren/einfügen
-      const mitId = neu.filter(x=>x[idFeld]!=null).map(toDb);
+      // Nur wirklich geänderte oder neue Zeilen schreiben (nicht die ganze Tabelle)
+      const altJson = new Map(alt.filter(x=>x[idFeld]!=null).map(x=>[x[idFeld], JSON.stringify(toDb(x))]));
+      const mitId = neu.filter(x=>x[idFeld]!=null).map(toDb).filter(d => altJson.get(d[idFeld]) !== JSON.stringify(d));
       if (mitId.length) pruefe(await supabase.from(tabelle).upsert(mitId));
     } catch (e) {
       fehler.push(e && e.message ? e.message : "Verbindung fehlgeschlagen");
