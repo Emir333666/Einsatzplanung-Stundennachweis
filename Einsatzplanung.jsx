@@ -1368,6 +1368,7 @@ function KartenStart({ projekte, einsaetze, setTab }) {
   const boxRef = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef([]);
+  const ansichtRef = useRef("");
   const [geo, setGeo] = useState(() => store.get("baufox-geo") || {});
   const [fehler, setFehler] = useState(false);
   const [bereit, setBereit] = useState(!!window.L);
@@ -1432,8 +1433,12 @@ function KartenStart({ projekte, einsaetze, setTab }) {
       markerRef.current.push(m);
       punkte.push([g.lat, g.lng]);
     });
-    if (punkte.length === 1) mapRef.current.setView(punkte[0], 10);
-    else if (punkte.length > 1) mapRef.current.fitBounds(punkte, { padding: [40, 40], maxZoom: 11 });
+    const ansichtKey = punkte.map(p => p.join(",")).join("|");
+    if (ansichtKey !== ansichtRef.current) {
+      ansichtRef.current = ansichtKey;
+      if (punkte.length === 1) mapRef.current.setView(punkte[0], 10, { animate: false });
+      else if (punkte.length > 1) mapRef.current.fitBounds(punkte, { padding: [40, 40], maxZoom: 11, animate: false });
+    }
     setTimeout(() => mapRef.current && mapRef.current.invalidateSize(), 100);
   }, [bereit, geo, einsaetze, projekte]); // eslint-disable-line
 
@@ -1446,7 +1451,7 @@ function KartenStart({ projekte, einsaetze, setTab }) {
       <div style={{ fontSize:20, fontWeight:800, color:TH.text, marginBottom:10 }}>Karte</div>
       {fehler
         ? <div style={{ ...karte, padding:24, textAlign:"center", color:TH.textMut }}>Karte konnte nicht geladen werden (keine Verbindung?).</div>
-        : <div ref={boxRef} style={{ height:380, borderRadius:14, overflow:"hidden", border:"1px solid "+TH.border, background:TH.panel2 }} />}
+        : <div ref={boxRef} style={{ position:"relative", zIndex:0, isolation:"isolate", height:380, borderRadius:14, overflow:"hidden", border:"1px solid "+TH.border, background:TH.panel2 }} />}
       <div style={{ fontSize:11, color:TH.textMut, margin:"6px 2px 12px" }}>Zahl im Pin = Leute heute auf der Baustelle. Pin antippen öffnet die Baustelle.</div>
       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
         {aktive.map(p => (
