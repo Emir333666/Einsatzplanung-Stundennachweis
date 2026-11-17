@@ -350,163 +350,6 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
   );
 }
 
-// ─── WOCHENANSICHT (mit echten Daten) ────────────────────────────────────────
-function Wochenansicht({ mitarbeiter, alleMA, projekte, sonder, einsaetze, setEinsaetze, kannPlanen }) {
-  const heute = new Date();
-  const [kwYear, setKwYear] = useState(heute.getFullYear());
-  const [kw, setKw] = useState(getKW(heute));
-  const [filterTeam, setFilterTeam] = useState("Alle");
-  const [dialog, setDialog] = useState(null);
-  const [entf, setEntf] = useState(null);
-
-  const monday = useMemo(() => getMondayOfKW(kwYear, kw), [kwYear, kw]);
-  const tage = useMemo(() => Array.from({length:7}, (_,i) => addDays(monday, i)), [monday]);
-  const isoTage = tage.map(isoDate);
-  const woVon = isoTage[0], woBis = isoTage[6];
-  const liste = einsaetze || [];
-
-  const inGruppe = m => filterTeam==="Alle" || m.team===filterTeam;
-  const maById = useMemo(() => new Map(mitarbeiter.map(m => [m.id, m])), [mitarbeiter]);
-
-  const mitEinsatz = new Set(liste.filter(e => e.dateStart<=woBis && e.dateEnd>=woVon && maById.has(e.ma) && inGruppe(maById.get(e.ma))).map(e => e.projektId));
-  const zeilen = projekte
-    .filter(p => p.status!=="storniert" && (mitEinsatz.has(p.id) || (p.status!=="abgeschlossen" && p.dateStart<=woBis && p.dateEnd>=woVon && (filterTeam==="Alle" || p.team===filterTeam))))
-    .sort((x,y) => String(x.dateStart).localeCompare(String(y.dateStart)) || String(x.name).localeCompare(String(y.name)));
-
-  function prevKW() { if(kw===1){setKwYear(y=>y-1);setKw(52);}else setKw(k=>k-1); }
-  function nextKW() { if(kw===52){setKwYear(y=>y+1);setKw(1);}else setKw(k=>k+1); }
-
-  const sichtbar = mitarbeiter.filter(inGruppe);
-  const chip = (col, fett) => ({ display:"inline-block", margin:"1px 2px", padding:"2px 8px", borderRadius:99, fontSize:11, fontWeight:600, whiteSpace:"nowrap",
-    background: fett ? col.bg : col.light, color: fett ? "#fff" : col.text, border:"1px solid "+col.bg+"55", cursor: kannPlanen ? "pointer" : "default" });
-
-  return (
-    <div>
-      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:14, flexWrap:"wrap" }}>
-        <button onClick={prevKW} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>‹</button>
-        <div style={{ textAlign:"center" }}>
-          <div style={{ fontWeight:800, fontSize:16, color:TH.text }}>KW {kw} · {kwYear}</div>
-          <div style={{ fontSize:11, color:"#9ca3af" }}>{fmtDate(tage[0])} – {fmtDate(tage[6])}</div>
-        </div>
-        <button onClick={nextKW} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>›</button>
-        <select value={filterTeam} onChange={e=>setFilterTeam(e.target.value)} style={{ padding:"6px 12px", borderRadius:8, border:"1.5px solid "+TH.border, fontSize:13, marginLeft:8 }}>
-          {["Alle",...TEAM_NAMEN_AKTUELL].map(t=><option key={t} value={t}>{t==="Alle" ? "Alle Gruppen" : t}</option>)}
-        </select>
-        <button onClick={()=>{setKw(getKW(heute));setKwYear(heute.getFullYear());}} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #ea580c", background:"#ffedd5", color:"#ea580c", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
-        {kannPlanen && <button onClick={()=>setDialog({ projektId:(zeilen[0]||projekte[0]||{}).id||"", von:woVon, bis:woVon })} style={{ ...btnPrimary("#2563eb"), padding:"7px 14px", marginLeft:"auto" }}>＋ Einplanen</button>}
-      </div>
-
-      <div style={{ overflowX:"auto" }}>
-        <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12, minWidth:900 }}>
-          <thead>
-            <tr>
-              <th style={{ ...thS(), textAlign:"left", position:"sticky", left:0, background:TH.panel2, zIndex:2, minWidth:150 }}>Projekt</th>
-              {tage.map(d => {
-                const isHeuteFn = isoDate(d) === isoDate(new Date());
-                const wend = isWeekend(d);
-                return (
-                  <th key={isoDate(d)} style={{ ...thS(), minWidth:120, background:"#f9fafb",
-                    color: isHeuteFn ? "#ea580c" : wend ? "#d1d5db" : "#6b7280",
-                    borderTop: isHeuteFn ? "2px solid #ea580c" : undefined }}>
-                    <div style={{ fontWeight:700 }}>{WOCHENTAGE[d.getDay()]}</div>
-                    <div style={{ fontSize:13, fontWeight:800, color: isHeuteFn ? "#ea580c" : wend ? "#9ca3af" : "#374151" }}>{fmtDateShort(d)}</div>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {zeilen.length===0 && (
-              <tr><td colSpan={8} style={{ ...tdS(), textAlign:"center", color:"#9ca3af", padding:24 }}>Keine Projekte in dieser Woche</td></tr>
-            )}
-            {zeilen.map(p => {
-              const col = getTeamColor(p.team);
-              return (
-                <tr key={p.id} style={{ borderBottom:"1px solid "+TH.border }}>
-                  <td style={{ ...tdS(), position:"sticky", left:0, background:TH.panel, zIndex:1, borderRight:"2px solid #e5e7eb", borderLeft:`4px solid ${col.bg}`, verticalAlign:"top" }}>
-                    <div style={{ fontWeight:700, color:TH.text }}>{p.name}</div>
-                    <div style={{ fontSize:10, color:"#9ca3af" }}>{p.ort}{p.dateEnd ? " · bis "+fmtDateShort(parseDate(p.dateEnd)) : ""}</div>
-                  </td>
-                  {tage.map(d => {
-                    const iso = isoDate(d);
-                    const wend = isWeekend(d);
-                    const isH = iso === isoDate(new Date());
-                    const ids = [...new Set(liste.filter(e => e.projektId===p.id && e.dateStart<=iso && e.dateEnd>=iso).map(e => e.ma))];
-                    const pers = ids.map(id => maById.get(id)).filter(m => m && inGruppe(m));
-                    return (
-                      <td key={iso} onClick={kannPlanen ? ()=>setDialog({ projektId:p.id, von:iso, bis:iso }) : undefined}
-                        style={{ ...tdS(), verticalAlign:"top", background: wend ? "#fafafa" : isH ? "#fff7ed" : TH.panel, cursor: kannPlanen ? "pointer" : "default" }}>
-                        {pers.map(m => (
-                          <span key={m.id} onClick={ev => { if (!kannPlanen) return; ev.stopPropagation(); setEntf({ ma:m, projekt:p, iso }); }}
-                            style={chip(col, m.rolle==="Vorarbeiter")} title={m.rolle}>{m.rolle==="Vorarbeiter"?"★ ":""}{m.name}</span>
-                        ))}
-                        {!pers.length && kannPlanen && !wend && <span style={{ color:"#d1d5db", fontSize:13 }}>＋</span>}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-
-            <tr><td colSpan={8} style={{ background:"#991b1b", color:"#fff", fontWeight:700, fontSize:11, padding:"4px 10px", letterSpacing:0.5 }}>▸ Abwesend</td></tr>
-            <tr style={{ borderBottom:"1px solid "+TH.border }}>
-              <td style={{ ...tdS(), position:"sticky", left:0, background:TH.panel, zIndex:1, borderRight:"2px solid #e5e7eb", fontSize:11, color:"#6b7280" }}>Urlaub · Krank · Frei</td>
-              {tage.map(d => {
-                const wend = isWeekend(d);
-                const abw = sichtbar.map(m => ({ m, se:getSonderForMaDate(sonder, m.id, d) })).filter(x => x.se);
-                return (
-                  <td key={isoDate(d)} style={{ ...tdS(), verticalAlign:"top", background: wend ? "#fafafa" : TH.panel }}>
-                    {abw.map(({ m, se }) => {
-                      const ef = EINSATZ_FARBEN[se.typ] || EINSATZ_FARBEN["Frei"];
-                      return <span key={m.id} style={{ display:"inline-block", margin:"1px 2px", padding:"2px 8px", borderRadius:99, fontSize:11, fontWeight:600, background:ef.bg, color:ef.badge, border:`1px solid ${ef.border}`, whiteSpace:"nowrap" }}>{m.name} · {se.typ}</span>;
-                    })}
-                  </td>
-                );
-              })}
-            </tr>
-
-            <tr><td colSpan={8} style={{ background:"#6b7280", color:"#fff", fontWeight:700, fontSize:11, padding:"4px 10px", letterSpacing:0.5 }}>▸ Nicht eingeplant (verfügbar)</td></tr>
-            <tr style={{ borderBottom:"1px solid "+TH.border }}>
-              <td style={{ ...tdS(), position:"sticky", left:0, background:TH.panel, zIndex:1, borderRight:"2px solid #e5e7eb", fontSize:11, color:"#6b7280" }}>Ohne Projekt</td>
-              {tage.map(d => {
-                const iso = isoDate(d);
-                const wend = isWeekend(d);
-                if (wend) return <td key={iso} style={{ ...tdS(), background:"#fafafa", textAlign:"center", color:"#e5e7eb", fontSize:16 }}>—</td>;
-                const frei = sichtbar.filter(m => !getSonderForMaDate(sonder, m.id, d) && !liste.some(e => e.ma===m.id && e.dateStart<=iso && e.dateEnd>=iso));
-                return (
-                  <td key={iso} style={{ ...tdS(), verticalAlign:"top", background: TH.panel }}>
-                    {frei.map(m => { const c = getTeamColor(m.team); return <span key={m.id} style={{ display:"inline-block", margin:"1px 2px", padding:"2px 8px", borderRadius:99, fontSize:11, background:TH.panel2, color:"#6b7280", border:"1px dashed "+c.bg+"88", whiteSpace:"nowrap" }}>{m.name}</span>; })}
-                  </td>
-                );
-              })}
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:14, alignItems:"center" }}>
-        {kannPlanen && <span style={{ fontSize:11, color:"#6b7280" }}>Auf ein Feld klicken = Person einplanen · auf einen Namen klicken = entfernen.</span>}
-        {Object.entries(EINSATZ_FARBEN).slice(1).map(([k,v]) => (
-          <span key={k} style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, background:v.bg, border:`1px solid ${v.border}`, borderRadius:6, padding:"2px 8px", color:v.badge }}>● {k}</span>
-        ))}
-      </div>
-
-      {dialog && <EinsatzDialog projekte={projekte} personen={alleMA || mitarbeiter} sonder={sonder} einsaetze={liste} setEinsaetze={setEinsaetze} vorgabe={dialog} onClose={()=>setDialog(null)} />}
-      {entf && (
-        <Modal titel="Einsatz ändern" onClose={()=>setEntf(null)} farbe="#2563eb">
-          <div style={{ fontSize:14, color:TH.text, marginBottom:14 }}>
-            <b>{entf.ma.name}</b> ist am <b>{fmtDate(parseDate(entf.iso))}</b> auf <b>{entf.projekt.name}</b> eingeplant.
-          </div>
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            <button style={btnPrimary("#dc2626")} onClick={()=>{ setEinsaetze(prev => einsatzTagEntfernen(prev, entf.ma.id, entf.projekt.id, entf.iso, false)); setEntf(null); }}>Nur an diesem Tag entfernen</button>
-            <button style={btnPrimary("#ea580c")} onClick={()=>{ setEinsaetze(prev => einsatzTagEntfernen(prev, entf.ma.id, entf.projekt.id, entf.iso, true)); setEntf(null); }}>Ab diesem Tag entfernen</button>
-            <button style={btnGhost()} onClick={()=>setEntf(null)}>Abbrechen</button>
-          </div>
-        </Modal>
-      )}
-    </div>
-  );
-}
-
 // ─── Einplanen-Dialog: Personen (einzeln oder als Gruppe) auf ein Projekt setzen ───
 function EinsatzDialog({ projekte, personen, sonder, einsaetze, setEinsaetze, vorgabe, onClose }) {
   const aktive = projekte.filter(p => p.status!=="storniert");
@@ -587,101 +430,359 @@ function EinsatzDialog({ projekte, personen, sonder, einsaetze, setEinsaetze, vo
   );
 }
 
-// ─── MONATSANSICHT ─────────────────────────────────────────────────────────────
-function Monatsansicht({ mitarbeiter, projekte, sonder }) {
+// ─── TIMELINE (Woche / Monat): Personen-Zeilen mit Einsatz-Balken ─────────────
+const PROJ_PALETTE = ["#2563eb","#16a34a","#9333ea","#0891b2","#db2777","#ca8a04","#4f46e5","#0d9488","#ea580c","#65a30d"];
+const SONDER_BALKEN = { Urlaub:"#f59e0b", Krank:"#ef4444", Frei:"#94a3b8", Schulung:"#8b5cf6", Werkstatt:"#a855f7" };
+function montagVon(d) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return addDays(x, -((x.getDay() + 6) % 7)); }
+function tageZwischen(a, b) { return Math.round((parseDate(b) - parseDate(a)) / 86400000); }
+function maxIso(a, b) { return a > b ? a : b; }
+function minIso(a, b) { return a < b ? a : b; }
+
+function Timeline({ modus: modusStart, mitarbeiter, alleMA, projekte, sonder, einsaetze, setEinsaetze, kannPlanen, meinMaId }) {
   const heute = new Date();
-  const [monat, setMonat] = useState(heute.getMonth());
-  const [jahr, setJahr] = useState(heute.getFullYear());
-  const [filterMA, setFilterMA] = useState("Alle");
+  const heuteIso = isoDate(heute);
+  const [modus, setModus] = useState(modusStart);
+  const [anker, setAnker] = useState(() => modusStart === "monat" ? new Date(heute.getFullYear(), heute.getMonth(), 1) : montagVon(heute));
+  const [filterTeam, setFilterTeam] = useState("Alle");
+  const [drag, setDrag] = useState(null);
+  const [neu, setNeu] = useState(null);
+  const [bearb, setBearb] = useState(null);
+  const [dialog, setDialog] = useState(null);
+  const liste = einsaetze || [];
 
-  function prevM() { if(monat===0){setMonat(11);setJahr(y=>y-1);}else setMonat(m=>m-1); }
-  function nextM() { if(monat===11){setMonat(0);setJahr(y=>y+1);}else setMonat(m=>m+1); }
+  const tage = useMemo(() => {
+    if (modus === "monat") {
+      const n = new Date(anker.getFullYear(), anker.getMonth() + 1, 0).getDate();
+      return Array.from({ length: n }, (_, i) => new Date(anker.getFullYear(), anker.getMonth(), i + 1));
+    }
+    return Array.from({ length: 14 }, (_, i) => addDays(anker, i));
+  }, [modus, anker]);
+  const isoTage = tage.map(isoDate);
+  const von = isoTage[0], bis = isoTage[isoTage.length - 1], n = tage.length;
+  const monat = modus === "monat";
 
-  const ersterTag = new Date(jahr, monat, 1);
-  const letzterTag = new Date(jahr, monat+1, 0);
-  const tage = Array.from({length:letzterTag.getDate()}, (_,i) => new Date(jahr, monat, i+1));
+  const farbeVon = useMemo(() => { const m = new Map(); projekte.forEach((p, i) => m.set(p.id, PROJ_PALETTE[i % PROJ_PALETTE.length])); return m; }, [projekte]);
+  const projVon = useMemo(() => new Map(projekte.map(p => [p.id, p])), [projekte]);
 
-  const gefilterteMA = filterMA==="Alle" ? mitarbeiter : mitarbeiter.filter(m=>m.name===filterMA);
+  function setzeModus(m) {
+    setModus(m);
+    setAnker(a => m === "monat" ? new Date(a.getFullYear(), a.getMonth(), 1) : montagVon(a.getFullYear() === heute.getFullYear() && a.getMonth() === heute.getMonth() ? heute : a));
+  }
+  function weiter(r) { setAnker(a => monat ? new Date(a.getFullYear(), a.getMonth() + r, 1) : addDays(a, 7 * r)); }
+  function aufHeute() { setAnker(monat ? new Date(heute.getFullYear(), heute.getMonth(), 1) : montagVon(heute)); }
+
+  const personen = mitarbeiter
+    .filter(m => filterTeam === "Alle" || m.team === filterTeam)
+    .slice().sort((a, b) => (b.id === meinMaId) - (a.id === meinMaId));
+
+  // Balken pro Person (inkl. Vorschau beim Ziehen), auf Bahnen verteilt
+  function balkenFuer(m) {
+    const items = [];
+    liste.forEach(e => {
+      if (e.ma !== m.id) return;
+      let s = e.dateStart, en = e.dateEnd;
+      if (drag && drag.id === e.id) { s = drag.s; en = drag.e; }
+      if (s > bis || en < von) return;
+      const p = projVon.get(e.projektId);
+      items.push({ art: "e", id: e.id, e, s: maxIso(s, von), en: minIso(en, bis), fs: s, fe: en, label: p ? p.name : "?", farbe: farbeVon.get(e.projektId) || "#2563eb" });
+    });
+    sonder.forEach(se => {
+      if (se.ma !== m.id || se.dateStart > bis || se.dateEnd < von) return;
+      items.push({ art: "s", id: se.id, s: maxIso(se.dateStart, von), en: minIso(se.dateEnd, bis), fs: se.dateStart, fe: se.dateEnd, label: se.typ, farbe: SONDER_BALKEN[se.typ] || "#94a3b8" });
+    });
+    items.sort((a, b) => a.s.localeCompare(b.s));
+    const bahnen = [];
+    items.forEach(it => {
+      let b = bahnen.findIndex(letzte => letzte < it.s);
+      if (b < 0) { b = bahnen.length; bahnen.push(it.en); } else bahnen[b] = it.en;
+      it.bahn = b;
+    });
+    return { items, bahnen: Math.max(1, bahnen.length) };
+  }
+
+  function tagIdx(el, x) { const r = el.getBoundingClientRect(); return Math.max(0, Math.min(n - 1, Math.floor((x - r.left) / r.width * n))); }
+
+  function starteZiehen(ev, art, daten, track) {
+    if (!kannPlanen || (ev.button != null && ev.button !== 0)) return;
+    ev.stopPropagation();
+    const i0 = tagIdx(track, ev.clientX);
+    const x0 = ev.clientX;
+    let aktuell = null, bewegt = false;
+    const berechne = (e) => {
+      const i = tagIdx(track, e.clientX);
+      if (Math.abs(e.clientX - x0) > 4) bewegt = true;
+      const delta = i - i0;
+      if (art === "neu") return { art, ma: daten.ma, a: Math.min(i0, i), b: Math.max(i0, i) };
+      const o = daten.e;
+      if (art === "move") return { art, id: o.id, s: isoDate(addDays(parseDate(o.dateStart), delta)), e: isoDate(addDays(parseDate(o.dateEnd), delta)) };
+      if (art === "rechts") return { art, id: o.id, s: o.dateStart, e: maxIso(o.dateStart, isoDate(addDays(parseDate(o.dateEnd), delta))) };
+      return { art, id: o.id, s: minIso(o.dateEnd, isoDate(addDays(parseDate(o.dateStart), delta))), e: o.dateEnd };
+    };
+    aktuell = berechne(ev);
+    setDrag(aktuell);
+    const move = e => { aktuell = berechne(e); setDrag(aktuell); };
+    const ende = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", ende);
+      window.removeEventListener("pointercancel", abbruch);
+      setDrag(null);
+      if (art === "neu") {
+        setNeu({ ma: daten.ma, von: isoTage[aktuell.a], bis: isoTage[aktuell.b] });
+      } else {
+        const o = daten.e;
+        if (aktuell.s === o.dateStart && aktuell.e === o.dateEnd) { setBearb({ e: o, von: o.dateStart, bis: o.dateEnd, projektId: o.projektId }); }
+        else setEinsaetze(prev => prev.map(x => x.id === o.id ? { ...x, dateStart: aktuell.s, dateEnd: aktuell.e } : x));
+      }
+    };
+    const abbruch = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", ende); window.removeEventListener("pointercancel", abbruch); setDrag(null); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", ende);
+    window.addEventListener("pointercancel", abbruch);
+  }
+
+  const aktive = projekte.filter(p => p.status !== "storniert" && p.status !== "abgeschlossen");
+  const NAME_B = 160, BAHN = 30;
+  const minB = NAME_B + n * (monat ? 30 : 62);
+  const titel = monat ? MONATE[anker.getMonth()] + " " + anker.getFullYear() : "KW " + getKW(tage[0]) + " – " + getKW(tage[n - 1]) + " · " + tage[n - 1].getFullYear();
+  const untertitel = monat ? "" : fmtDate(tage[0]) + " – " + fmtDate(tage[n - 1]);
+  const btnNav = { padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, color:TH.text, cursor:"pointer", fontSize:16 };
+
+  // Legende: Projekte, die im Zeitraum vorkommen
+  const legende = [...new Set(liste.filter(e => e.dateStart <= bis && e.dateEnd >= von && personen.some(m => m.id === e.ma)).map(e => e.projektId))].map(id => projVon.get(id)).filter(Boolean);
 
   return (
     <div>
-      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16, flexWrap:"wrap" }}>
-        <button onClick={prevM} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>‹</button>
-        <div style={{ fontWeight:800, fontSize:17, color:TH.text }}>{MONATE[monat]} {jahr}</div>
-        <button onClick={nextM} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>›</button>
-        <select value={filterMA} onChange={e=>setFilterMA(e.target.value)} style={{ padding:"6px 12px", borderRadius:8, border:"1.5px solid "+TH.border, fontSize:13 }}>
-          <option>Alle</option>
-          {mitarbeiter.map(m=><option key={m.id}>{m.name}</option>)}
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14, flexWrap:"wrap" }}>
+        <button onClick={() => weiter(-1)} style={btnNav}>‹</button>
+        <div style={{ textAlign:"center", minWidth:130 }}>
+          <div style={{ fontWeight:800, fontSize:16, color:TH.text }}>{titel}</div>
+          {untertitel && <div style={{ fontSize:11, color:"#9ca3af" }}>{untertitel}</div>}
+        </div>
+        <button onClick={() => weiter(1)} style={btnNav}>›</button>
+        <div style={{ display:"flex", background:TH.panel2, border:"1px solid "+TH.border, borderRadius:8, padding:3 }}>
+          {[["woche","Woche"],["monat","Monat"]].map(([id, l]) => (
+            <button key={id} onClick={() => setzeModus(id)} style={{ padding:"5px 14px", borderRadius:6, border:"none", cursor:"pointer", fontSize:12, fontWeight:700, background: modus === id ? TH.panel : "transparent", color: modus === id ? TH.text : TH.textMut, boxShadow: modus === id ? "0 1px 3px #0002" : "none" }}>{l}</button>
+          ))}
+        </div>
+        <select value={filterTeam} onChange={e => setFilterTeam(e.target.value)} style={{ padding:"6px 12px", borderRadius:8, border:"1.5px solid "+TH.border, fontSize:13, background:TH.input, color:TH.text }}>
+          {["Alle", ...TEAM_NAMEN_AKTUELL].map(t => <option key={t} value={t}>{t === "Alle" ? "Alle Gruppen" : t}</option>)}
         </select>
-        <button onClick={()=>{setMonat(heute.getMonth());setJahr(heute.getFullYear());}} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #ea580c", background:"#ffedd5", color:"#ea580c", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
+        <button onClick={aufHeute} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #ea580c", background:"#ffedd5", color:"#ea580c", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
+        {kannPlanen && <button onClick={() => setDialog({ projektId:(aktive[0] || {}).id || "", von, bis:von })} style={{ ...btnPrimary("#2563eb"), padding:"7px 14px", marginLeft:"auto" }}>＋ Einsatz</button>}
       </div>
 
-      <div style={{ overflowX:"auto" }}>
-        <table style={{ borderCollapse:"collapse", width:"100%", fontSize:11, minWidth:900 }}>
-          <thead>
-            <tr>
-              <th style={{ ...thS(), textAlign:"left", position:"sticky", left:0, background:TH.panel2, zIndex:2, minWidth:130 }}>Mitarbeiter</th>
+      <div style={{ overflowX:"auto", background:TH.panel, border:"1px solid "+TH.border, borderRadius:12 }}>
+        <div style={{ minWidth:minB }}>
+          <div style={{ display:"flex", borderBottom:"1px solid "+TH.border, background:TH.panel2 }}>
+            <div style={{ width:NAME_B, flexShrink:0, position:"sticky", left:0, background:TH.panel2, zIndex:3 }} />
+            <div style={{ flex:1, display:"flex" }}>
               {tage.map(d => {
-                const wend = isWeekend(d);
-                const isH = isoDate(d)===isoDate(heute);
+                const we = isWeekend(d), ist = isoDate(d) === heuteIso;
                 return (
-                  <th key={d.getDate()} style={{ ...thS(), minWidth:30, padding:"4px 2px", background:isH?"#eff6ff":wend?"#f3f4f6":"#f9fafb",
-                    color:isH?"#ea580c":wend?"#d1d5db":"#6b7280", borderTop:isH?"2px solid #ea580c":undefined }}>
-                    <div style={{ fontSize:9 }}>{WOCHENTAGE[d.getDay()]}</div>
-                    <div style={{ fontWeight:800, fontSize:12 }}>{d.getDate()}</div>
-                  </th>
+                  <div key={isoDate(d)} style={{ flex:1, textAlign:"center", padding:"6px 0", fontSize:11, fontWeight:700, color: ist ? "#2563eb" : we ? "#cbd5e1" : TH.textMut, borderBottom: ist ? "2px solid #2563eb" : "2px solid transparent" }}>
+                    {monat ? <div style={{ fontSize:13 }}>{d.getDate()}</div> : <><div>{WOCHENTAGE[d.getDay()]}</div><div style={{ fontSize:13, color: ist ? "#2563eb" : we ? "#94a3b8" : TH.text }}>{fmtDateShort(d)}</div></>}
+                    {monat && <div style={{ fontSize:9, fontWeight:600 }}>{WOCHENTAGE[d.getDay()].charAt(0)}</div>}
+                  </div>
                 );
               })}
-            </tr>
-          </thead>
-          <tbody>
-            {gefilterteMA.map(ma => {
-              const col = getTeamColor(ma.team);
-              return (
-                <tr key={ma.id} style={{ borderBottom:"1px solid "+TH.border }}>
-                  <td style={{ ...tdS(), position:"sticky", left:0, background:TH.panel, zIndex:1, borderRight:"2px solid #e5e7eb", borderLeft:`4px solid ${col.bg}`, whiteSpace:"nowrap" }}>
-                    <div style={{ fontWeight:ma.rolle==="Vorarbeiter"?700:400, color:ma.rolle==="Vorarbeiter"?col.bg:TH.text, fontSize:11 }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</div>
-                    <div style={{ fontSize:9, color:"#9ca3af" }}>{ma.team}</div>
-                  </td>
-                  {tage.map(d => {
-                    const wend = isWeekend(d);
-                    const projs = projekteFuerMa(projekte, ma.id, d);
-                    const se = getSonderForMaDate(sonder, ma.id, d);
-                    const eintrag = se || (projs.length?{typ:"Projekt",projekte:projs}:null);
-                    const isH = isoDate(d)===isoDate(heute);
+            </div>
+          </div>
 
-                    if (wend && !eintrag) return <td key={d.getDate()} style={{ background:TH.panel2, padding:0 }} />;
-                    if (!eintrag) return <td key={d.getDate()} style={{ background:isH?"#fff7ed":TH.panel, padding:0 }} />;
-
-                    if (eintrag.typ==="Projekt") {
-                      const mehr = eintrag.projekte.length > 1;
-                      return (
-                        <td key={d.getDate()} style={{ background:col.light, padding:1 }} title={eintrag.projekte.map(pr=>pr.name+" · "+pr.ort).join("  |  ")}>
-                          {eintrag.projekte.map(pr => {
-                            const pc = getTeamColor(pr.team);
-                            return <div key={pr.id} style={{ background:pc.bg, height: mehr ? 10 : 22, marginBottom: mehr ? 1 : 0, borderRadius:2, opacity:0.85 }} />;
-                          })}
-                        </td>
-                      );
-                    } else {
-                      const ef = EINSATZ_FARBEN[eintrag.typ]||EINSATZ_FARBEN["Frei"];
-                      return (
-                        <td key={d.getDate()} style={{ background:ef.bg, padding:1 }} title={eintrag.typ}>
-                          <div style={{ background:ef.border, height:22, borderRadius:3, opacity:0.5 }} />
-                        </td>
-                      );
-                    }
+          {personen.length === 0 && <div style={{ padding:24, textAlign:"center", color:"#9ca3af", fontSize:13 }}>Keine Mitarbeiter.</div>}
+          {personen.map(m => {
+            const { items, bahnen } = balkenFuer(m);
+            const hoehe = bahnen * BAHN + 10;
+            const ich = m.id === meinMaId;
+            const bg = ich ? "#2563eb12" : TH.panel;
+            let trackEl = null;
+            return (
+              <div key={m.id} style={{ display:"flex", borderBottom:"1px solid "+TH.border, background:bg }}>
+                <div style={{ width:NAME_B, flexShrink:0, position:"sticky", left:0, zIndex:2, background: ich ? "#eff6ff" : TH.panel, display:"flex", alignItems:"center", gap:8, padding:"0 10px", borderRight:"1px solid "+TH.border }}>
+                  <span style={{ width:24, height:24, borderRadius:"50%", background: ich ? "#2563eb" : TH.panel2, color: ich ? "#fff" : TH.textMut, border:"1px solid "+TH.border, fontSize:10, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{String(m.name).split(" ").slice(0, 2).map(w => w.charAt(0)).join("")}</span>
+                  <div style={{ minWidth:0 }}>
+                    <div style={{ fontSize:12, fontWeight:700, color: ich ? "#2563eb" : TH.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{m.rolle === "Vorarbeiter" ? "★ " : ""}{m.name}</div>
+                    <div style={{ fontSize:9, color:"#9ca3af" }}>{ich ? "Du" : m.team}</div>
+                  </div>
+                </div>
+                <div ref={el => { trackEl = el; }}
+                  onPointerDown={kannPlanen ? ev => { if (trackEl) starteZiehen(ev, "neu", { ma:m.id }, trackEl); } : undefined}
+                  style={{ flex:1, position:"relative", height:hoehe, cursor: kannPlanen ? "crosshair" : "default", userSelect:"none" }}>
+                  <div style={{ position:"absolute", inset:0, display:"flex", pointerEvents:"none" }}>
+                    {tage.map(d => {
+                      const we = isWeekend(d), ist = isoDate(d) === heuteIso;
+                      return <div key={isoDate(d)} style={{ flex:1, background: ist ? "#2563eb14" : we ? "#94a3b81a" : "transparent", borderLeft:"1px solid "+TH.border+"88" }} />;
+                    })}
+                  </div>
+                  {drag && drag.art === "neu" && drag.ma === m.id && (
+                    <div style={{ position:"absolute", top:3, bottom:3, left:(drag.a / n * 100) + "%", width:((drag.b - drag.a + 1) / n * 100) + "%", background:"#2563eb33", border:"2px dashed #2563eb", borderRadius:8, pointerEvents:"none" }} />
+                  )}
+                  {items.map(it => {
+                    const i0 = tageZwischen(von, it.s), i1 = tageZwischen(von, it.en);
+                    const kannBearb = kannPlanen && it.art === "e";
+                    const griff = { position:"absolute", top:0, bottom:0, width:8, cursor:"ew-resize", touchAction:"none" };
+                    return (
+                      <div key={it.art + it.id}
+                        title={it.label + " · " + fmtDate(parseDate(it.fs)) + (it.fe !== it.fs ? " – " + fmtDate(parseDate(it.fe)) : "")}
+                        onPointerDown={kannBearb ? ev => { if (trackEl) starteZiehen(ev, "move", { e: it.e }, trackEl); } : e2 => e2.stopPropagation()}
+                        style={{ position:"absolute", top:5 + it.bahn * BAHN, height:BAHN - 4, left:"calc(" + (i0 / n * 100) + "% + 2px)", width:"calc(" + ((i1 - i0 + 1) / n * 100) + "% - 4px)",
+                          background:it.farbe, color:"#fff", borderRadius:8, display:"flex", alignItems:"center", padding:"0 " + (kannBearb ? 10 : 8) + "px", fontSize: monat ? 10 : 11, fontWeight:700,
+                          whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", boxShadow:"0 1px 4px #0003", cursor: kannBearb ? "grab" : "default", touchAction: kannBearb ? "none" : "auto",
+                          opacity: it.art === "s" ? 0.92 : 1, backgroundImage: it.art === "s" ? "repeating-linear-gradient(135deg,transparent 0 6px,#ffffff26 6px 12px)" : "none" }}>
+                        {kannBearb && <div onPointerDown={ev => { if (trackEl) starteZiehen(ev, "links", { e: it.e }, trackEl); }} style={{ ...griff, left:0 }} />}
+                        <span style={{ overflow:"hidden", textOverflow:"ellipsis", pointerEvents:"none" }}>{it.label}</span>
+                        {kannBearb && <div onPointerDown={ev => { if (trackEl) starteZiehen(ev, "rechts", { e: it.e }, trackEl); }} style={{ ...griff, right:0 }} />}
+                      </div>
+                    );
                   })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
-      <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:12 }}>
-        {TEAM_NAMEN_AKTUELL.map(t=>{const c=getTeamColor(t);return <span key={t} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11, background:c.light, border:`1px solid ${c.bg}44`, borderRadius:6, padding:"2px 8px", color:c.text }}>■ {t}</span>;})}
-        {Object.entries(EINSATZ_FARBEN).slice(1).map(([k,v])=><span key={k} style={{ display:"flex", alignItems:"center", gap:4, fontSize:11, background:v.bg, border:`1px solid ${v.border}`, borderRadius:6, padding:"2px 8px", color:v.badge }}>● {k}</span>)}
+
+      <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginTop:12, alignItems:"center", fontSize:11, color:TH.textMut }}>
+        {legende.map(p => <span key={p.id} style={{ display:"flex", alignItems:"center", gap:5 }}><i style={{ width:11, height:11, borderRadius:4, background:farbeVon.get(p.id), display:"inline-block" }} />{p.name}</span>)}
+        {Object.entries(SONDER_BALKEN).slice(0, 3).map(([k, c]) => <span key={k} style={{ display:"flex", alignItems:"center", gap:5 }}><i style={{ width:11, height:11, borderRadius:4, background:c, display:"inline-block" }} />{k}</span>)}
+        {kannPlanen && <span style={{ marginLeft:"auto" }}>Leere Fläche ziehen = neuer Einsatz · Balken ziehen = verschieben · Rand ziehen = verlängern · Balken anklicken = ändern</span>}
       </div>
+
+      {neu && (() => {
+        const m = mitarbeiter.find(x => x.id === neu.ma) || (alleMA || []).find(x => x.id === neu.ma);
+        const se = sonder.find(x => x.ma === neu.ma && (x.typ === "Urlaub" || x.typ === "Krank") && x.dateStart <= neu.bis && x.dateEnd >= neu.von);
+        function waehle(pid) {
+          let bloecke = werktagBloecke(neu.von, neu.bis, false);
+          if (!bloecke.length) bloecke = [[neu.von, neu.bis]];
+          const neue = [];
+          bloecke.forEach(([a, b]) => { if (!liste.some(e => e.ma === neu.ma && e.projektId === pid && e.dateStart <= a && e.dateEnd >= b)) neue.push({ id:neueEinsatzId(), ma:neu.ma, projektId:pid, dateStart:a, dateEnd:b }); });
+          if (neue.length) setEinsaetze(prev => [...prev, ...neue]);
+          setNeu(null);
+        }
+        return (
+          <Modal titel={"Einplanen · " + (m ? m.name : "")} onClose={() => setNeu(null)} farbe="#2563eb">
+            <div style={{ fontSize:13, color:TH.text, marginBottom:12 }}>
+              <b>{fmtDate(parseDate(neu.von))}{neu.bis !== neu.von ? " – " + fmtDate(parseDate(neu.bis)) : ""}</b> · Wochenenden werden übersprungen. Welches Projekt?
+            </div>
+            {se && <div style={{ background:"#fef9c3", border:"1.5px solid #fcd34d", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#92400e", marginBottom:12 }}>⚠️ {se.typ} im gewählten Zeitraum ({fmtDate(parseDate(se.dateStart))} – {fmtDate(parseDate(se.dateEnd))})</div>}
+            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+              {aktive.map(p => (
+                <button key={p.id} onClick={() => waehle(p.id)} style={{ ...btnPrimary(farbeVon.get(p.id)), textAlign:"left", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span>{p.name}</span><span style={{ fontSize:11, opacity:0.85, fontWeight:500 }}>{p.ort}</span>
+                </button>
+              ))}
+              {!aktive.length && <div style={{ color:"#9ca3af", fontSize:13 }}>Es gibt noch kein aktives Projekt. Lege zuerst unter Projekte eines an.</div>}
+              <button style={btnGhost()} onClick={() => { setDialog({ projektId:(aktive[0] || {}).id || "", von:neu.von, bis:neu.bis }); setNeu(null); }}>Mehrere Personen einplanen…</button>
+            </div>
+          </Modal>
+        );
+      })()}
+
+      {bearb && (() => {
+        const m = mitarbeiter.find(x => x.id === bearb.e.ma) || (alleMA || []).find(x => x.id === bearb.e.ma);
+        const ok = bearb.projektId && bearb.von && bearb.bis && bearb.bis >= bearb.von;
+        return (
+          <Modal titel={"Einsatz ändern · " + (m ? m.name : "")} onClose={() => setBearb(null)} farbe="#2563eb">
+            <Feld label="Projekt">
+              <select value={bearb.projektId} onChange={ev => setBearb(b => ({ ...b, projektId: ev.target.value }))} style={inpS()}>
+                {projekte.filter(p => p.status !== "storniert").map(p => <option key={p.id} value={p.id}>{p.name} ({p.ort})</option>)}
+              </select>
+            </Feld>
+            <div style={{ display:"flex", gap:10 }}>
+              <div style={{ flex:1 }}><Feld label="Von"><input type="date" value={bearb.von} onChange={ev => setBearb(b => ({ ...b, von: ev.target.value, bis: b.bis < ev.target.value ? ev.target.value : b.bis }))} style={inpS()} /></Feld></div>
+              <div style={{ flex:1 }}><Feld label="Bis"><input type="date" value={bearb.bis} min={bearb.von} onChange={ev => setBearb(b => ({ ...b, bis: ev.target.value }))} style={inpS()} /></Feld></div>
+            </div>
+            <div style={{ display:"flex", gap:10, marginTop:4, flexWrap:"wrap" }}>
+              <button disabled={!ok} style={{ ...btnPrimary("#2563eb"), opacity: ok ? 1 : 0.5 }} onClick={() => { setEinsaetze(prev => prev.map(x => x.id === bearb.e.id ? { ...x, projektId: bearb.projektId, dateStart: bearb.von, dateEnd: bearb.bis } : x)); setBearb(null); }}>Speichern</button>
+              <button style={btnPrimary("#dc2626")} onClick={() => { setEinsaetze(prev => prev.filter(x => x.id !== bearb.e.id)); setBearb(null); }}>Einsatz löschen</button>
+              <button style={btnGhost()} onClick={() => setBearb(null)}>Abbrechen</button>
+            </div>
+          </Modal>
+        );
+      })()}
+
+      {dialog && <EinsatzDialog projekte={projekte} personen={alleMA || mitarbeiter} sonder={sonder} einsaetze={liste} setEinsaetze={setEinsaetze} vorgabe={dialog} onClose={() => setDialog(null)} />}
+    </div>
+  );
+}
+
+// ─── MEIN TAG: einfache Handy-Ansicht für Angestellte ─────────────────────────
+function MeinTag({ meinMA, mitarbeiter, projekte, sonder, einsaetze, setTab }) {
+  const heute = new Date();
+  const vorname = String(meinMA.name || "").split(" ")[0];
+  const maById = new Map((mitarbeiter || []).map(m => [m.id, m]));
+  function tagInfo(d) {
+    const iso = isoDate(d);
+    const se = getSonderForMaDate(sonder, meinMA.id, d);
+    const ps = projekteFuerMa(projekte, meinMA.id, d);
+    return { iso, se, ps };
+  }
+  function kollegen(p, iso) {
+    const ids = [...new Set((einsaetze || []).filter(e => e.projektId === p.id && e.ma !== meinMA.id && e.dateStart <= iso && e.dateEnd >= iso).map(e => e.ma))];
+    return ids.map(id => maById.get(id)).filter(Boolean);
+  }
+  const t0 = tagInfo(heute);
+  const kommend = Array.from({ length: 7 }, (_, i) => addDays(heute, i + 1)).map(d => ({ d, ...tagInfo(d) })).filter(x => !isWeekend(x.d) || x.ps.length || x.se);
+  const karte = { background:TH.panel, border:"1px solid "+TH.border, borderRadius:14, padding:"12px 14px", display:"flex", alignItems:"center", gap:12, marginBottom:8 };
+  return (
+    <div style={{ maxWidth:520, margin:"0 auto" }}>
+      <div style={{ fontSize:12, color:TH.textMut }}>{WOCHENTAGE_LANG[heute.getDay()]}, {heute.getDate()}. {MONATE[heute.getMonth()]}</div>
+      <div style={{ fontSize:22, fontWeight:800, color:TH.text, marginBottom:12 }}>Hallo {vorname} 👋</div>
+
+      {t0.se && (
+        <div style={{ background:SONDER_BALKEN[t0.se.typ] || "#94a3b8", color:"#fff", borderRadius:18, padding:"18px 18px", marginBottom:12 }}>
+          <div style={{ fontSize:11, opacity:0.85, fontWeight:700 }}>HEUTE</div>
+          <div style={{ fontSize:22, fontWeight:800 }}>{t0.se.typ}</div>
+          <div style={{ fontSize:12, opacity:0.9 }}>bis {fmtDate(parseDate(t0.se.dateEnd))}</div>
+        </div>
+      )}
+      {!t0.se && t0.ps.map(p => {
+        const kol = kollegen(p, t0.iso);
+        const va = kol.find(k => k.rolle === "Vorarbeiter") || (meinMA.rolle === "Vorarbeiter" ? meinMA : null);
+        const farbe = getTeamColor(p.team).bg;
+        return (
+          <div key={p.id} style={{ background:farbe, color:"#fff", borderRadius:18, padding:"18px 18px", marginBottom:12, boxShadow:"0 4px 14px #0002" }}>
+            <div style={{ fontSize:11, opacity:0.85, fontWeight:700 }}>HEUTE</div>
+            <div style={{ fontSize:22, fontWeight:800, margin:"2px 0 8px" }}>{p.name}</div>
+            <div style={{ fontSize:13, display:"flex", justifyContent:"space-between", gap:8, margin:"4px 0" }}><span>📍 {p.ort}</span>{p.kunde && p.kunde !== "intern" && <span style={{ opacity:0.85 }}>{p.kunde}</span>}</div>
+            {va && <div style={{ fontSize:13, margin:"4px 0" }}>★ Vorarbeiter: <b>{va.name}</b></div>}
+            {kol.length > 0 && (
+              <div style={{ marginTop:8 }}>
+                <div style={{ fontSize:11, opacity:0.85 }}>Mit dir dort:</div>
+                <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginTop:4 }}>
+                  {kol.map(k => <span key={k.id} style={{ background:"#ffffff30", borderRadius:99, padding:"3px 10px", fontSize:12, fontWeight:600 }}>{k.name}</span>)}
+                </div>
+              </div>
+            )}
+            {p.bemerkung && <div style={{ marginTop:10, fontSize:12, background:"#00000022", borderRadius:10, padding:"8px 10px" }}>ℹ️ {p.bemerkung}</div>}
+            <a href={"https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(p.ort)} target="_blank" rel="noopener noreferrer"
+              style={{ display:"block", marginTop:12, background:"#fff", color:farbe, textAlign:"center", padding:"11px", borderRadius:11, fontWeight:800, fontSize:14, textDecoration:"none" }}>🧭 Route starten</a>
+          </div>
+        );
+      })}
+      {!t0.se && t0.ps.length === 0 && (
+        <div style={{ background:TH.panel, border:"1.5px dashed "+TH.border, borderRadius:18, padding:"22px 18px", marginBottom:12, textAlign:"center" }}>
+          <div style={{ fontSize:11, color:TH.textMut, fontWeight:700 }}>HEUTE</div>
+          <div style={{ fontSize:18, fontWeight:800, color:TH.text, marginTop:2 }}>{isWeekend(heute) ? "Wochenende 🎉" : "Noch nicht eingeplant"}</div>
+          {!isWeekend(heute) && <div style={{ fontSize:12, color:TH.textMut, marginTop:4 }}>Frag bei deiner Leitung nach, wo du heute eingesetzt bist.</div>}
+        </div>
+      )}
+
+      <div style={{ fontSize:11, fontWeight:700, color:TH.textMut, margin:"16px 0 6px", letterSpacing:0.5 }}>DIE NÄCHSTEN TAGE</div>
+      {kommend.map(({ d, ps, se }) => {
+        const farbe = se ? (SONDER_BALKEN[se.typ] || "#94a3b8") : ps[0] ? getTeamColor(ps[0].team).bg : null;
+        return (
+          <div key={isoDate(d)} style={karte}>
+            <span style={{ width:10, height:10, borderRadius:"50%", flexShrink:0, background: farbe || "transparent", border: farbe ? "none" : "1.5px dashed #cbd5e1" }} />
+            <div style={{ fontSize:13 }}>
+              <div style={{ fontWeight:700, color:TH.text }}>{WOCHENTAGE[d.getDay()]} {fmtDateShort(d)}</div>
+              <div style={{ color: farbe ? TH.textMut : "#9ca3af" }}>{se ? se.typ : ps.length ? ps.map(p => p.name + " · " + p.ort).join(" / ") : "noch nicht eingeplant"}</div>
+            </div>
+          </div>
+        );
+      })}
+
+      <button onClick={() => setTab("stundenzettel")} style={{ ...btnPrimary("#2563eb"), width:"100%", marginTop:12, padding:"13px", fontSize:14 }}>⏱ Stunden ansehen</button>
+      <button onClick={() => setTab("woche")} style={{ ...btnGhost(), width:"100%", marginTop:8 }}>Gesamtplan ansehen</button>
     </div>
   );
 }
@@ -3586,9 +3687,9 @@ export default function EinsatzplanungInner({
         {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} antraege={vAntraege} warnungen={warnungen} unterkuenfte={vUnterkuenfte} setTab={setTab} T={T} />}
         {tab==="kosten"       && darfTab(meineRolle,"kosten")       && <KostenControlling projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} T={T} />}
         {tab==="assistent"    && darfTab(meineRolle,"assistent")    && <SmartAssistent projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} werkzeuge={werkzeuge} berichte={vBerichte} T={T} />}
-        {tab==="heute"        && darfTab(meineRolle,"heute")        && <Tagesansicht   mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} />}
-        {tab==="woche"        && darfTab(meineRolle,"woche")        && <Wochenansicht  mitarbeiter={vMitarbeiter} alleMA={mitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setEinsaetze={setEinsaetze} kannPlanen={kannPlanen} />}
-        {tab==="monat"        && darfTab(meineRolle,"monat")        && <Monatsansicht  mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} />}
+        {tab==="heute"        && darfTab(meineRolle,"heute")        && (kannPlanen || !meinMA ? <Tagesansicht   mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} /> : <MeinTag meinMA={meinMA} mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setTab={setTab} />)}
+        {tab==="woche"        && darfTab(meineRolle,"woche")        && <Timeline key="woche" modus="woche" mitarbeiter={vMitarbeiter} alleMA={mitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setEinsaetze={setEinsaetze} kannPlanen={kannPlanen} meinMaId={meinMA?.id} />}
+        {tab==="monat"        && darfTab(meineRolle,"monat")        && <Timeline key="monat" modus="monat" mitarbeiter={vMitarbeiter} alleMA={mitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setEinsaetze={setEinsaetze} kannPlanen={kannPlanen} meinMaId={meinMA?.id} />}
         {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={vMitarbeiter} projekte={vProjekte} stunden={vStunden} setStunden={setStunden} rolle={meineRolle} meinMA={meinMA} />}
         {tab==="postfach" && <MeinPostfach meinMA={meinMA} meineRolle={meineRolle} userEmail={userEmail} stunden={stunden} projekte={projekte} />}
         {tab==="chat" && darfTab(meineRolle,"chat") && <TeamChat meinMA={meinMA} meineRolle={meineRolle} userEmail={userEmail} />}
