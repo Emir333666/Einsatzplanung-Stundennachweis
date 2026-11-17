@@ -787,8 +787,93 @@ function MeinTag({ meinMA, mitarbeiter, projekte, sonder, einsaetze, setTab }) {
   );
 }
 
+// ─── MEINE STUNDEN: Angestellte sehen ihre Stunden und bestätigen sie ─────────
+const STUNDEN_STATUS = {
+  offen:       { text:"offen",       bg:"#fef3c7", fg:"#92400e" },
+  bestaetigt:  { text:"bestätigt",   bg:"#dcfce7", fg:"#166534" },
+  gemeldet:    { text:"gemeldet",    bg:"#fee2e2", fg:"#991b1b" },
+  freigegeben: { text:"abgerechnet", bg:"#e5e7eb", fg:"#374151" },
+};
+function MeineStunden({ meinMA, stunden, neuLaden }) {
+  const [monat, setMonat] = useState(() => isoDate(new Date()).slice(0, 7));
+  const [melde, setMelde] = useState(null);
+  const [laeuft, setLaeuft] = useState(false);
+  const [fehler, setFehler] = useState("");
+  if (!meinMA) return <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:TH.textMut }}>Dein Konto ist noch keinem Mitarbeiter zugeordnet. Bitte frag deine Leitung.</div>;
+  const mein = (stunden || []).filter(e => e.maId === meinMA.id);
+  const imMonat = mein.filter(e => String(e.datum || "").startsWith(monat)).sort((a, b) => String(b.datum).localeCompare(String(a.datum)));
+  const summe = imMonat.reduce((s, e) => s + (Number(e.arbeitsstunden) || 0), 0);
+  const offene = imMonat.filter(e => (e.status || "offen") === "offen");
+  const [jahr, mm] = monat.split("-").map(Number);
+  function verschieben(r) { const x = new Date(jahr, mm - 1 + r, 1); setMonat(x.getFullYear() + "-" + String(x.getMonth() + 1).padStart(2, "0")); }
+  async function senden(ids, status, text) {
+    setLaeuft(true); setFehler("");
+    const { error } = await supabase.rpc("stunden_bestaetigen", { p_ids: ids, p_status: status, p_meldung: text || null });
+    setLaeuft(false);
+    if (error) { setFehler((error.message || "Das hat nicht geklappt") + " – bist du online?"); return; }
+    setMelde(null);
+    neuLaden && neuLaden();
+  }
+  const btnNav = { padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, color:TH.text, cursor:"pointer", fontSize:16 };
+  return (
+    <div style={{ maxWidth:560, margin:"0 auto" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
+        <button onClick={() => verschieben(-1)} style={btnNav}>‹</button>
+        <div style={{ fontWeight:800, fontSize:18, color:TH.text, flex:1, textAlign:"center" }}>{MONATE[mm - 1]} {jahr}</div>
+        <button onClick={() => verschieben(1)} style={btnNav}>›</button>
+      </div>
+      <div style={{ background:"#2563eb", color:"#fff", borderRadius:18, padding:"16px 18px", marginBottom:12 }}>
+        <div style={{ fontSize:11, opacity:0.8, fontWeight:700 }}>MEINE STUNDEN · {meinMA.name}</div>
+        <div style={{ fontSize:32, fontWeight:800 }}>{summe.toFixed(1).replace(".", ",")} h</div>
+        <div style={{ fontSize:12, opacity:0.85 }}>{imMonat.length} {imMonat.length === 1 ? "Tag" : "Tage"}{imMonat.length ? " · Ø " + (summe / imMonat.length).toFixed(1).replace(".", ",") + " h pro Tag" : ""}</div>
+      </div>
+      {offene.length > 0 && (
+        <button disabled={laeuft} onClick={() => senden(offene.map(e => e.id), "bestaetigt")} style={{ ...btnPrimary("#16a34a"), width:"100%", marginBottom:12, padding:"13px", fontSize:14, opacity: laeuft ? 0.6 : 1 }}>✓ Alle {offene.length} offenen bestätigen</button>
+      )}
+      {fehler && <div style={{ background:"#fee2e2", color:"#991b1b", borderRadius:10, padding:"8px 12px", fontSize:12, marginBottom:10 }}>{fehler}</div>}
+      {!imMonat.length && <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:"#9ca3af" }}>In diesem Monat sind noch keine Stunden eingetragen.</div>}
+      {imMonat.map(e => {
+        const st = STUNDEN_STATUS[e.status || "offen"] || STUNDEN_STATUS.offen;
+        const dd = parseDate(e.datum);
+        const kannMelden = (e.status || "offen") !== "freigegeben";
+        return (
+          <div key={e.id} style={{ background:TH.panel, border:"1px solid "+TH.border, borderRadius:14, padding:"11px 14px", marginBottom:8 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <div style={{ fontWeight:700, fontSize:13, color:TH.text }}>{WOCHENTAGE[dd.getDay()]} {fmtDateShort(dd)}</div>
+              <div style={{ fontSize:12, color:TH.textMut, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", flex:1 }}>{e.projekt || ""}</div>
+              <div style={{ fontWeight:800, fontSize:15, color:TH.text }}>{(Number(e.arbeitsstunden) || 0).toFixed(1).replace(".", ",")} h</div>
+              <span style={{ fontSize:10, fontWeight:700, background:st.bg, color:st.fg, borderRadius:99, padding:"2px 9px" }}>{st.text}</span>
+            </div>
+            <div style={{ fontSize:11, color:"#9ca3af", marginTop:3 }}>
+              {e.start}–{e.end}{e.pause ? " · Pause " + e.pause + " Min" : ""}{e.fahrzeit ? " · Fahrzeit " + e.fahrzeit + " h" : ""}{e.uebernachtung ? " · Übernachtung" : ""}{e.spesen ? " · Spesen " + e.spesen + " €" : ""}
+            </div>
+            {e.status === "gemeldet" && e.meldung && <div style={{ marginTop:6, fontSize:12, background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"6px 10px" }}>Dein Hinweis: {e.meldung}</div>}
+            {kannMelden && (
+              <div style={{ display:"flex", gap:8, marginTop:8 }}>
+                {(e.status || "offen") === "offen" && <button disabled={laeuft} onClick={() => senden([e.id], "bestaetigt")} style={{ ...btnPrimary("#16a34a"), padding:"7px 14px", fontSize:12 }}>✓ Stimmt</button>}
+                <button disabled={laeuft} onClick={() => setMelde({ id:e.id, text:"", datum:e.datum })} style={{ padding:"7px 14px", borderRadius:8, background:TH.panel2, color:TH.text, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:12, fontWeight:600 }}>✗ Falsch melden</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <div style={{ background:"#eff6ff", color:"#1e40af", borderRadius:12, padding:"10px 14px", fontSize:12, marginTop:10 }}>Stimmt eine Zeit nicht? Tippe auf „Falsch melden“ und schreib kurz, was nicht passt. Dein Vorarbeiter bekommt den Hinweis und korrigiert es.</div>
+      {melde && (
+        <Modal titel="Stunden falsch melden" onClose={() => setMelde(null)} farbe="#dc2626">
+          <div style={{ fontSize:13, color:TH.text, marginBottom:10 }}>Was stimmt am {fmtDate(parseDate(melde.datum))} nicht?</div>
+          <textarea value={melde.text} onChange={ev => setMelde(m => ({ ...m, text:ev.target.value }))} rows={3} placeholder="z.B. Wir haben bis 17:00 gearbeitet" style={{ ...inpS(), resize:"vertical" }} />
+          <div style={{ display:"flex", gap:10, marginTop:12 }}>
+            <button disabled={laeuft || !melde.text.trim()} onClick={() => senden([melde.id], "gemeldet", melde.text)} style={{ ...btnPrimary("#dc2626"), opacity: (laeuft || !melde.text.trim()) ? 0.5 : 1 }}>Melden</button>
+            <button onClick={() => setMelde(null)} style={btnGhost()}>Abbrechen</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 // ─── STUNDENZETTEL ─────────────────────────────────────────────────────────────
-function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, meinMA }) {
+function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, meinMA, sonder, neuLaden }) {
   const istLeitung = rolle==="Admin" || rolle==="Projektleiter" || rolle==="Bauleiter" || rolle==="Vorarbeiter";
   const vorarbeiter = mitarbeiter.filter(m=>m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter");
   const [aktVA, setAktVA] = useState(vorarbeiter[0]?.id||null);
@@ -810,19 +895,60 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
   const teamProjekt = vaProjs[0] || null;
   const col = va ? getTeamColor(va.team) : { bg:"#6b7280", light:"#f3f4f6", text:"#374151" };
 
+  // ── Standardzeit (wird gemerkt) und Auswahl der Crew ──
+  const [std, setStd] = useState(() => { const g = store.get("bfx_std_zeit"); return g && g.start ? g : { start:"07:00", end:"16:00", pause:30 }; });
+  useEffect(() => { store.set("bfx_std_zeit", std); }, [std]);
+  const [auswahl, setAuswahl] = useState({});
+  const [offenId, setOffenId] = useState(null);
+  const [info, setInfo] = useState("");
+  useEffect(() => { setEntwurf({}); setAuswahl({}); setOffenId(null); setInfo(""); }, [aktVA, datum]);
+
+  const vorhanden = new Map((stunden || []).filter(e => e.datum === datum).map(e => [e.maId, e]));
+  const abwesend = ma => getSonderForMaDate(sonder || [], ma.id, d);
+  const gesperrt = ma => { const ex = vorhanden.get(ma.id); return !!ex && (ex.status || "offen") === "freigegeben" && !lohnDarf; };
+  const aktiv = ma => gesperrt(ma) ? false : (auswahl[ma.id] !== undefined ? auswahl[ma.id] : !abwesend(ma));
   function setFeld(maId,feld,wert){ setEntwurf(p=>({...p,[maId]:{...(p[maId]||{}),[feld]:wert}})); }
-  function getFeld(maId,feld,def=""){ return entwurf[maId]?.[feld]??def; }
+  function wert(ma, feld, def) {
+    const o = entwurf[ma.id]; if (o && o[feld] !== undefined) return o[feld];
+    const ex = vorhanden.get(ma.id); if (ex && ex[feld] != null && ex[feld] !== "") return ex[feld];
+    if (feld === "start" || feld === "end" || feld === "pause") return std[feld];
+    return def;
+  }
+  const stundenVon = ma => calcStunden(wert(ma,"start"), wert(ma,"end"), Number(wert(ma,"pause",0)) || 0);
 
   function speichern() {
-    const eintraege = teamMA.map(ma => {
-      const s = entwurf[ma.id]||{};
-      const h = calcStunden(s.start, s.end, Number(s.pause)||0);
-      return { id:"H"+Date.now()+"_"+ma.id, maId:ma.id, maName:ma.name, team:va.team, datum, wochentag:WOCHENTAGE_LANG[d.getDay()], kw:getKW(d), projekt:((projekteFuerMa(projekte, ma.id, d).find(p=>vaProjIds.has(p.id)))||teamProjekt)?.name||"–", ...s, arbeitsstunden:h.toFixed(2) };
-    }).filter(e=>e.start);
-    if (!eintraege.length) return;
-    setStunden(prev => [...(prev||[]), ...eintraege]);
-    setEntwurf({});
-    setAnsicht("uebersicht");
+    const neue = [], geaendert = new Map();
+    let n = 0;
+    teamMA.forEach(ma => {
+      if (!aktiv(ma)) return;
+      const h = stundenVon(ma);
+      if (h <= 0) return;
+      const ex = vorhanden.get(ma.id);
+      const werte = { start:wert(ma,"start"), end:wert(ma,"end"), pause:Number(wert(ma,"pause",0))||0, fahrzeit:wert(ma,"fahrzeit",""), uebernachtung:!!wert(ma,"uebernachtung",false), spesen:wert(ma,"spesen",""), bemerkung:wert(ma,"bemerkung","") };
+      if (ex) {
+        const gleich = ex.start===werte.start && ex.end===werte.end && (Number(ex.pause)||0)===werte.pause && String(ex.fahrzeit??"")===String(werte.fahrzeit??"") && !!ex.uebernachtung===werte.uebernachtung && String(ex.spesen??"")===String(werte.spesen??"") && String(ex.bemerkung||"")===String(werte.bemerkung||"");
+        if (gleich) return;
+        geaendert.set(ex.id, { ...ex, ...werte, arbeitsstunden:h.toFixed(2), status:(ex.status==="freigegeben"?"freigegeben":"offen"), bestaetigt_am:null, meldung:null });
+      } else {
+        neue.push({ id:"H"+Date.now()+"_"+ma.id, maId:ma.id, maName:ma.name, team:va.team, datum, wochentag:WOCHENTAGE_LANG[d.getDay()], kw:getKW(d), projekt:((projekteFuerMa(projekte, ma.id, d).find(p=>vaProjIds.has(p.id)))||teamProjekt)?.name||"–", ...werte, arbeitsstunden:h.toFixed(2), status:"offen", bestaetigt_am:null, meldung:null });
+      }
+      n++;
+    });
+    if (!n) { setInfo("Nichts zu speichern – wähle Personen aus oder ändere eine Zeit."); return; }
+    setStunden(prev => [...(prev||[]).map(e => geaendert.get(e.id) || e), ...neue]);
+    setEntwurf({}); setAuswahl({});
+    setInfo("✓ Für " + n + (n===1 ? " Person" : " Personen") + " gespeichert.");
+  }
+
+  async function monatFreigeben() {
+    const imMonat = (stunden || []).filter(e => String(e.datum||"").startsWith(lohnMonat));
+    const z = s => imMonat.filter(e => (e.status||"offen")===s).length;
+    const frei = z("offen") + z("bestaetigt");
+    if (!frei) { alert("Für " + lohnMonat + " gibt es nichts freizugeben" + (z("gemeldet") ? " (" + z("gemeldet") + " gemeldete Einträge müssen erst geklärt werden)." : ".")); return; }
+    if (!window.confirm(frei + " Einträge für " + lohnMonat + " freigeben (" + z("bestaetigt") + " bestätigt, " + z("offen") + " noch nicht bestätigt)?" + (z("gemeldet") ? "\n" + z("gemeldet") + " gemeldete Einträge bleiben offen und kommen nicht in den Lohn-Export." : "") + "\n\nFreigegebene Stunden können danach nur noch Admin, Projektleiter und Bauleiter ändern.")) return;
+    const { error } = await supabase.rpc("stunden_monat_freigeben", { p_monat: lohnMonat });
+    if (error) { alert("Freigabe nicht möglich: " + (error.message||"")); return; }
+    neuLaden && neuLaden();
   }
 
   function excelExport() {
@@ -847,8 +973,8 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
 
   // Lohn-Export: Monatssumme je Mitarbeiter (CSV, Semikolon, Komma als Dezimaltrenner)
   function lohnExport() {
-    const eintraege = gespeichert.filter(e => String(e.datum||"").startsWith(lohnMonat));
-    if (!eintraege.length) { alert("Für " + lohnMonat + " sind keine Stundenzettel vorhanden."); return; }
+    const eintraege = gespeichert.filter(e => String(e.datum||"").startsWith(lohnMonat) && (e.status||"offen")==="freigegeben");
+    if (!eintraege.length) { alert("Für " + lohnMonat + " ist noch nichts freigegeben. Klicke zuerst auf „Monat freigeben“."); return; }
     const proMA = {};
     eintraege.forEach(e => {
       const k = e.maId!=null ? e.maId : e.maName;
@@ -937,6 +1063,8 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
     return map;
   },[gespeichert]);
 
+  if (!istLeitung) return <MeineStunden meinMA={meinMA} stunden={stunden} neuLaden={neuLaden} />;
+
   return (
     <div>
       <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:18, alignItems:"flex-end" }}>
@@ -967,6 +1095,7 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
         <div style={{ marginLeft:"auto", display:"flex", gap:8 }}>
           {istLeitung && <button onClick={()=>setAnsicht("erfassen")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, background:ansicht==="erfassen"?col.bg:TH.panel, color:ansicht==="erfassen"?"#fff":TH.text, fontWeight:600 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Pencil size={13}/>Erfassen</span></button>}
           <button onClick={()=>setAnsicht("uebersicht")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, background:ansicht==="uebersicht"?col.bg:TH.panel, color:ansicht==="uebersicht"?"#fff":TH.text, fontWeight:600 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><List size={13}/>Übersicht ({gespeichert.length})</span></button>
+          {meinMA && <button onClick={()=>setAnsicht("meine")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, background:ansicht==="meine"?col.bg:TH.panel, color:ansicht==="meine"?"#fff":TH.text, fontWeight:600 }}>Meine Stunden</button>}
         </div>
       </div>
 
@@ -981,54 +1110,60 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
 
       {ansicht==="erfassen" && va && (
         <>
-          <div style={{ marginBottom:10 }}>
-            <button onClick={()=>{
-              const src = entwurf[aktVA];
-              if (!src || !src.start) { alert("Trag zuerst deine eigenen Zeiten (Zeile mit ★) ein – dann übernimmt dieser Knopf sie für das ganze Team."); return; }
-              setEntwurf(p=>{ const n={...p}; teamMA.forEach(ma=>{ n[ma.id]={...src}; }); return n; });
-            }} style={{ padding:"8px 16px", borderRadius:8, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:12 }}>
-              ⬇ Meine Zeiten für ganzes Team übernehmen
-            </button>
-            <span style={{ fontSize:11, color:"#9ca3af", marginLeft:10 }}>Danach kannst du Einzelne noch anpassen.</span>
+          <div style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
+            <div style={{ fontSize:10, color:"#9ca3af", fontWeight:700, textTransform:"uppercase", marginBottom:6 }}>Arbeitszeit für die Crew</div>
+            <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
+              <label style={{ fontSize:11, color:TH.textMut }}>Beginn<br/><input type="time" value={std.start} onChange={e=>setStd(s=>({...s,start:e.target.value}))} style={{ ...inpS(), width:110 }} /></label>
+              <label style={{ fontSize:11, color:TH.textMut }}>Ende<br/><input type="time" value={std.end} onChange={e=>setStd(s=>({...s,end:e.target.value}))} style={{ ...inpS(), width:110 }} /></label>
+              <label style={{ fontSize:11, color:TH.textMut }}>Pause (Min)<br/><input type="number" min={0} max={120} value={std.pause} onChange={e=>setStd(s=>({...s,pause:e.target.value}))} style={{ ...inpS(), width:90 }} /></label>
+              <button onClick={()=>setEntwurf(p=>{ const n={...p}; teamMA.forEach(ma=>{ n[ma.id]={...(n[ma.id]||{}),start:std.start,end:std.end,pause:Number(std.pause)||0}; }); return n; })}
+                style={{ padding:"8px 14px", borderRadius:8, background:TH.panel2, color:TH.text, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:12, fontWeight:600 }}>Für alle neu anwenden</button>
+              <span style={{ fontSize:11, color:"#9ca3af" }}>= {calcStunden(std.start, std.end, Number(std.pause)||0).toFixed(2)} h pro Person · wird gemerkt</span>
+            </div>
           </div>
-          <div style={{ overflowX:"auto" }}>
-            <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-              <thead>
-                <tr>{["Mitarbeiter","Rolle","Beginn","Ende","Pause (Min)","Arbeitsstd.","Fahrzeit (h)","Übernachtung","Spesen (€)","Bemerkung"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {teamMA.map(ma=>{
-                  const start=getFeld(ma.id,"start"),end=getFeld(ma.id,"end"),pause=getFeld(ma.id,"pause",0);
-                  const netto=calcStunden(start,end,Number(pause));
-                  const isVA=ma.rolle==="Vorarbeiter";
-                  return (
-                    <tr key={ma.id} style={{ borderBottom:"1px solid "+TH.border, background:isVA?col.light:TH.panel }}>
-                      <td style={{ ...tdS(), fontWeight:isVA?700:400, borderLeft:`4px solid ${col.bg}`, whiteSpace:"nowrap" }}>{isVA?"★ ":""}{ma.name}</td>
-                      <td style={tdS()}><Badge color={col.bg}>{ma.rolle}</Badge></td>
-                      <td style={{ ...tdS(), minWidth:90 }}><input type="time" value={start} onChange={e=>setFeld(ma.id,"start",e.target.value)} style={inpS()} /></td>
-                      <td style={{ ...tdS(), minWidth:90 }}><input type="time" value={end} onChange={e=>setFeld(ma.id,"end",e.target.value)} style={inpS()} /></td>
-                      <td style={{ ...tdS(), minWidth:80 }}><input type="number" min={0} max={120} value={pause} onChange={e=>setFeld(ma.id,"pause",e.target.value)} style={inpS()} placeholder="30" /></td>
-                      <td style={{ ...tdS(), textAlign:"center", fontWeight:700, color:netto>0?col.text:"#9ca3af" }}>{netto>0?netto.toFixed(2)+" h":"–"}</td>
-                      <td style={{ ...tdS(), minWidth:80 }}><input type="number" min={0} step={0.5} value={getFeld(ma.id,"fahrzeit","")} onChange={e=>setFeld(ma.id,"fahrzeit",e.target.value)} style={inpS()} placeholder="0" /></td>
-                      <td style={{ ...tdS(), textAlign:"center" }}><input type="checkbox" checked={!!getFeld(ma.id,"uebernachtung",false)} onChange={e=>setFeld(ma.id,"uebernachtung",e.target.checked)} style={{ width:18, height:18, cursor:"pointer" }} /></td>
-                      <td style={{ ...tdS(), minWidth:80 }}><input type="number" min={0} step={0.5} value={getFeld(ma.id,"spesen","")} onChange={e=>setFeld(ma.id,"spesen",e.target.value)} style={inpS()} placeholder="0" /></td>
-                      <td style={{ ...tdS(), minWidth:140 }}><input type="text" value={getFeld(ma.id,"bemerkung","")} onChange={e=>setFeld(ma.id,"bemerkung",e.target.value)} style={inpS()} placeholder="z.B. Überstunden…" /></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+
+          {!teamMA.length && <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:"#9ca3af" }}>Für dieses Datum ist niemand eingeplant.</div>}
+          <div style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderRadius:12, overflow:"hidden" }}>
+            {teamMA.map(ma => {
+              const ex = vorhanden.get(ma.id), abw = abwesend(ma), sperr = gesperrt(ma), an = aktiv(ma), h = stundenVon(ma);
+              const geaendert = !!entwurf[ma.id];
+              const stat = ex ? (ex.status || "offen") : null;
+              const stFarbe = { offen:["#fef3c7","#92400e"], bestaetigt:["#dcfce7","#166534"], gemeldet:["#fee2e2","#991b1b"], freigegeben:["#e5e7eb","#374151"] }[stat] || ["#f3f4f6","#374151"];
+              return (
+                <div key={ma.id} style={{ borderTop:"1px solid "+TH.border, padding:"8px 12px", opacity: sperr ? 0.6 : 1 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+                    <input type="checkbox" checked={an} disabled={sperr} onChange={e=>setAuswahl(p=>({...p,[ma.id]:e.target.checked}))} style={{ width:20, height:20, cursor:"pointer" }} />
+                    <div style={{ fontWeight:700, fontSize:13, color:TH.text }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</div>
+                    {abw && <span style={{ fontSize:10, fontWeight:700, background:"#fee2e2", color:"#991b1b", borderRadius:99, padding:"2px 8px" }}>{abw.typ}</span>}
+                    {stat && <span style={{ fontSize:10, fontWeight:700, background:stFarbe[0], color:stFarbe[1], borderRadius:99, padding:"2px 8px" }}>{stat==="freigegeben"?"freigegeben":stat==="bestaetigt"?"bestätigt":stat==="gemeldet"?"gemeldet":"gespeichert"}</span>}
+                    <span style={{ marginLeft:"auto", fontWeight:800, fontSize:14, color: an && h>0 ? col.bg : "#9ca3af" }}>{an && h>0 ? h.toFixed(2).replace(".",",")+" h" : "–"}{geaendert ? " ✎" : ""}</span>
+                    <button onClick={()=>setOffenId(offenId===ma.id?null:ma.id)} disabled={sperr} style={{ padding:"4px 10px", borderRadius:7, background:TH.panel2, color:TH.textMut, border:"1px solid "+TH.border, cursor:"pointer", fontSize:11 }}>{offenId===ma.id?"schließen":"Zeit ändern"}</button>
+                  </div>
+                  {stat==="gemeldet" && ex.meldung && <div style={{ marginTop:6, fontSize:12, background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"6px 10px" }}>💬 Hinweis von {ma.name.split(" ")[0]}: {ex.meldung}</div>}
+                  {offenId===ma.id && (
+                    <div style={{ marginTop:8, display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
+                      <label style={{ fontSize:11, color:TH.textMut }}>Beginn<br/><input type="time" value={wert(ma,"start")} onChange={e=>setFeld(ma.id,"start",e.target.value)} style={{ ...inpS(), width:105 }} /></label>
+                      <label style={{ fontSize:11, color:TH.textMut }}>Ende<br/><input type="time" value={wert(ma,"end")} onChange={e=>setFeld(ma.id,"end",e.target.value)} style={{ ...inpS(), width:105 }} /></label>
+                      <label style={{ fontSize:11, color:TH.textMut }}>Pause (Min)<br/><input type="number" min={0} max={120} value={wert(ma,"pause",0)} onChange={e=>setFeld(ma.id,"pause",e.target.value)} style={{ ...inpS(), width:80 }} /></label>
+                      <label style={{ fontSize:11, color:TH.textMut }}>Fahrzeit (h)<br/><input type="number" min={0} step={0.5} value={wert(ma,"fahrzeit","")} onChange={e=>setFeld(ma.id,"fahrzeit",e.target.value)} style={{ ...inpS(), width:80 }} placeholder="0" /></label>
+                      <label style={{ fontSize:11, color:TH.textMut }}>Spesen (€)<br/><input type="number" min={0} step={0.5} value={wert(ma,"spesen","")} onChange={e=>setFeld(ma.id,"spesen",e.target.value)} style={{ ...inpS(), width:80 }} placeholder="0" /></label>
+                      <label style={{ fontSize:12, color:TH.text, display:"flex", alignItems:"center", gap:5, paddingBottom:6 }}><input type="checkbox" checked={!!wert(ma,"uebernachtung",false)} onChange={e=>setFeld(ma.id,"uebernachtung",e.target.checked)} style={{ width:16, height:16 }} />Übernachtung</label>
+                      <label style={{ fontSize:11, color:TH.textMut, flex:1, minWidth:160 }}>Notiz<br/><input type="text" value={wert(ma,"bemerkung","")} onChange={e=>setFeld(ma.id,"bemerkung",e.target.value)} style={inpS()} placeholder="z.B. Material verspätet…" /></label>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <div style={{ marginTop:12, background:TH.panel2, border:"1.5px solid "+TH.border, borderRadius:8, padding:"10px 14px", display:"flex", gap:24, flexWrap:"wrap", fontSize:12 }}>
-            <div><span style={{ color:"#9ca3af", fontSize:10, fontWeight:600, textTransform:"uppercase" }}>Gesamt heute </span><span style={{ fontWeight:800, fontSize:16, color:col.bg }}>{teamMA.reduce((s,ma)=>s+calcStunden(getFeld(ma.id,"start"),getFeld(ma.id,"end"),Number(getFeld(ma.id,"pause",0))),0).toFixed(2)} h</span></div>
-            <div><span style={{ color:"#9ca3af", fontSize:10, fontWeight:600, textTransform:"uppercase" }}>Eingetragen </span><span style={{ fontWeight:800, fontSize:16, color:col.bg }}>{teamMA.filter(ma=>getFeld(ma.id,"start")).length}/{teamMA.length}</span></div>
+          <div style={{ marginTop:12, display:"flex", gap:14, flexWrap:"wrap", alignItems:"center" }}>
+            <div style={{ fontSize:12, color:TH.textMut }}>Gesamt <b style={{ fontSize:16, color:col.bg }}>{teamMA.filter(aktiv).reduce((s,ma)=>s+stundenVon(ma),0).toFixed(2).replace(".",",")} h</b> · {teamMA.filter(aktiv).length} von {teamMA.length} ausgewählt</div>
+            <button onClick={speichern} style={{ marginLeft:"auto", padding:"11px 26px", borderRadius:10, background:col.bg, color:"#fff", border:"none", cursor:"pointer", fontWeight:800, fontSize:14 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Save size={15}/>Für {teamMA.filter(aktiv).length} {teamMA.filter(aktiv).length===1?"Person":"Personen"} speichern</span></button>
           </div>
-          <div style={{ marginTop:14, display:"flex", gap:10 }}>
-            <button onClick={speichern} style={{ padding:"9px 24px", borderRadius:8, background:col.bg, color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Save size={14}/>Speichern</span></button>
-            <button onClick={()=>setEntwurf({})} style={{ padding:"9px 16px", borderRadius:8, background:TH.panel2, color:TH.text, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13 }}>✕ Reset</button>
-          </div>
+          {info && <div style={{ marginTop:10, fontSize:13, fontWeight:600, color: info.startsWith("✓") ? "#166534" : "#92400e" }}>{info}</div>}
         </>
       )}
+
+      {ansicht==="meine" && <MeineStunden meinMA={meinMA} stunden={stunden} neuLaden={neuLaden} />}
 
       {ansicht==="uebersicht" && (
         <div>
@@ -1041,6 +1176,8 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
                   <>
                     <input type="month" value={lohnMonat} onChange={e=>setLohnMonat(e.target.value)} style={{ padding:"8px 10px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel2, color:TH.text, fontSize:13 }} />
                     <button onClick={lohnExport} style={{ padding:"9px 18px", borderRadius:8, background:"#2563eb", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>💶 Lohn-Export (Monat)</button>
+                    <button onClick={monatFreigeben} style={{ padding:"9px 18px", borderRadius:8, background:"#16a34a", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>✅ Monat freigeben</button>
+                    {(() => { const im=(stunden||[]).filter(e=>String(e.datum||"").startsWith(lohnMonat)); const z=x=>im.filter(e=>(e.status||"offen")===x).length; return <span style={{ fontSize:11, color:TH.textMut }}>{z("offen")} offen · {z("bestaetigt")} bestätigt · <b style={{ color: z("gemeldet") ? "#dc2626" : undefined }}>{z("gemeldet")} gemeldet</b> · {z("freigegeben")} freigegeben</span>; })()}
                   </>
                 )}
                 <button onClick={excelExport} style={{ padding:"9px 18px", borderRadius:8, background:"#16a34a", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileSpreadsheet size={14}/>Excel (CSV)</span></button>
@@ -1067,7 +1204,7 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
               </div>
               <div style={{ overflowX:"auto" }}>
                 <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-                  <thead><tr>{["Datum","Wochentag","KW","Mitarbeiter","Projekt","Beginn","Ende","Pause","Arbeitsstd.","Fahrzeit","Übern.","Spesen","Bemerkung"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
+                  <thead><tr>{["Datum","Wochentag","KW","Mitarbeiter","Projekt","Beginn","Ende","Pause","Arbeitsstd.","Fahrzeit","Übern.","Spesen","Bemerkung","Status"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
                   <tbody>
                     {[...gespeichert].reverse().map((e,i)=>{
                       const ma=mitarbeiter.find(m=>m.id===e.maId);
@@ -1087,6 +1224,7 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
                           <td style={{ ...tdS(), textAlign:"center" }}>{e.uebernachtung?"✅":"–"}</td>
                           <td style={{ ...tdS(), textAlign:"center" }}>{e.spesen?e.spesen+" €":"–"}</td>
                           <td style={tdS()}>{e.bemerkung||"–"}</td>
+                          <td style={tdS()}>{(() => { const st=STUNDEN_STATUS[e.status||"offen"]||STUNDEN_STATUS.offen; return <span title={e.meldung||""} style={{ fontSize:10, fontWeight:700, background:st.bg, color:st.fg, borderRadius:99, padding:"2px 9px", whiteSpace:"nowrap" }}>{st.text}</span>; })()}</td>
                         </tr>
                       );
                     })}
@@ -3321,7 +3459,7 @@ export default function EinsatzplanungInner({
   stunden, setStunden, unterkuenfte, setUnterkuenfte,
   berichte, setBerichte, werkzeuge, setWerkzeuge,
   teams, setTeams,
-  einsaetze, setEinsaetze,
+  einsaetze, setEinsaetze, neuLaden,
   onReset, onLogout, userEmail
 }) {
   setEinsaetzeListe(einsaetze);
@@ -3690,7 +3828,7 @@ export default function EinsatzplanungInner({
         {tab==="heute"        && darfTab(meineRolle,"heute")        && (kannPlanen || !meinMA ? <Tagesansicht   mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} /> : <MeinTag meinMA={meinMA} mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setTab={setTab} />)}
         {tab==="woche"        && darfTab(meineRolle,"woche")        && <Timeline key="woche" modus="woche" mitarbeiter={vMitarbeiter} alleMA={mitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setEinsaetze={setEinsaetze} kannPlanen={kannPlanen} meinMaId={meinMA?.id} />}
         {tab==="monat"        && darfTab(meineRolle,"monat")        && <Timeline key="monat" modus="monat" mitarbeiter={vMitarbeiter} alleMA={mitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setEinsaetze={setEinsaetze} kannPlanen={kannPlanen} meinMaId={meinMA?.id} />}
-        {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={vMitarbeiter} projekte={vProjekte} stunden={vStunden} setStunden={setStunden} rolle={meineRolle} meinMA={meinMA} />}
+        {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={vMitarbeiter} projekte={vProjekte} stunden={vStunden} setStunden={setStunden} rolle={meineRolle} meinMA={meinMA} sonder={vSonder} neuLaden={neuLaden} />}
         {tab==="postfach" && <MeinPostfach meinMA={meinMA} meineRolle={meineRolle} userEmail={userEmail} stunden={stunden} projekte={projekte} />}
         {tab==="chat" && darfTab(meineRolle,"chat") && <TeamChat meinMA={meinMA} meineRolle={meineRolle} userEmail={userEmail} />}
         {tab==="berichte"     && darfTab(meineRolle,"berichte")     && <Tagesberichte projekte={vProjekte} mitarbeiter={vMitarbeiter} berichte={vBerichte} setBerichte={setBerichte} rolle={meineRolle} meinMA={meinMA} userEmail={userEmail} />}
