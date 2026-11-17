@@ -297,7 +297,7 @@ export default function App() {
 
   // ── Speicher-Funktionen: schreiben in die Cloud, dann neu laden ──
   // ── Hilfsfunktion: Unterschiede berechnen und gezielt speichern ──
-  async function syncTabelle(tabelle, alt, neu, toDb = (x)=>x, idFeld = "id") {
+  async function syncTabelle(tabelle, alt, neu, toDb = (x)=>x, idFeld = "id", einzeln = false) {
     const fehler = [];
     const pruefe = (res) => { if (res && res.error) fehler.push(res.error.message || "Unbekannter Fehler"); };
     const altIds = new Set(alt.map(x=>x[idFeld]).filter(v=>v!=null));
@@ -313,7 +313,15 @@ export default function App() {
       // Nur wirklich geänderte oder neue Zeilen schreiben (nicht die ganze Tabelle)
       const altJson = new Map(alt.filter(x=>x[idFeld]!=null).map(x=>[x[idFeld], JSON.stringify(toDb(x))]));
       const mitId = neu.filter(x=>x[idFeld]!=null).map(toDb).filter(d => altJson.get(d[idFeld]) !== JSON.stringify(d));
-      if (mitId.length) pruefe(await supabase.from(tabelle).upsert(mitId));
+      if (mitId.length) {
+        if (einzeln) {
+          // Zeile für Zeile schreiben (nötig, wenn einzelne Spalten nicht lesbar sind, z.B. Stundensatz)
+          for (const d of mitId) {
+            if (altJson.has(d[idFeld])) { const { [idFeld]: _id, ...rest } = d; pruefe(await supabase.from(tabelle).update(rest).eq(idFeld, d[idFeld])); }
+            else pruefe(await supabase.from(tabelle).insert(d));
+          }
+        } else pruefe(await supabase.from(tabelle).upsert(mitId));
+      }
     } catch (e) {
       fehler.push(e && e.message ? e.message : "Verbindung fehlgeschlagen");
     }
@@ -335,7 +343,7 @@ export default function App() {
   const setMitarbeiter = async (next) => {
     const arr = typeof next === "function" ? next(mitarbeiter) : next;
     setMitarbeiterState(arr);
-    await syncTabelle("mitarbeiter", mitarbeiter, arr, (x)=>{ const {created_at, ...rest}=x; return rest; });
+    await syncTabelle("mitarbeiter", mitarbeiter, arr, (x)=>{ const {created_at, ...rest}=x; return rest; }, "id", true);
     ladeDaten();
   };
   const setFahrzeuge = async (next) => {
