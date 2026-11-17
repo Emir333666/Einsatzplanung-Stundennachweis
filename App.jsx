@@ -219,11 +219,12 @@ function Login({ onLogin }) {
 }
 
 // ─── Alle Zeilen einer Tabelle laden (Supabase liefert pro Abfrage max. 1000) ─
-async function holeAlle(tabelle) {
+const MA_SPALTEN = "id,name,rolle,team,tel,fuehrerschein,stapler,schweisser,urlaub,krank,created_at,email,firma_id"; // ohne Stundensatz (kommt über meine_saetze)
+async function holeAlle(tabelle, spalten = "*") {
   const SEITE = 1000;
   let alle = [];
   for (let von = 0; ; von += SEITE) {
-    const { data, error } = await supabase.from(tabelle).select("*").order("id", { ascending: true }).range(von, von + SEITE - 1);
+    const { data, error } = await supabase.from(tabelle).select(spalten).order("id", { ascending: true }).range(von, von + SEITE - 1);
     if (error) return { data: null, error };
     alle = alle.concat(data || []);
     if (!data || data.length < SEITE) break;
@@ -261,8 +262,12 @@ export default function App() {
   const ladeDaten = useCallback(async () => {
     setLaden(true);
     const namen = ["projekte","mitarbeiter","fahrzeuge","sonder","antraege","stunden","unterkuenfte","tagesberichte","werkzeuge","teams"];
-    const erg = await Promise.all(namen.map(holeAlle));
+    const [erg, saetze] = await Promise.all([
+      Promise.all(namen.map(n => holeAlle(n, n === "mitarbeiter" ? MA_SPALTEN : "*"))),
+      supabase.rpc("meine_saetze"),
+    ]);
     const fehlerhaft = namen.filter((n,i)=>erg[i].error);
+    if (saetze.error) fehlerhaft.push("stundensaetze");
     if (fehlerhaft.length) {
       // Nichts überschreiben: lieber alter Stand als leere Listen
       setSpeicherFehler(navigator.onLine === false
@@ -273,7 +278,9 @@ export default function App() {
     }
     const [p, m, f, s, a, st, u, tb, wz, tm] = erg;
     setProjekteState((p.data||[]).map(toAppProjekt));
-    setMitarbeiterState(m.data||[]);
+    // Stundensätze liefert die Datenbank nur an Admin, Projektleiter und Bauleiter
+    const satzMap = new Map((saetze.data||[]).map(x=>[x.id, x.stundensatz]));
+    setMitarbeiterState((m.data||[]).map(x=>({ ...x, stundensatz: satzMap.has(x.id) ? satzMap.get(x.id) : null })));
     setFahrzeugeState(f.data||[]);
     setSonderState((s.data||[]).map(toAppSonder));
     setAntraegeState((a.data||[]).map(toAppAntrag));
