@@ -1224,8 +1224,28 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
   }
   const [sub, setSub] = useState("projekte");
   const [modal, setModal] = useState(null); // { art, data }
-  const [firmenlogo, setFirmenlogo] = usePersist("baufox_firmenlogo", "");
+  // Firmenlogo kommt aus der Datenbank (pro Firma), nicht mehr aus dem Browser
+  const [firmenlogo, setFirmenlogoState] = useState("");
+  useEffect(() => {
+    let aktiv = true;
+    supabase.rpc("mein_logo").then(async ({ data, error }) => {
+      if (!aktiv || error) return;
+      if (data) { setFirmenlogoState(data); return; }
+      // Einmalige Übernahme eines bisher nur lokal gespeicherten Logos
+      const lokal = store.get("baufox_firmenlogo");
+      if (lokal && typeof lokal === "string") {
+        const res = await supabase.rpc("logo_setzen", { p_logo: lokal });
+        if (!res.error && aktiv) setFirmenlogoState(lokal);
+      }
+    });
+    return () => { aktiv = false; };
+  }, []);
   useEffect(() => { FIRMENLOGO = firmenlogo || FIRMENLOGO_STANDARD; }, [firmenlogo]);
+  const setFirmenlogo = async (neu) => {
+    setFirmenlogoState(neu);
+    const res = await supabase.rpc("logo_setzen", { p_logo: neu || null });
+    if (res.error) alert("Das Logo konnte nicht gespeichert werden: " + res.error.message);
+  };
   const logoHochladen = (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
@@ -2560,7 +2580,7 @@ function ermittleRolle(userEmail, mitarbeiter, dbRolle) {
 // ─── MESSPROTOKOLLE (Höhe & Flucht, bis 300 Punkte, PDF mit Firmenlogo) ──────
 const MP_BLAU = "#2e3192";
 const FIRMENLOGO_STANDARD = "/icon-192.png"; // Standard = Baufox-Logo; eigenes Logo wird in den Einstellungen hochgeladen
-let FIRMENLOGO = store.get("baufox_firmenlogo") || FIRMENLOGO_STANDARD; // aktives Logo: eigenes (aus Einstellungen) oder Standard
+let FIRMENLOGO = FIRMENLOGO_STANDARD; // aktives Logo: eigenes (aus der Datenbank) oder Standard
 
 function mpAbw(ist, soll) {
   const i = parseFloat(String(ist).replace(",", "."));
@@ -2784,6 +2804,71 @@ function MessprotokollEditor({ start, projekte, onSave, onSaveStay, onCancel, on
   );
 }
 
+// ─── Firmenlogo laden (damit auch Nicht-Admins es in PDFs haben) ─────────────────
+function useFirmenlogoLaden() {
+  useEffect(() => {
+    supabase.rpc("mein_logo").then(({ data, error }) => { if (!error && data) FIRMENLOGO = data; });
+  }, []);
+}
+
+// ─── Messprotokolle in der Datenbank (pro Firma) statt nur im Browser ────────────
+function useMessprotokolle() {
+  const [liste, setListe] = useState([]);
+  const ref = useRef([]);
+
+  const laden = useCallback(async () => {
+    const { data, error } = await supabase.from("messprotokolle").select("id, daten, created_at").order("created_at", { ascending: false });
+    if (error) return null;
+    const l = (data || []).map(r => ({ ...r.daten, id: r.id }));
+    ref.current = l;
+    setListe(l);
+    return l;
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const l = await laden();
+      if (l === null) return;
+      // Einmalige Übernahme der bisher nur lokal gespeicherten Protokolle (nach Nachfrage)
+      const lokal = store.get("baufox_messprotokolle");
+      if (Array.isArray(lokal) && lokal.length && !store.get("baufox_messprotokolle_uebernommen")) {
+        const vorhanden = new Set(l.map(x => x.id));
+        const fehlend = lokal.filter(x => x && x.id && !vorhanden.has(x.id));
+        if (fehlend.length) {
+          if (window.confirm("Auf diesem Gerät liegen " + fehlend.length + " Messprotokoll(e), die noch nicht in der Datenbank sind. Jetzt in deine Firma übernehmen?")) {
+            const res = await supabase.from("messprotokolle").upsert(fehlend.map(p => ({ id: p.id, daten: p })));
+            if (res.error) { alert("Übernahme fehlgeschlagen: " + res.error.message); return; }
+            await laden();
+          }
+        }
+        store.set("baufox_messprotokolle_uebernommen", true);
+      }
+    })();
+  }, [laden]);
+
+  const setzen = useCallback(async (next) => {
+    const alt = ref.current;
+    const neu = typeof next === "function" ? next(alt) : next;
+    ref.current = neu;
+    setListe(neu);
+    const altJson = new Map(alt.map(p => [p.id, JSON.stringify(p)]));
+    const neuIds = new Set(neu.map(p => p.id));
+    const geloescht = alt.filter(p => !neuIds.has(p.id)).map(p => p.id);
+    const geaendert = neu.filter(p => altJson.get(p.id) !== JSON.stringify(p));
+    let fehler = null;
+    try {
+      if (geloescht.length) { const res = await supabase.from("messprotokolle").delete().in("id", geloescht); if (res.error) fehler = res.error; }
+      if (geaendert.length) { const res = await supabase.from("messprotokolle").upsert(geaendert.map(p => ({ id: p.id, daten: p }))); if (res.error) fehler = res.error; }
+    } catch (e) { fehler = e; }
+    if (fehler) {
+      alert("Messprotokoll konnte nicht gespeichert werden: " + (fehler.message || "Verbindungsfehler"));
+      await laden();
+    }
+  }, [laden]);
+
+  return [liste, setzen];
+}
+
 function Messprotokolle({ projekte, meinMA, userEmail, messprotokolle, setMessprotokolle }) {
   const [editId, setEditId] = useState(null); // null = Liste, "neu" = neues, sonst id
   const liste = messprotokolle || [];
@@ -2987,7 +3072,8 @@ export default function EinsatzplanungInner({
                   : teamFilter ? (berichte||[]).filter(b=>b.team===teamFilter) : berichte;
   const vUnterkuenfte = projektFilter ? (unterkuenfte||[]).filter(u=>meineProjektIds.includes(u.projektId)) : unterkuenfte;
   const istAdmin = meineRolle==="Admin";
-  const [messprotokolle, setMessprotokolle] = usePersist("baufox_messprotokolle", []);
+  useFirmenlogoLaden();
+  const [messprotokolle, setMessprotokolle] = useMessprotokolle();
   const istLeitung = istAdmin || meineRolle==="Bauleiter" || meineRolle==="Vorarbeiter";
 
   const [tab, setTab] = useState(istAdmin ? "dashboard" : "heute");
