@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "./supabaseClient.js";
 import EinsatzplanungInner, {
   initProjekte, initMitarbeiter, initFahrzeuge, initSonder
@@ -232,6 +232,39 @@ async function holeAlle(tabelle, spalten = "*") {
   return { data: alle, error: null };
 }
 
+// ─── Offline-Betrieb: Warteschlange + Zwischenspeicher (pro Benutzer) ─────────
+const QKEY = uid => "baufox-queue-" + uid;
+const CKEY = uid => "baufox-cache-" + uid;
+function qLesen(uid) { try { return JSON.parse(localStorage.getItem(QKEY(uid)) || "[]"); } catch (e) { return []; } }
+function qSchreiben(uid, q) { try { localStorage.setItem(QKEY(uid), JSON.stringify(q)); return true; } catch (e) { return false; } }
+function cacheLesen(uid) { try { const t = localStorage.getItem(CKEY(uid)); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
+function cacheSchreiben(uid, obj) { try { localStorage.setItem(CKEY(uid), JSON.stringify(obj)); } catch (e) { /* zu groß: ohne Zwischenspeicher weiter */ } }
+function offlineSession() {
+  try {
+    if (navigator.onLine !== false) return null;
+    const t = localStorage.getItem("sb-xbrvsfyzgiixwoheibib-auth-token");
+    const o = t ? JSON.parse(t) : null;
+    return o && o.user ? { user: o.user, offline: true } : null;
+  } catch (e) { return null; }
+}
+function istNetzFehler(err) {
+  if (navigator.onLine === false) return true;
+  const m = String((err && (err.message || err)) || "");
+  return /failed to fetch|networkerror|network request|load failed|fetch failed|timeout|offline/i.test(m) || (err && err.status === 0);
+}
+function istAuthFehler(err) {
+  const m = String((err && (err.message || "")) || "");
+  return (err && (err.status === 401 || err.code === "PGRST301")) || /jwt expired|invalid jwt/i.test(m);
+}
+async function opAusfuehren(op) {
+  const t = supabase.from(op.t);
+  if (op.a === "delete") return await t.delete().in(op.f, op.ids);
+  if (op.a === "insert") return await t.insert(op.d);
+  if (op.a === "upsert") return await t.upsert(op.d);
+  if (op.a === "update") return await t.update(op.d).eq(op.f, op.id);
+  return { error: null };
+}
+
 // ─── Haupt-App mit Login-Schutz und Cloud-Daten ──────────────────────────────
 export default function App() {
   const [session, setSession] = useState(null);
@@ -250,17 +283,38 @@ export default function App() {
   const [werkzeuge, setWerkzeugeState] = useState([]);
   const [teams, setTeamsState] = useState([]);
   const [speicherFehler, setSpeicherFehler] = useState("");
+  const [offline, setOffline] = useState(typeof navigator !== "undefined" && navigator.onLine === false);
+  const [offen, setOffen] = useState(0);
+  const uidRef = useRef(null);
+  const flushLaeuft = useRef(false);
+  const ladeRef = useRef(null);
+  const uid = session?.user?.id || null;
+  uidRef.current = uid;
 
-  // Session prüfen
+  // Session prüfen (offline: gespeicherte Anmeldung verwenden)
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => { setSession(data.session); setPruefe(false); });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    supabase.auth.getSession().then(({ data }) => { setSession(data.session || offlineSession()); setPruefe(false); })
+      .catch(() => { setSession(offlineSession()); setPruefe(false); });
+    const { data: sub } = supabase.auth.onAuthStateChange((e, s) => { if (e === "SIGNED_OUT" || s) setSession(s); });
     return () => sub.subscription.unsubscribe();
   }, []);
 
   // Daten aus der Cloud laden, sobald eingeloggt
+  const wendeAn = (c) => {
+    setProjekteState(c.projekte||[]); setMitarbeiterState(c.mitarbeiter||[]); setFahrzeugeState(c.fahrzeuge||[]);
+    setSonderState(c.sonder||[]); setAntraegeState(c.antraege||[]); setStundenState(c.stunden||[]);
+    setUnterkuenfteState(c.unterkuenfte||[]); setBerichteState(c.berichte||[]); setWerkzeugeState(c.werkzeuge||[]);
+    setTeamsState(c.teams||[]);
+  };
   const ladeDaten = useCallback(async () => {
+    const u = uidRef.current;
+    // Solange noch ungesendete Änderungen vorliegen, nicht überschreiben
+    if (u && qLesen(u).length) {
+      if (!bereitRef.current) { const c0 = cacheLesen(u); if (c0) { wendeAn(c0); setBereit(true); } }
+      return;
+    }
     setLaden(true);
+    try {
     const namen = ["projekte","mitarbeiter","fahrzeuge","sonder","antraege","stunden","unterkuenfte","tagesberichte","werkzeuge","teams"];
     const [erg, saetze] = await Promise.all([
       Promise.all(namen.map(n => holeAlle(n, n === "mitarbeiter" ? MA_SPALTEN : "*"))),
@@ -270,8 +324,16 @@ export default function App() {
     if (saetze.error) fehlerhaft.push("stundensaetze");
     if (fehlerhaft.length) {
       // Nichts überschreiben: lieber alter Stand als leere Listen
+      const c = u ? cacheLesen(u) : null;
+      if (c) {
+        // Zwischenspeicher vom letzten Online-Stand verwenden
+        if (!bereitRef.current) wendeAn(c);
+        if (navigator.onLine !== false) setSpeicherFehler("Daten konnten nicht vollständig geladen werden (" + fehlerhaft.join(", ") + "). Es wird der zuletzt gespeicherte Stand angezeigt.");
+        setLaden(false); setBereit(true);
+        return;
+      }
       setSpeicherFehler(navigator.onLine === false
-        ? "Keine Internetverbindung. Die Daten konnten nicht geladen werden."
+        ? "Keine Internetverbindung und noch keine gespeicherten Daten auf diesem Gerät. Bitte einmal mit Netz öffnen."
         : "Daten konnten nicht vollständig geladen werden (" + fehlerhaft.join(", ") + "). Bitte Seite neu laden.");
       setLaden(false);
       return;
@@ -291,45 +353,99 @@ export default function App() {
     setTeamsState((tm.data||[]).sort((x,y)=>(x.created_at||"").localeCompare(y.created_at||"")));
     setLaden(false);
     setBereit(true);
+    } catch (e) {
+      const c = u ? cacheLesen(u) : null;
+      if (c && !bereitRef.current) wendeAn(c);
+      setLaden(false);
+      if (c) setBereit(true); else setSpeicherFehler("Daten konnten nicht geladen werden. Bitte Verbindung prüfen und Seite neu laden.");
+    }
+  }, []);
+  ladeRef.current = ladeDaten;
+  const bereitRef = useRef(false);
+  bereitRef.current = bereit;
+
+  useEffect(() => { if (session) ladeDaten(); }, [uid, ladeDaten]); // eslint-disable-line
+
+  // Zwischenspeicher für Offline-Start (nach kurzer Ruhe schreiben)
+  useEffect(() => {
+    if (!bereit || !uid) return;
+    const t = setTimeout(() => cacheSchreiben(uid, { projekte, mitarbeiter, fahrzeuge, sonder, antraege, stunden, unterkuenfte, berichte, werkzeuge, teams }), 1500);
+    return () => clearTimeout(t);
+  }, [bereit, uid, projekte, mitarbeiter, fahrzeuge, sonder, antraege, stunden, unterkuenfte, berichte, werkzeuge, teams]);
+
+  // Warteschlange abarbeiten
+  const flush = useCallback(async () => {
+    const u = uidRef.current;
+    if (!u || flushLaeuft.current) return;
+    flushLaeuft.current = true;
+    let gesendet = 0, fehlerText = "";
+    try {
+      while (true) {
+        const q = qLesen(u);
+        setOffen(q.length);
+        if (!q.length) break;
+        let res;
+        try { res = await opAusfuehren(q[0]); } catch (e) { res = { error: { message: String(e && e.message || e) } }; }
+        if (res && res.error) {
+          if (istNetzFehler(res.error) || istAuthFehler(res.error)) break; // später erneut versuchen
+          fehlerText = "Eine Änderung konnte nicht gespeichert werden (" + q[0].t + "): " + (res.error.message || "Unbekannter Fehler");
+        }
+        qSchreiben(u, qLesen(u).slice(1));
+        gesendet++;
+      }
+    } finally {
+      flushLaeuft.current = false;
+      setOffen(qLesen(u).length);
+    }
+    if (fehlerText) setSpeicherFehler(fehlerText);
+    else if (gesendet) setSpeicherFehler("");
+    if (gesendet && !qLesen(u).length) ladeRef.current && ladeRef.current();
   }, []);
 
-  useEffect(() => { if (session) ladeDaten(); }, [session, ladeDaten]);
+  useEffect(() => {
+    const an = () => { setOffline(false); flush(); };
+    const aus = () => setOffline(true);
+    window.addEventListener("online", an); window.addEventListener("offline", aus);
+    const iv = setInterval(() => { if (uidRef.current && qLesen(uidRef.current).length) flush(); }, 20000);
+    return () => { window.removeEventListener("online", an); window.removeEventListener("offline", aus); clearInterval(iv); };
+  }, [flush]);
+
+  // Beim Start: übrig gebliebene Änderungen senden
+  useEffect(() => { if (uid) { setOffen(qLesen(uid).length); flush(); } }, [uid, flush]);
 
   // ── Speicher-Funktionen: schreiben in die Cloud, dann neu laden ──
   // ── Hilfsfunktion: Unterschiede berechnen und gezielt speichern ──
   async function syncTabelle(tabelle, alt, neu, toDb = (x)=>x, idFeld = "id", einzeln = false) {
-    const fehler = [];
-    const pruefe = (res) => { if (res && res.error) fehler.push(res.error.message || "Unbekannter Fehler"); };
+    const ops = [];
     const altIds = new Set(alt.map(x=>x[idFeld]).filter(v=>v!=null));
     const neuIds = new Set(neu.map(x=>x[idFeld]).filter(v=>v!=null));
-    try {
-      // Gelöschte: waren in alt, sind nicht mehr in neu
-      const geloescht = [...altIds].filter(id=>!neuIds.has(id));
-      if (geloescht.length) pruefe(await supabase.from(tabelle).delete().in(idFeld, geloescht));
-      // Neue (ohne id) einfügen
-      const neueOhneId = neu.filter(x=>x[idFeld]==null).map(x=>{ const d=toDb(x); delete d[idFeld]; return d; });
-      if (neueOhneId.length) pruefe(await supabase.from(tabelle).insert(neueOhneId));
-      // Bestehende (mit id) aktualisieren/einfügen
-      // Nur wirklich geänderte oder neue Zeilen schreiben (nicht die ganze Tabelle)
-      const altJson = new Map(alt.filter(x=>x[idFeld]!=null).map(x=>[x[idFeld], JSON.stringify(toDb(x))]));
-      const mitId = neu.filter(x=>x[idFeld]!=null).map(toDb).filter(d => altJson.get(d[idFeld]) !== JSON.stringify(d));
-      if (mitId.length) {
-        if (einzeln) {
-          // Zeile für Zeile schreiben (nötig, wenn einzelne Spalten nicht lesbar sind, z.B. Stundensatz)
-          for (const d of mitId) {
-            if (altJson.has(d[idFeld])) { const { [idFeld]: _id, ...rest } = d; pruefe(await supabase.from(tabelle).update(rest).eq(idFeld, d[idFeld])); }
-            else pruefe(await supabase.from(tabelle).insert(d));
-          }
-        } else pruefe(await supabase.from(tabelle).upsert(mitId));
-      }
-    } catch (e) {
-      fehler.push(e && e.message ? e.message : "Verbindung fehlgeschlagen");
+    // Gelöschte: waren in alt, sind nicht mehr in neu
+    const geloescht = [...altIds].filter(id=>!neuIds.has(id));
+    if (geloescht.length) ops.push({ t:tabelle, a:"delete", f:idFeld, ids:geloescht });
+    // Neue (ohne id) einfügen
+    const neueOhneId = neu.filter(x=>x[idFeld]==null).map(x=>{ const d=toDb(x); delete d[idFeld]; return d; });
+    if (neueOhneId.length) ops.push({ t:tabelle, a:"insert", d:neueOhneId });
+    // Nur wirklich geänderte oder neue Zeilen schreiben (nicht die ganze Tabelle)
+    const altJson = new Map(alt.filter(x=>x[idFeld]!=null).map(x=>[x[idFeld], JSON.stringify(toDb(x))]));
+    const mitId = neu.filter(x=>x[idFeld]!=null).map(toDb).filter(d => altJson.get(d[idFeld]) !== JSON.stringify(d));
+    if (mitId.length) {
+      if (einzeln) {
+        // Zeile für Zeile schreiben (nötig, wenn einzelne Spalten nicht lesbar sind, z.B. Stundensatz)
+        for (const d of mitId) {
+          if (altJson.has(d[idFeld])) { const { [idFeld]: _id, ...rest } = d; ops.push({ t:tabelle, a:"update", f:idFeld, id:d[idFeld], d:rest }); }
+          else ops.push({ t:tabelle, a:"insert", d });
+        }
+      } else ops.push({ t:tabelle, a:"upsert", d:mitId });
     }
-    if (fehler.length) {
-      setSpeicherFehler(navigator.onLine === false
-        ? "Keine Internetverbindung. Deine letzte Änderung wurde NICHT gespeichert. Bitte erneut versuchen, sobald du wieder Netz hast."
-        : "Deine letzte Änderung konnte nicht gespeichert werden (" + tabelle + "): " + fehler[0]);
-    } else {
+    if (!ops.length) return;
+    const u = uidRef.current;
+    if (u && qSchreiben(u, qLesen(u).concat(ops))) { setOffen(qLesen(u).length); await flush(); }
+    else {
+      // Warteschlange nicht möglich (Speicher voll): direkt senden
+      for (const op of ops) {
+        let res; try { res = await opAusfuehren(op); } catch (e) { res = { error: e }; }
+        if (res && res.error) { setSpeicherFehler("Deine letzte Änderung konnte nicht gespeichert werden (" + tabelle + "): " + (res.error.message || "Verbindung fehlgeschlagen")); return; }
+      }
       setSpeicherFehler("");
     }
   }
@@ -406,8 +522,11 @@ export default function App() {
   }
 
   async function abmelden() {
-    await supabase.auth.signOut();
-    setSession(null); setBereit(false);
+    const n = uid ? qLesen(uid).length : 0;
+    if (n && !window.confirm(n + " Änderung(en) wurden noch nicht gesendet (kein Netz). Beim Abmelden gehen sie verloren. Trotzdem abmelden?")) return;
+    try { if (uid) { localStorage.removeItem(QKEY(uid)); localStorage.removeItem(CKEY(uid)); } } catch (e) {}
+    try { await supabase.auth.signOut(); } catch (e) {}
+    setSession(null); setBereit(false); setOffen(0);
   }
 
   if (pruefe) return <Splash text="Lädt…" />;
@@ -416,6 +535,12 @@ export default function App() {
 
   return (
     <>
+      {(offline || offen > 0) && !speicherFehler && (
+        <div role="status" style={{ position:"fixed", top:0, left:0, right:0, zIndex:9999, background:"#c2410c", color:"#fff", padding:"8px 14px", fontSize:13, fontWeight:600, textAlign:"center", boxShadow:"0 2px 8px #0003" }}>
+          {offline ? "📴 Offline – du kannst weiterarbeiten. " : "🔄 Senden… "}
+          {offen > 0 ? offen + " Änderung(en) werden gesendet, sobald du wieder Netz hast." : "Neue Änderungen werden gespeichert und später gesendet."}
+        </div>
+      )}
       {speicherFehler && (
         <div role="alert" style={{ position:"fixed", top:0, left:0, right:0, zIndex:10000, background:"#991b1b", color:"#fff", padding:"10px 14px", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, boxShadow:"0 2px 10px #0006", fontFamily:"'Inter',system-ui,sans-serif" }}>
           <span>⚠️ {speicherFehler}</span>
