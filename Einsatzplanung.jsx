@@ -1153,6 +1153,59 @@ function oeffneDruck(html) {
 }
 
 // ─── VERWALTUNG (Stammdaten anlegen/bearbeiten/löschen) ───────────────────────
+// ─── Firmencode (Verwaltung): Mitarbeiter registrieren sich damit selbst ─────
+function FirmencodePanel() {
+  const [code, setCode] = useState(null);
+  const [laedt, setLaedt] = useState(true);
+  const [kopiert, setKopiert] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    supabase.rpc("mein_firmencode").then(({ data, error }) => {
+      if (!error && data) setCode(data);
+      setLaedt(false);
+    });
+  }, []);
+
+  const schoen = code ? code.slice(0, 4) + "-" + code.slice(4) : "";
+
+  async function kopieren() {
+    try { await navigator.clipboard.writeText(schoen); setKopiert(true); setTimeout(()=>setKopiert(false), 2000); } catch (e) {}
+  }
+
+  async function neuErzeugen() {
+    if (!window.confirm("Neuen Code erzeugen? Der alte Code funktioniert danach nicht mehr für neue Registrierungen. Bereits angemeldete Mitarbeiter bleiben in deiner Firma.")) return;
+    setBusy(true);
+    const { data, error } = await supabase.rpc("firmencode_neu");
+    setBusy(false);
+    if (!error && data) setCode(data);
+  }
+
+  return (
+    <div style={{ maxWidth:560 }}>
+      <h3 style={{ margin:"0 0 6px", fontSize:16, color:TH.text }}>Firmencode</h3>
+      <p style={{ margin:"0 0 16px", fontSize:13, color:TH.textMut, lineHeight:1.5 }}>
+        Gib diesen Code an deine Mitarbeiter. Sie wählen beim Registrieren „Mit Firmencode beitreten“, geben Namen, E-Mail, Passwort und diesen Code ein und landen automatisch in deiner Firma.
+      </p>
+      <div style={{ background:TH.panel2, border:"1.5px solid "+TH.border, borderRadius:12, padding:18, display:"flex", flexDirection:"column", gap:14, alignItems:"flex-start" }}>
+        {laedt ? (
+          <div style={{ fontSize:13, color:TH.textMut }}>Code wird geladen…</div>
+        ) : code ? (
+          <>
+            <div style={{ fontSize:32, fontWeight:800, letterSpacing:4, color:"#ea580c", fontFamily:"monospace" }}>{schoen}</div>
+            <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+              <button onClick={kopieren} style={btnPrimary()}>{kopiert ? "Kopiert ✓" : "Code kopieren"}</button>
+              <button onClick={neuErzeugen} disabled={busy} style={{ ...btnGhost(), opacity:busy?0.6:1 }}>{busy ? "Erzeuge…" : "Neuen Code erzeugen"}</button>
+            </div>
+          </>
+        ) : (
+          <div style={{ fontSize:13, color:TH.textMut }}>Der Code konnte nicht geladen werden. Bitte Seite neu laden.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrzeuge, setFahrzeuge, unterkuenfte, setUnterkuenfte, werkzeuge, setWerkzeuge, sonder, antraege, stunden, berichte, teams, setTeams, onReset }) {
 
   function backupHerunterladen() {
@@ -1427,6 +1480,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     { id:"werkzeuge", label:`Werkzeuge (${(werkzeuge||[]).length})`, Icon:Wrench },
     { id:"teams", label:`Teams (${(teams||[]).length})`, Icon:Users },
     { id:"logo", label:"Firmenlogo", Icon:Settings },
+    { id:"firmencode", label:"Firmencode", Icon:Settings },
   ];
 
   return (
@@ -1438,6 +1492,8 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
         <button onClick={backupHerunterladen} title="Alle Daten als Sicherungsdatei herunterladen" style={{ marginLeft:"auto", padding:"7px 14px", borderRadius:8, border:"none", background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", cursor:"pointer", fontSize:12, fontWeight:700 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Save size={14}/>Backup herunterladen</span></button>
         {onReset && <button onClick={onReset} style={{ marginLeft:"auto", padding:"7px 14px", borderRadius:8, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer", fontSize:12 }}>↺ Demo-Daten zurücksetzen</button>}
       </div>
+
+      {sub==="firmencode" && <FirmencodePanel />}
 
       {sub==="logo" && (
         <div style={{ maxWidth:560 }}>
