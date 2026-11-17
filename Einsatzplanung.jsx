@@ -4222,13 +4222,13 @@ export default function EinsatzplanungInner({
 
       {!breit && (() => {
         const leiste = (kannPlanen
-          ? [["karte","Start",MapPin],["woche","Plan",Calendar],["stundenzettel","Stunden",Clock],["__mehr","Mehr",Menu]]
+          ? [["heute","Heute",CalendarDays],["woche","Plan",Calendar],["baustellen","Baustellen",HardHat],["stundenzettel","Stunden",Clock],["__mehr","Mehr",Menu]]
           : [["heute","Heute",CalendarDays],["woche","Plan",Calendar],["stundenzettel","Stunden",Clock],["chat","Chat",MessageCircle]]
         ).filter(([id]) => id === "__mehr" || tabs.some(t => t.id === id));
         return (
           <div style={{ position:"fixed", left:0, right:0, bottom:0, zIndex:80, background:T.tabBar, borderTop:"3px solid #ea580c", display:"flex", paddingBottom:"env(safe-area-inset-bottom)" }}>
             {leiste.map(([id, label, Ico]) => {
-              const aktiv = id !== "__mehr" && (tab === id || (id === "karte" && tab === "verlauf"));
+              const aktiv = id !== "__mehr" && tab === id;
               return (
                 <button key={id} onClick={()=> id === "__mehr" ? setMenueOffen(true) : setTab(id)} style={{ flex:1, border:"none", background:aktiv?(dunkel?"#33415588":"#fff7ed"):"transparent", color:aktiv?"#ea580c":T.textMut, padding:"8px 2px 7px", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:2, fontSize:11, fontWeight:aktiv?800:600 }}>
                   <Ico size={22} strokeWidth={aktiv?2.6:2} />{label}
