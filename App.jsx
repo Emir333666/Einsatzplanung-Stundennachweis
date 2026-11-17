@@ -218,64 +218,6 @@ function Login({ onLogin }) {
   );
 }
 
-// ─── Firmencode-Anzeige (nur für Admins sichtbar) ────────────────────────────
-function FirmencodeBox() {
-  const [code, setCode] = useState(null);
-  const [offen, setOffen] = useState(false);
-  const [kopiert, setKopiert] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    supabase.rpc("mein_firmencode").then(({ data, error }) => {
-      if (!error && data) setCode(data);   // Nicht-Admins bekommen null -> Box bleibt unsichtbar
-    });
-  }, []);
-
-  if (!code) return null;
-
-  const schoen = code.slice(0, 4) + "-" + code.slice(4);
-
-  async function kopieren() {
-    try { await navigator.clipboard.writeText(schoen); setKopiert(true); setTimeout(()=>setKopiert(false), 2000); } catch (e) {}
-  }
-
-  async function neuErzeugen() {
-    if (!window.confirm("Neuen Code erzeugen? Der alte Code funktioniert danach nicht mehr für neue Registrierungen. Bereits angemeldete Mitarbeiter bleiben in deiner Firma.")) return;
-    setBusy(true);
-    const { data, error } = await supabase.rpc("firmencode_neu");
-    setBusy(false);
-    if (!error && data) setCode(data);
-  }
-
-  return (
-    <>
-      <button onClick={()=>setOffen(true)} title="Firmencode für Mitarbeiter"
-        style={{ position:"fixed", left:12, bottom:12, zIndex:9998, background:"#1e293b", color:"#fff", border:"none", borderRadius:20, padding:"8px 14px", fontSize:12, fontWeight:700, cursor:"pointer", boxShadow:"0 4px 14px #0005" }}>
-        🔑 Firmencode
-      </button>
-
-      {offen && (
-        <div onClick={()=>setOffen(false)} style={{ position:"fixed", inset:0, background:"#0008", zIndex:9999, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
-          <div onClick={e=>e.stopPropagation()} style={{ background:"#fff", borderRadius:16, padding:"26px 24px", width:"100%", maxWidth:360, textAlign:"center", fontFamily:"'Inter',system-ui,sans-serif" }}>
-            <div style={{ fontWeight:800, fontSize:18, color:"#1e293b" }}>Dein Firmencode</div>
-            <div style={{ fontSize:13, color:"#6b7280", marginTop:6 }}>
-              Gib diesen Code an deine Mitarbeiter. Sie wählen beim Registrieren „Mit Firmencode beitreten" und landen automatisch in deiner Firma.
-            </div>
-            <div style={{ fontSize:30, fontWeight:800, letterSpacing:4, color:"#ea580c", margin:"20px 0", fontFamily:"monospace" }}>{schoen}</div>
-            <button onClick={kopieren} style={{ width:"100%", padding:"11px", borderRadius:9, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", fontWeight:700, fontSize:14, cursor:"pointer" }}>
-              {kopiert ? "Kopiert ✓" : "Code kopieren"}
-            </button>
-            <button onClick={neuErzeugen} disabled={busy} style={{ width:"100%", marginTop:10, padding:"10px", borderRadius:9, background:"#f1f5f9", color:"#334155", border:"none", fontWeight:600, fontSize:13, cursor:"pointer", opacity:busy?0.6:1 }}>
-              {busy ? "Erzeuge…" : "Neuen Code erzeugen"}
-            </button>
-            <div onClick={()=>setOffen(false)} style={{ marginTop:14, fontSize:13, color:"#94a3b8", cursor:"pointer" }}>Schließen</div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
-
 // ─── Alle Zeilen einer Tabelle laden (Supabase liefert pro Abfrage max. 1000) ─
 async function holeAlle(tabelle) {
   const SEITE = 1000;
@@ -480,7 +422,6 @@ export default function App() {
         onLogout={abmelden}
         userEmail={session.user?.email}
       />
-      <FirmencodeBox />
     </>
   );
 }
