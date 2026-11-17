@@ -219,7 +219,7 @@ function Login({ onLogin }) {
 }
 
 // ─── Alle Zeilen einer Tabelle laden (Supabase liefert pro Abfrage max. 1000) ─
-const MA_SPALTEN = "id,name,rolle,team,tel,fuehrerschein,stapler,schweisser,urlaub,krank,created_at,email,firma_id"; // ohne Stundensatz (kommt über meine_saetze)
+const MA_SPALTEN = "id,name,rolle,team,tel,fuehrerschein,stapler,schweisser,urlaub,created_at,email,firma_id"; // ohne Stundensatz (kommt über meine_saetze)
 async function holeAlle(tabelle, spalten = "*") {
   const SEITE = 1000;
   let alle = [];
@@ -316,12 +316,14 @@ export default function App() {
     setLaden(true);
     try {
     const namen = ["projekte","mitarbeiter","fahrzeuge","sonder","antraege","stunden","unterkuenfte","tagesberichte","werkzeuge","teams"];
-    const [erg, saetze] = await Promise.all([
+    const [erg, saetze, krankR] = await Promise.all([
       Promise.all(namen.map(n => holeAlle(n, n === "mitarbeiter" ? MA_SPALTEN : "*"))),
       supabase.rpc("meine_saetze"),
+      supabase.rpc("meine_krank"),
     ]);
     const fehlerhaft = namen.filter((n,i)=>erg[i].error);
     if (saetze.error) fehlerhaft.push("stundensaetze");
+    if (krankR.error) fehlerhaft.push("krankheitstage");
     if (fehlerhaft.length) {
       // Nichts überschreiben: lieber alter Stand als leere Listen
       const c = u ? cacheLesen(u) : null;
@@ -342,7 +344,9 @@ export default function App() {
     setProjekteState((p.data||[]).map(toAppProjekt));
     // Stundensätze liefert die Datenbank nur an Admin, Projektleiter und Bauleiter
     const satzMap = new Map((saetze.data||[]).map(x=>[x.id, x.stundensatz]));
-    setMitarbeiterState((m.data||[]).map(x=>({ ...x, stundensatz: satzMap.has(x.id) ? satzMap.get(x.id) : null })));
+    // Krankheitstage: Leitung sieht alle, alle anderen nur die eigenen
+    const krankMap = new Map((krankR.data||[]).map(x=>[x.id, Number(x.krank)||0]));
+    setMitarbeiterState((m.data||[]).map(x=>({ ...x, stundensatz: satzMap.has(x.id) ? satzMap.get(x.id) : null, krank: krankMap.has(x.id) ? krankMap.get(x.id) : null })));
     setFahrzeugeState(f.data||[]);
     setSonderState((s.data||[]).map(toAppSonder));
     setAntraegeState((a.data||[]).map(toAppAntrag));
