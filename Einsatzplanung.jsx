@@ -1240,10 +1240,129 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
 }
 
 // ─── Andere Tabs (unverändert) ────────────────────────────────────────────────
+// ─── KARTE ALLER BAUSTELLEN ───────────────────────────────────────────────────
+// Karte mit OpenStreetMap-Kacheln (Leaflet wird beim ersten Öffnen nachgeladen).
+// Koordinaten werden aus dem Ort der Baustelle über Nominatim ermittelt und auf dem Gerät zwischengespeichert.
+let BAUSTELLE_VORWAHL = null;
+function ladeLeaflet() {
+  if (window.L) return Promise.resolve(window.L);
+  if (window.__leafletP) return window.__leafletP;
+  window.__leafletP = new Promise((res, rej) => {
+    const css = document.createElement("link");
+    css.rel = "stylesheet"; css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(css);
+    const s = document.createElement("script");
+    s.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    s.onload = () => res(window.L);
+    s.onerror = () => { window.__leafletP = null; rej(new Error("leaflet")); };
+    document.head.appendChild(s);
+  });
+  return window.__leafletP;
+}
+function KartenStart({ projekte, einsaetze, setTab }) {
+  const heuteIso = isoDate(new Date());
+  const boxRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef([]);
+  const [geo, setGeo] = useState(() => store.get("baufox-geo") || {});
+  const [fehler, setFehler] = useState(false);
+  const [bereit, setBereit] = useState(!!window.L);
+  const aktive = (projekte || []).filter(p => p.status !== "abgeschlossen" && p.status !== "storniert");
+  const farbeVon = p => PROJ_PALETTE[Math.max(0, (projekte || []).findIndex(x => x.id === p.id)) % PROJ_PALETTE.length];
+  const crewAnz = p => new Set((einsaetze || []).filter(e => e.projektId === p.id && e.dateStart <= heuteIso && heuteIso <= e.dateEnd).map(e => e.ma)).size;
+  const orte = [...new Set(aktive.map(p => String(p.ort || "").trim()).filter(Boolean))];
+  const orteKey = orte.join("|");
+
+  // Leaflet laden
+  useEffect(() => {
+    let aktiv = true;
+    ladeLeaflet().then(() => { if (aktiv) setBereit(true); }).catch(() => { if (aktiv) setFehler(true); });
+    return () => { aktiv = false; };
+  }, []);
+
+  // Orte in Koordinaten umwandeln (nur fehlende, höchstens 1 Anfrage pro Sekunde)
+  useEffect(() => {
+    let aktiv = true;
+    (async () => {
+      let cache = store.get("baufox-geo") || {};
+      for (const ort of orte) {
+        if (!aktiv) return;
+        if (cache[ort]) continue;
+        try {
+          const r = await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(ort));
+          const j = await r.json();
+          if (j && j[0]) {
+            cache = { ...cache, [ort]: { lat: Number(j[0].lat), lng: Number(j[0].lon) } };
+            store.set("baufox-geo", cache);
+            if (aktiv) setGeo(cache);
+          }
+        } catch { /* offline: nächstes Mal wieder */ }
+        await new Promise(r => setTimeout(r, 1100));
+      }
+    })();
+    return () => { aktiv = false; };
+  }, [orteKey]); // eslint-disable-line
+
+  // Karte aufbauen und Pins setzen
+  useEffect(() => {
+    if (!bereit || !boxRef.current || !window.L) return;
+    const L = window.L;
+    if (!mapRef.current) {
+      mapRef.current = L.map(boxRef.current, { scrollWheelZoom: false }).setView([51.1, 10.4], 6);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(mapRef.current);
+    }
+    markerRef.current.forEach(m => m.remove());
+    markerRef.current = [];
+    const punkte = [];
+    aktive.forEach(p => {
+      const g = geo[String(p.ort || "").trim()];
+      if (!g) return;
+      const n = crewAnz(p), col = farbeVon(p);
+      const icon = L.divIcon({
+        className: "",
+        iconSize: [34, 34], iconAnchor: [17, 17],
+        html: `<div style="width:34px;height:34px;border-radius:50%;background:${col};border:3px solid #fff;box-shadow:0 2px 6px #0006;color:#fff;font:800 14px system-ui;display:flex;align-items:center;justify-content:center">${n}</div>`,
+      });
+      const m = L.marker([g.lat, g.lng], { icon }).addTo(mapRef.current);
+      m.on("click", () => { BAUSTELLE_VORWAHL = p.id; setTab("baustellen"); });
+      markerRef.current.push(m);
+      punkte.push([g.lat, g.lng]);
+    });
+    if (punkte.length === 1) mapRef.current.setView(punkte[0], 10);
+    else if (punkte.length > 1) mapRef.current.fitBounds(punkte, { padding: [40, 40], maxZoom: 11 });
+    setTimeout(() => mapRef.current && mapRef.current.invalidateSize(), 100);
+  }, [bereit, geo, einsaetze, projekte]); // eslint-disable-line
+
+  useEffect(() => () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } }, []);
+
+  const karte = { background:TH.panel, border:"1px solid "+TH.border, borderRadius:14 };
+  const ohneOrt = aktive.filter(p => !geo[String(p.ort || "").trim()]);
+  return (
+    <div style={{ maxWidth:900, margin:"0 auto" }}>
+      <div style={{ fontSize:20, fontWeight:800, color:TH.text, marginBottom:10 }}>Karte</div>
+      {fehler
+        ? <div style={{ ...karte, padding:24, textAlign:"center", color:TH.textMut }}>Karte konnte nicht geladen werden (keine Verbindung?).</div>
+        : <div ref={boxRef} style={{ height:380, borderRadius:14, overflow:"hidden", border:"1px solid "+TH.border, background:TH.panel2 }} />}
+      <div style={{ fontSize:11, color:TH.textMut, margin:"6px 2px 12px" }}>Zahl im Pin = Leute heute auf der Baustelle. Pin antippen öffnet die Baustelle.</div>
+      <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+        {aktive.map(p => (
+          <div key={p.id} onClick={()=>{ BAUSTELLE_VORWAHL = p.id; setTab("baustellen"); }} style={{ ...karte, borderLeft:"8px solid "+farbeVon(p), padding:"10px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
+            <div>
+              <div style={{ fontWeight:800, fontSize:14, color:TH.text }}>{p.name}</div>
+              <div style={{ fontSize:12, color:TH.textMut }}>{p.ort || "kein Ort angegeben"}{ohneOrt.includes(p) && p.ort ? " (Position wird gesucht …)" : ""}</div>
+            </div>
+            <span style={{ marginLeft:"auto", background:crewAnz(p)?"#dcfce7":TH.panel2, color:crewAnz(p)?"#166534":TH.textMut, borderRadius:8, padding:"2px 9px", fontWeight:700, fontSize:12 }}>👷 {crewAnz(p)} heute</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── BAUSTELLEN-HUB ───────────────────────────────────────────────────────────
 // Alles zu einer Baustelle an einem Ort: Crew, Stunden, Berichte, Infos.
 function Baustellen({ projekte, mitarbeiter, einsaetze, stunden, berichte, unterkuenfte, fahrzeuge, kannPlanen, setTab }) {
-  const [selId, setSelId] = useState(null);
+  const [selId, setSelId] = useState(() => { const v = BAUSTELLE_VORWAHL; BAUSTELLE_VORWAHL = null; return v; });
   const [seg, setSeg] = useState("crew");
   const [zeigeAlle, setZeigeAlle] = useState(false);
   const heuteIso = isoDate(new Date());
@@ -3590,9 +3709,9 @@ function AboPakete({ abo }) {   const [pakete, setPakete] = useState([]);   cons
 function darfTab(rolle, tabId) {
   if (rolle==="Admin") return true;
   const rechte = {
-    "Projektleiter": ["baustellen","postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
-    "Bauleiter":   ["baustellen","postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
-    "Vorarbeiter": ["baustellen","postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
+    "Projektleiter": ["karte","baustellen","postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Bauleiter":   ["karte","baustellen","postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
+    "Vorarbeiter": ["karte","baustellen","postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Monteur":     ["baustellen","postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Unbekannt":   ["heute","woche","monat"],
   };
@@ -3680,7 +3799,7 @@ export default function EinsatzplanungInner({
   const [messprotokolle, setMessprotokolle] = useMessprotokolle();
   const istLeitung = istAdmin || meineRolle==="Bauleiter" || meineRolle==="Vorarbeiter";
 
-  const [tab, setTab] = useState(istAdmin ? "dashboard" : "heute");
+  const [tab, setTab] = useState(kannPlanen ? "karte" : "heute");
   const [menueOffen, setMenueOffen] = useState(false);
   useEffect(()=>{ window.scrollTo({ top:0, behavior:"smooth" }); }, [tab]);
   const [breit, setBreit] = useState(()=>typeof window!=="undefined" && window.innerWidth>=1100);
@@ -3867,6 +3986,7 @@ export default function EinsatzplanungInner({
   function resetDaten() { if (onReset) onReset(); }
 
   const alleTabs = [
+    { id:"karte",        label:"Karte", Icon:MapPin },
     { id:"baustellen",   label:"Baustellen", Icon:HardHat },
     { id:"postfach",     label:"Mein Postfach", Icon:Inbox },
     { id:"dashboard",    label:"Dashboard", Icon:LayoutDashboard },
@@ -3991,6 +4111,7 @@ export default function EinsatzplanungInner({
         {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} antraege={vAntraege} warnungen={warnungen} unterkuenfte={vUnterkuenfte} setTab={setTab} T={T} />}
         {tab==="kosten"       && darfTab(meineRolle,"kosten")       && <KostenControlling projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} T={T} />}
         {tab==="assistent"    && darfTab(meineRolle,"assistent")    && <SmartAssistent projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} werkzeuge={werkzeuge} berichte={vBerichte} T={T} />}
+        {tab==="karte"        && darfTab(meineRolle,"karte")        && <KartenStart projekte={vProjekte} einsaetze={einsaetze} setTab={setTab} />}
         {tab==="baustellen"   && darfTab(meineRolle,"baustellen")   && <Baustellen projekte={vProjekte} mitarbeiter={mitarbeiter} einsaetze={einsaetze} stunden={vStunden} berichte={vBerichte} unterkuenfte={vUnterkuenfte} fahrzeuge={fahrzeuge} kannPlanen={kannPlanen} setTab={setTab} />}
         {tab==="heute"        && darfTab(meineRolle,"heute")        && (kannPlanen || !meinMA ? <Tagesansicht   mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} /> : <MeinTag meinMA={meinMA} mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setTab={setTab} />)}
         {tab==="woche"        && darfTab(meineRolle,"woche")        && <Timeline key="woche" modus="woche" mitarbeiter={vMitarbeiter} alleMA={mitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setEinsaetze={setEinsaetze} kannPlanen={kannPlanen} meinMaId={meinMA?.id} />}
