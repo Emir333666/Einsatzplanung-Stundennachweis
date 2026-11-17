@@ -543,6 +543,8 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
   const [entwurf, setEntwurf] = useState({});
   const gespeichert = istLeitung ? (stunden || []) : (stunden || []).filter(e => meinMA && e.maId===meinMA.id);
   const [ansicht, setAnsicht] = useState(istLeitung ? "erfassen" : "uebersicht");
+  const lohnDarf = rolle==="Admin" || rolle==="Projektleiter" || rolle==="Bauleiter";
+  const [lohnMonat, setLohnMonat] = useState(() => { const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); });
 
   const va = mitarbeiter.find(m=>m.id===aktVA);
   const teamMA = va ? mitarbeiter.filter(m=>m.team===va.team) : [];
@@ -581,6 +583,32 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "Baufox_Stundennachweis_"+isoDate(new Date())+".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // Lohn-Export: Monatssumme je Mitarbeiter (CSV, Semikolon, Komma als Dezimaltrenner)
+  function lohnExport() {
+    const eintraege = gespeichert.filter(e => String(e.datum||"").startsWith(lohnMonat));
+    if (!eintraege.length) { alert("Für " + lohnMonat + " sind keine Stundenzettel vorhanden."); return; }
+    const proMA = {};
+    eintraege.forEach(e => {
+      const k = e.maId!=null ? e.maId : e.maName;
+      const z = proMA[k] || (proMA[k] = { id:e.maId, name:e.maName, tage:new Set(), std:0, ueber:0, fahrt:0, ueb:0, spesen:0 });
+      const h = Number(e.arbeitsstunden)||0;
+      z.tage.add(e.datum); z.std += h; z.ueber += Math.max(0,h-8);
+      z.fahrt += Number(e.fahrzeit)||0; z.ueb += e.uebernachtung?1:0; z.spesen += Number(e.spesen)||0;
+    });
+    const dez = n => n.toFixed(2).replace(".",",");
+    const zelle = v => `"${String(v==null?"":v).replace(/"/g,'""')}"`;
+    const kopf = ["Monat","Personal-Nr. (Baufox)","Mitarbeiter","Arbeitstage","Arbeitsstunden","davon Überstunden (>8 h/Tag)","Fahrzeit (h)","Übernachtungen","Spesen (€)"];
+    const zeilen = Object.values(proMA).sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(z=>
+      [lohnMonat, z.id!=null?z.id:"", z.name, z.tage.size, dez(z.std), dez(z.ueber), dez(z.fahrt), z.ueb, dez(z.spesen)].map(zelle).join(";"));
+    const csv = "\uFEFF" + kopf.map(zelle).join(";") + "\n" + zeilen.join("\n");
+    const blob = new Blob([csv], { type:"text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "Baufox_Lohnexport_" + lohnMonat + ".csv";
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -750,7 +778,13 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
             <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", padding:32, textAlign:"center", color:"#9ca3af" }}>Noch keine Stundenzettel gespeichert</div>
           ) : (
             <>
-              <div style={{ display:"flex", justifyContent:"flex-end", gap:8, marginBottom:12 }}>
+              <div style={{ display:"flex", justifyContent:"flex-end", alignItems:"center", flexWrap:"wrap", gap:8, marginBottom:12 }}>
+                {lohnDarf && (
+                  <>
+                    <input type="month" value={lohnMonat} onChange={e=>setLohnMonat(e.target.value)} style={{ padding:"8px 10px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel2, color:TH.text, fontSize:13 }} />
+                    <button onClick={lohnExport} style={{ padding:"9px 18px", borderRadius:8, background:"#2563eb", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>💶 Lohn-Export (Monat)</button>
+                  </>
+                )}
                 <button onClick={excelExport} style={{ padding:"9px 18px", borderRadius:8, background:"#16a34a", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileSpreadsheet size={14}/>Excel (CSV)</span></button>
                 <button onClick={pdfExport} style={{ padding:"9px 18px", borderRadius:8, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileDown size={14}/>Als PDF exportieren</span></button>
               </div>
