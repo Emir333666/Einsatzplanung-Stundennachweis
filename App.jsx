@@ -66,7 +66,8 @@ const toDbStunde  = s => ({
   uebernachtung: !!s.uebernachtung,
   spesen: s.spesen!=null && s.spesen!=="" ? Number(s.spesen) : null,
   bemerkung: s.bemerkung||null,
-  arbeitsstunden: s.arbeitsstunden!=null && s.arbeitsstunden!=="" ? Number(s.arbeitsstunden) : null
+  arbeitsstunden: s.arbeitsstunden!=null && s.arbeitsstunden!=="" ? Number(s.arbeitsstunden) : null,
+  status: s.status||"offen", bestaetigt_am: s.bestaetigt_am||null, meldung: s.meldung||null
 });
 
 
@@ -491,7 +492,7 @@ export default function App() {
   const setStunden = async (next) => {
     const arr = typeof next === "function" ? next(stunden) : next;
     setStundenState(arr);
-    await syncTabelle("stunden", stunden, arr, toDbStunde);
+    await syncTabelle("stunden", stunden, arr, toDbStunde, "id", true);
     ladeDaten();
   };
   const setUnterkuenfte = async (next) => {
@@ -572,7 +573,7 @@ export default function App() {
         berichte={berichte} setBerichte={setBerichte}
         werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge}
         teams={teams} setTeams={setTeams}
-        einsaetze={einsaetze} setEinsaetze={setEinsaetze}
+        einsaetze={einsaetze} setEinsaetze={setEinsaetze} neuLaden={ladeDaten}
         onReset={null}
         onLogout={abmelden}
         userEmail={session.user?.email}
