@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, memo, useCallback } from "react";
 import { supabase } from "./supabaseClient.js";
-import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Plus, Bell, MessageCircle, Send, Inbox, Thermometer, CircleSlash, Ruler } from "lucide-react";
+import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Plus, Bell, MessageCircle, Send, Inbox, Thermometer, CircleSlash, Ruler, Mic } from "lucide-react";
 
 // ─── Farbschema Hell/Dunkel (wird vom Schalter im Header umgestellt) ──────────
 const THEME_HELL   = { panel:"#ffffff", panel2:"#f9fafb", text:"#1f2937", textMut:"#6b7280", border:"#e5e7eb", input:"#ffffff" };
@@ -2625,6 +2625,36 @@ async function stempleFoto(file) {
   return { blob, zeit: ts.toISOString() };
 }
 
+// ─── DIKTIER-KNOPF (Spracherkennung → Text ins Feld) ──────────────────
+function DiktierKnopf({ wert, onText }) {
+  const [hoert, setHoert] = useState(false);
+  const recRef = useRef(null);
+  const SR = typeof window !== "undefined" ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+  useEffect(()=>()=>{ try { recRef.current?.stop(); } catch(e){} }, []);
+  function umschalten() {
+    if (!SR) { alert("Dein Browser unterstützt die Spracherkennung leider nicht. Tipp: Nutze am Handy die Mikrofon-Taste der Tastatur, oder öffne Baufox in Google Chrome."); return; }
+    if (hoert) { try { recRef.current?.stop(); } catch(e){} return; }
+    const rec = new SR();
+    rec.lang = "de-DE"; rec.continuous = true; rec.interimResults = false;
+    let basis = wert ? (wert.trim() + " ") : "";
+    rec.onresult = (e) => {
+      let neu = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) { if (e.results[i].isFinal) neu += e.results[i][0].transcript + " "; }
+      if (neu) { basis += neu; onText(basis.trim()); }
+    };
+    rec.onend = () => setHoert(false);
+    rec.onerror = (e) => { setHoert(false); if (e.error === "not-allowed" || e.error === "service-not-allowed") alert("Bitte den Mikrofon-Zugriff für diese Seite erlauben (Schloss-Symbol neben der Adresse)."); };
+    recRef.current = rec;
+    try { rec.start(); setHoert(true); } catch(e){}
+  }
+  return (
+    <button type="button" onClick={umschalten} title={hoert ? "Aufnahme stoppen" : "Diktieren – einfach sprechen"}
+      style={{ display:"inline-flex", alignItems:"center", gap:5, padding:"5px 11px", borderRadius:8, border:"1.5px solid "+(hoert ? "#dc2626" : "#ea580c"), background: hoert ? "#dc2626" : "transparent", color: hoert ? "#fff" : "#ea580c", cursor:"pointer", fontSize:12, fontWeight:700 }}>
+      <Mic size={13} className={hoert ? "mic-puls" : ""} /> {hoert ? "Stopp (hört zu…)" : "Diktieren"}
+    </button>
+  );
+}
+
 function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, meinMA, userEmail }) {
   const istLeitung = rolle==="Admin" || rolle==="Projektleiter" || rolle==="Bauleiter" || rolle==="Vorarbeiter";
   const leer = { datum: isoDate(new Date()), projektId:"", wetter:"", fortschritt:"", probleme:"", material:"", anwesende:"", leistung:"", fotos:[] };
@@ -2745,10 +2775,10 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
             <input style={inpS()} value={f.wetter} onChange={e=>set("wetter",e.target.value)} placeholder="wird automatisch ausgefüllt…" />
           </Feld>
           <Feld label="Anwesende (automatisch aus Team, anpassbar)"><input style={inpS()} value={f.anwesende} onChange={e=>set("anwesende",e.target.value)} /></Feld>
-          <Feld label="Arbeitsfortschritt – was wurde gemacht?"><textarea style={{ ...inpS(), minHeight:70, resize:"vertical" }} value={f.fortschritt} onChange={e=>set("fortschritt",e.target.value)} placeholder="z.B. Schienenstöße 12–18 verschweißt, Vermessung Achse B abgeschlossen" /></Feld>
+          <Feld label={<span style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>Arbeitsfortschritt – was wurde gemacht?<DiktierKnopf wert={f.fortschritt} onText={t=>set("fortschritt",t)} /></span>}><textarea style={{ ...inpS(), minHeight:70, resize:"vertical" }} value={f.fortschritt} onChange={e=>set("fortschritt",e.target.value)} placeholder="z.B. Schienenstöße 12–18 verschweißt, Vermessung Achse B abgeschlossen – oder auf „Diktieren“ tippen und sprechen" /></Feld>
           <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-            <div style={{ flex:1, minWidth:220 }}><Feld label="Probleme / Behinderungen"><textarea style={{ ...inpS(), minHeight:50, resize:"vertical" }} value={f.probleme} onChange={e=>set("probleme",e.target.value)} placeholder="z.B. Kran erst ab 10 Uhr verfügbar" /></Feld></div>
-            <div style={{ flex:1, minWidth:220 }}><Feld label="Materialbedarf"><textarea style={{ ...inpS(), minHeight:50, resize:"vertical" }} value={f.material} onChange={e=>set("material",e.target.value)} placeholder="z.B. 20× Klemmplatten, Schweißdraht" /></Feld></div>
+            <div style={{ flex:1, minWidth:220 }}><Feld label={<span style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>Probleme / Behinderungen<DiktierKnopf wert={f.probleme} onText={t=>set("probleme",t)} /></span>}><textarea style={{ ...inpS(), minHeight:50, resize:"vertical" }} value={f.probleme} onChange={e=>set("probleme",e.target.value)} placeholder="z.B. Kran erst ab 10 Uhr verfügbar" /></Feld></div>
+            <div style={{ flex:1, minWidth:220 }}><Feld label={<span style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>Materialbedarf<DiktierKnopf wert={f.material} onText={t=>set("material",t)} /></span>}><textarea style={{ ...inpS(), minHeight:50, resize:"vertical" }} value={f.material} onChange={e=>set("material",e.target.value)} placeholder="z.B. 20× Klemmplatten, Schweißdraht" /></Feld></div>
           </div>
           <Feld label="Fotos (Zeitstempel wird automatisch eingebrannt)">
             <input type="file" accept="image/*" multiple onChange={e=>fotosHochladen(e.target.files)} style={{ fontSize:13 }} />
