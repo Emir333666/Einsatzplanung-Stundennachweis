@@ -99,6 +99,18 @@ function Login({ onLogin }) {
       return;
     }
 
+    if (modus === "reset") {
+      // ── Passwort vergessen: Reset-E-Mail anfordern ──
+      if (!email.trim()) { setLaden(false); setFehler("Bitte deine E-Mail-Adresse eingeben."); return; }
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: window.location.origin
+      });
+      setLaden(false);
+      setHinweis("Wenn ein Konto mit dieser E-Mail existiert, haben wir dir einen Link zum Zurücksetzen geschickt. Schau auch im Spam-Ordner nach.");
+      setModus("login"); setPw("");
+      return;
+    }
+
     if (pw.length < 6) { setLaden(false); setFehler("Das Passwort muss mindestens 6 Zeichen haben."); return; }
 
     let metaDaten;
@@ -190,32 +202,104 @@ function Login({ onLogin }) {
           <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required
             style={inputStyle} placeholder="name@firma.de" />
         </div>
-        <div style={{ marginBottom:18 }}>
-          <div style={labelStyle}>Passwort</div>
-          <input type="password" value={pw} onChange={e=>setPw(e.target.value)} required
-            style={inputStyle} placeholder="••••••••" />
-        </div>
+        {modus !== "reset" && (
+          <div style={{ marginBottom:18 }}>
+            <div style={labelStyle}>Passwort</div>
+            <input type="password" value={pw} onChange={e=>setPw(e.target.value)} required
+              style={inputStyle} placeholder="••••••••" />
+            {modus === "login" && (
+              <div style={{ textAlign:"right", marginTop:6 }}>
+                <span onClick={()=>wechsel("reset")} style={{ ...linkStyle, fontSize:12, fontWeight:600 }}>Passwort vergessen?</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {modus === "reset" && (
+          <div style={{ fontSize:12.5, color:"#6b7280", marginBottom:16, lineHeight:1.5 }}>
+            Gib deine E-Mail-Adresse ein. Wir schicken dir einen Link, mit dem du ein neues Passwort vergeben kannst.
+          </div>
+        )}
 
         {fehler && <div style={{ background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"9px 12px", fontSize:13, marginBottom:14 }}>{fehler}</div>}
         {hinweis && <div style={{ background:"#dcfce7", color:"#166534", borderRadius:8, padding:"9px 12px", fontSize:13, marginBottom:14 }}>{hinweis}</div>}
 
         <button type="submit" disabled={laden} style={{ width:"100%", padding:"12px", borderRadius:9, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", fontWeight:700, fontSize:15, cursor:"pointer", opacity:laden?0.6:1 }}>
           {laden
-            ? (modus === "login" ? "Anmelden…" : "Registrieren…")
-            : (istReg ? "Firma registrieren" : istBeitritt ? "Mit Firmencode beitreten" : "Anmelden")}
+            ? (modus === "login" ? "Anmelden…" : modus === "reset" ? "Senden…" : "Registrieren…")
+            : (istReg ? "Firma registrieren" : istBeitritt ? "Mit Firmencode beitreten" : modus === "reset" ? "Link zum Zurücksetzen senden" : "Anmelden")}
         </button>
 
         <div style={{ textAlign:"center", marginTop:16, fontSize:13, color:"#6b7280", lineHeight:1.9 }}>
-          {modus !== "login" && (
-            <div>Schon ein Konto? <span onClick={()=>wechsel("login")} style={linkStyle}>Anmelden</span></div>
-          )}
-          {modus !== "register" && (
-            <div>Neue Firma? <span onClick={()=>wechsel("register")} style={linkStyle}>Firma registrieren</span></div>
-          )}
-          {modus !== "beitreten" && (
-            <div>Mitarbeiter? <span onClick={()=>wechsel("beitreten")} style={linkStyle}>Mit Firmencode beitreten</span></div>
-          )}
+          {modus === "reset" ? (
+            <div>Doch wieder eingefallen? <span onClick={()=>wechsel("login")} style={linkStyle}>Zurück zur Anmeldung</span></div>
+          ) : (<>
+            {modus !== "login" && (
+              <div>Schon ein Konto? <span onClick={()=>wechsel("login")} style={linkStyle}>Anmelden</span></div>
+            )}
+            {modus !== "register" && (
+              <div>Neue Firma? <span onClick={()=>wechsel("register")} style={linkStyle}>Firma registrieren</span></div>
+            )}
+            {modus !== "beitreten" && (
+              <div>Mitarbeiter? <span onClick={()=>wechsel("beitreten")} style={linkStyle}>Mit Firmencode beitreten</span></div>
+            )}
+          </>)}
         </div>
+      </form>
+    </div>
+  );
+}
+
+// ─── Neues Passwort setzen (nach Klick auf den Reset-Link aus der E-Mail) ─────
+function PasswortNeu({ onFertig }) {
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [fehler, setFehler] = useState("");
+  const [ok, setOk] = useState(false);
+  const [laden, setLaden] = useState(false);
+
+  async function speichern(e) {
+    e.preventDefault();
+    setFehler("");
+    if (pw.length < 6) { setFehler("Das Passwort muss mindestens 6 Zeichen haben."); return; }
+    if (pw !== pw2) { setFehler("Die beiden Passwörter stimmen nicht überein."); return; }
+    setLaden(true);
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    setLaden(false);
+    if (error) { setFehler("Das hat nicht geklappt. Bitte fordere den Link neu an – er ist evtl. abgelaufen."); return; }
+    setOk(true);
+    setTimeout(() => { onFertig && onFertig(); }, 2200);
+  }
+
+  const labelStyle = { fontSize:11, color:"#6b7280", fontWeight:600, marginBottom:5, textTransform:"uppercase" };
+  const inputStyle = { width:"100%", padding:"11px 12px", borderRadius:9, border:"1.5px solid #e5e7eb", fontSize:14, boxSizing:"border-box" };
+
+  return (
+    <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#1e293b 0%,#334155 100%)", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Inter',system-ui,sans-serif", padding:16 }}>
+      <form onSubmit={speichern} style={{ background:"#fff", borderRadius:16, padding:"32px 28px", width:"100%", maxWidth:380, boxShadow:"0 10px 40px #0004" }}>
+        <div style={{ textAlign:"center", marginBottom:24 }}>
+          <img src="/icon-192.png" alt="Baufox" style={{ width:64, height:64, borderRadius:14, boxShadow:"0 4px 12px #ea580c55" }} />
+          <div style={{ fontWeight:800, fontSize:22, color:"#1e293b", marginTop:10 }}>Neues Passwort</div>
+        </div>
+        {ok ? (
+          <div style={{ background:"#dcfce7", color:"#166534", borderRadius:10, padding:"14px", fontSize:14, textAlign:"center", lineHeight:1.5 }}>
+            ✓ Passwort geändert!<br/>Du wirst gleich weitergeleitet…
+          </div>
+        ) : (<>
+          <div style={{ fontSize:12.5, color:"#6b7280", marginBottom:16, lineHeight:1.5 }}>Vergib jetzt ein neues Passwort für dein Baufox-Konto.</div>
+          <div style={{ marginBottom:14 }}>
+            <div style={labelStyle}>Neues Passwort</div>
+            <input type="password" value={pw} onChange={e=>setPw(e.target.value)} required style={inputStyle} placeholder="••••••••" />
+          </div>
+          <div style={{ marginBottom:18 }}>
+            <div style={labelStyle}>Passwort wiederholen</div>
+            <input type="password" value={pw2} onChange={e=>setPw2(e.target.value)} required style={inputStyle} placeholder="••••••••" />
+          </div>
+          {fehler && <div style={{ background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"9px 12px", fontSize:13, marginBottom:14 }}>{fehler}</div>}
+          <button type="submit" disabled={laden} style={{ width:"100%", padding:"12px", borderRadius:9, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", fontWeight:700, fontSize:15, cursor:"pointer", opacity:laden?0.6:1 }}>
+            {laden ? "Speichern…" : "Passwort speichern"}
+          </button>
+        </>)}
       </form>
     </div>
   );
@@ -274,6 +358,7 @@ export default function App() {
   const [pruefe, setPruefe] = useState(true);
   const [laden, setLaden] = useState(false);
   const [bereit, setBereit] = useState(false);
+  const [recovery, setRecovery] = useState(false);  // Passwort-Zurücksetzen-Modus (Link aus E-Mail)
 
   const [projekte, setProjekteState] = useState([]);
   const [mitarbeiter, setMitarbeiterState] = useState([]);
@@ -297,9 +382,13 @@ export default function App() {
 
   // Session prüfen (offline: gespeicherte Anmeldung verwenden)
   useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) setRecovery(true);
     supabase.auth.getSession().then(({ data }) => { setSession(data.session || offlineSession()); setPruefe(false); })
       .catch(() => { setSession(offlineSession()); setPruefe(false); });
-    const { data: sub } = supabase.auth.onAuthStateChange((e, s) => { if (e === "SIGNED_OUT" || s) setSession(s); });
+    const { data: sub } = supabase.auth.onAuthStateChange((e, s) => {
+      if (e === "PASSWORD_RECOVERY") { setRecovery(true); setSession(s); return; }
+      if (e === "SIGNED_OUT" || s) setSession(s);
+    });
     return () => sub.subscription.unsubscribe();
   }, []);
 
@@ -545,6 +634,7 @@ export default function App() {
   }
 
   if (pruefe) return <Splash text="Lädt…" />;
+  if (recovery) return <PasswortNeu onFertig={()=>{ setRecovery(false); try { history.replaceState(null, "", window.location.pathname); } catch(e){} }} />;
   if (!session) return <Login onLogin={()=>{}} />;
   if (laden && !bereit) return <Splash text="Daten werden geladen…" />;
 
