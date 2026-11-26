@@ -306,7 +306,7 @@ function PasswortNeu({ onFertig }) {
 }
 
 // ─── Alle Zeilen einer Tabelle laden (Supabase liefert pro Abfrage max. 1000) ─
-const MA_SPALTEN = "id,name,rolle,team,tel,fuehrerschein,stapler,schweisser,urlaub,created_at,email,firma_id"; // ohne Stundensatz (kommt über meine_saetze)
+const MA_SPALTEN = "id,name,rolle,team,tel,fuehrerschein,stapler,schweisser,urlaub,created_at,email,firma_id,rechte"; // ohne Stundensatz (kommt über meine_saetze)
 async function holeAlle(tabelle, spalten = "*") {
   const SEITE = 1000;
   let alle = [];
