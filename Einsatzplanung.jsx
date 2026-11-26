@@ -2167,11 +2167,26 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
 
   // ── Mitarbeiter-Formular ──
   function MitarbeiterForm({ data }) {
-    const [f, setF] = useState(data || { id:null, name:"", rolle:"Monteur", team:teamNamen[0], tel:"", email:"", stundensatz:"", fuehrerschein:false, stapler:false, schweisser:false, urlaub:0, krank:0 });
+    const [f, setF] = useState(data || { id:null, name:"", rolle:"Monteur", team:teamNamen[0], tel:"", email:"", stundensatz:"", fuehrerschein:false, stapler:false, schweisser:false, urlaub:0, krank:0, rechte:null });
     const set = (k,v) => setF(p=>({...p,[k]:v}));
+    const [adminInfo, setAdminInfo] = useState(null);
+    useEffect(()=>{ let a=true; supabase.rpc("mein_admin_limit").then(({data})=>{ if(a) setAdminInfo(data&&data[0]?data[0]:null); }); return ()=>{a=false;}; }, []);
+    const warAdmin = data && data.rolle==="Admin";
+    const wirdAdmin = f.rolle==="Admin";
+    const belegt = adminInfo ? adminInfo.belegt - (warAdmin?1:0) : 0;
+    const maxAdmins = adminInfo ? adminInfo.max_admins : 0;
+    const limitErreicht = wirdAdmin && !warAdmin && adminInfo && belegt >= maxAdmins;
+    const aktuelleRechte = Array.isArray(f.rechte) ? f.rechte : ADMIN_BEREICH_IDS;
+    const toggleRecht = (id) => {
+      const vorhanden = aktuelleRechte.includes(id);
+      const neu = vorhanden ? aktuelleRechte.filter(x=>x!==id) : [...aktuelleRechte, id];
+      set("rechte", neu);
+    };
     function speichern() {
       if (!f.name) return;
-      const sauber = { ...f, email:(f.email||"").trim().toLowerCase(), stundensatz: f.stundensatz!=null && f.stundensatz!=="" ? Number(f.stundensatz) : null, urlaub: Number(f.urlaub)||0, krank: Number(f.krank)||0, fuehrerschein: !!f.fuehrerschein, stapler: !!f.stapler, schweisser: !!f.schweisser };
+      if (limitErreicht) { alert(`Das Paket erlaubt nur ${maxAdmins} zusätzliche Admins (${belegt} bereits vergeben). Bitte zuerst einen Admin herabstufen oder das Paket upgraden.`); return; }
+      const rechteWert = wirdAdmin ? aktuelleRechte : null;
+      const sauber = { ...f, rechte: rechteWert, email:(f.email||"").trim().toLowerCase(), stundensatz: f.stundensatz!=null && f.stundensatz!=="" ? Number(f.stundensatz) : null, urlaub: Number(f.urlaub)||0, krank: Number(f.krank)||0, fuehrerschein: !!f.fuehrerschein, stapler: !!f.stapler, schweisser: !!f.schweisser };
       if (data) setMitarbeiter(prev => prev.map(m => m.id===data.id ? sauber : m));
       else setMitarbeiter(prev => [...prev, { ...sauber, id: null }]);
       setModal(null);
@@ -2181,9 +2196,36 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
       <Modal titel={data?"Mitarbeiter bearbeiten":"Neuer Mitarbeiter"} onClose={()=>setModal(null)} farbe={col.bg}>
         <Feld label="Name"><input style={inpS()} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="Vor- und Nachname" /></Feld>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Rolle"><select style={inpS()} value={f.rolle} onChange={e=>set("rolle",e.target.value)}><option>Monteur</option><option>Vorarbeiter</option><option>Bauleiter</option><option>Projektleiter</option></select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Rolle"><select style={inpS()} value={f.rolle} onChange={e=>set("rolle",e.target.value)}><option>Monteur</option><option>Vorarbeiter</option><option>Bauleiter</option><option>Projektleiter</option><option>Admin</option></select></Feld></div>
           <div style={{ flex:1, minWidth:150 }}><Feld label="Team"><select style={inpS()} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
         </div>
+
+        {wirdAdmin && (
+          <div style={{ background:TH.panel2, border:"1.5px solid "+(limitErreicht?"#dc2626":"#ea580c"), borderRadius:10, padding:"12px 14px", marginBottom:4 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8, marginBottom:10 }}>
+              <span style={{ fontWeight:800, fontSize:13, color:TH.text, display:"inline-flex", alignItems:"center", gap:6 }}><Settings size={14}/>Admin-Rechte</span>
+              <span style={{ fontSize:12, fontWeight:700, color:limitErreicht?"#dc2626":TH.textMut }}>
+                {adminInfo ? `${belegt + (wirdAdmin && !warAdmin ? 1 : 0)} von ${maxAdmins} Admins belegt` : "lädt…"}
+              </span>
+            </div>
+            {limitErreicht ? (
+              <div style={{ fontSize:12.5, color:"#dc2626", fontWeight:600 }}>Admin-Limit deines Pakets erreicht. Stufe zuerst einen anderen Admin herab oder upgrade das Paket.</div>
+            ) : (<>
+              <div style={{ fontSize:11.5, color:TH.textMut, marginBottom:8 }}>Welche Bereiche darf dieser Admin sehen? (Postfach ist immer erlaubt.)</div>
+              <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+                <button type="button" onClick={()=>set("rechte", ADMIN_BEREICH_IDS)} style={{ fontSize:11, padding:"4px 10px", borderRadius:6, border:"1px solid "+TH.border, background:TH.panel, color:TH.text, cursor:"pointer" }}>Alle</button>
+                <button type="button" onClick={()=>set("rechte", [])} style={{ fontSize:11, padding:"4px 10px", borderRadius:6, border:"1px solid "+TH.border, background:TH.panel, color:TH.text, cursor:"pointer" }}>Keine</button>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:"4px 10px" }}>
+                {ADMIN_BEREICHE.map(b=>(
+                  <label key={b.id} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, cursor:"pointer", color:TH.text }}>
+                    <input type="checkbox" checked={aktuelleRechte.includes(b.id)} onChange={()=>toggleRecht(b.id)} style={{ width:15, height:15, accentColor:"#ea580c" }} />{b.label}
+                  </label>
+                ))}
+              </div>
+            </>)}
+          </div>
+        )}
         <Feld label="Login-E-Mail (für App-Zugang)"><input style={inpS()} value={f.email||""} onChange={e=>set("email",e.target.value)} placeholder="z.B. max@firma.de – muss zum Supabase-Login passen" /></Feld>
         <Feld label="Telefon"><input style={inpS()} value={f.tel} onChange={e=>set("tel",e.target.value)} placeholder="0171-…" /></Feld>
         <Feld label="Stundensatz (€/h, intern für Kostenrechnung)"><input type="number" style={inpS()} value={f.stundensatz||""} onChange={e=>set("stundensatz",e.target.value)} placeholder="z.B. 45" /></Feld>
@@ -3845,16 +3887,45 @@ function Messprotokolle({ projekte, meinMA, userEmail, messprotokolle, setMesspr
 
 // ─── ABO & PAKETE (Paket-Auswahl, nur Admin) ────────────────────────────────── 
 function AboPakete({ abo }) {   const [pakete, setPakete] = useState([]);   const [laedt, setLaedt] = useState(true);    useEffect(() => {     let aktiv = true;     supabase.from("pakete").select("*").eq("aktiv", true).order("sortierung", { ascending:true })       .then(({ data }) => { if (aktiv) { setPakete(data || []); setLaedt(false); } });     return () => { aktiv = false; };   }, []);    const fmtPreis = n => (Number(n)||0).toLocaleString("de-DE") + " €";   const aktuellesPaket = abo?.paket || null;    return (     <div>       <h2 style={{ margin:"0 0 4px", fontSize:20, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><Euro size={20}/> Abo & Pakete</h2>       <div style={{ fontSize:13, color:TH.textMut, marginBottom:6 }}>         Wähle das Paket, das zu eurer Firmengröße passt. Alle Preise netto pro Monat.       </div>        {abo?.status === "trial" && (         <div style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#92400e" }}>           ⏳ Ihr seid aktuell in der <strong>Testphase</strong>{abo.tage_uebrig != null ? ` (noch ${abo.tage_uebrig} Tage)` : ""}. Nach Ablauf wählt ihr hier euer Paket.         </div>       )}        {laedt ? (         <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:TH.textMut }}>Pakete werden geladen…</div>       ) : (         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))", gap:14 }}>           {pakete.map(p => {             const aktiv = aktuellesPaket === p.id;             return (               <div key={p.id} style={{ border: aktiv ? "2px solid #ea580c" : "1.5px solid "+TH.border, borderRadius:14, overflow:"hidden", background:TH.panel, boxShadow:"0 1px 4px #0000000d", display:"flex", flexDirection:"column" }}>                 <div style={{ background: aktiv ? "linear-gradient(135deg,#ea580c 0%,#f97316 100%)" : TH.panel2, color: aktiv ? "#fff" : TH.text, padding:"12px 16px", fontWeight:800, fontSize:16 }}>                   {p.name}                   {aktiv && <span style={{ display:"block", fontSize:11, fontWeight:600, opacity:0.9, marginTop:2 }}>✓ Euer aktuelles Paket</span>}                 </div>                 <div style={{ padding:"16px", display:"flex", flexDirection:"column", gap:10, flex:1 }}>                   <div>                     <span style={{ fontSize:28, fontWeight:800, color:TH.text }}>{fmtPreis(p.preis_monat_netto)}</span>                     <span style={{ fontSize:13, color:TH.textMut }}> / Monat</span>                   </div>                   <div style={{ fontSize:13, color:TH.textMut }}>bis zu <strong style={{ color:TH.text }}>{p.max_mitarbeiter}</strong> Mitarbeiter</div>                   <button                     onClick={() => alert("Die Online-Bezahlung wird gerade eingerichtet. Für einen Paket-Wechsel meldet euch bitte direkt bei uns.")}                     style={{ marginTop:"auto", padding:"10px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:700, fontSize:13,                       background: aktiv ? TH.panel2 : "linear-gradient(135deg,#ea580c 0%,#f97316 100%)",                       color: aktiv ? TH.textMut : "#fff" }}                     disabled={aktiv}                   >                     {aktiv ? "Aktiv" : "Dieses Paket wählen"}                   </button>                 </div>               </div>             );           })}           {!pakete.length && <div style={{ gridColumn:"1/-1", background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:TH.textMut }}>Noch keine Pakete hinterlegt.</div>}         </div>       )}        <div style={{ marginTop:18, fontSize:11.5, color:TH.textMut }}>         Mitarbeitergrenzen sind als Orientierung gedacht – ihr werdet nicht hart gesperrt. Bei Bedarf einfach ins nächstgrößere Paket wechseln.       </div>     </div>   ); }  /*DUPLIKAT  // ─── ABO & PAKETE (Paket-Auswahl, nur Admin) ────────────────────────────────── function AboPakete({ abo }) {   const [pakete, setPakete] = useState([]);   const [laedt, setLaedt] = useState(true);    useEffect(() => {     let aktiv = true;     supabase.from("pakete").select("*").eq("aktiv", true).order("sortierung", { ascending:true })       .then(({ data }) => { if (aktiv) { setPakete(data || []); setLaedt(false); } });     return () => { aktiv = false; };   }, []);    const fmtPreis = n => (Number(n)||0).toLocaleString("de-DE") + " €";   const aktuellesPaket = abo?.paket || null;    return (     <div>       <h2 style={{ margin:"0 0 4px", fontSize:20, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><Euro size={20}/> Abo & Pakete</h2>       <div style={{ fontSize:13, color:TH.textMut, marginBottom:6 }}>         Wähle das Paket, das zu eurer Firmengröße passt. Alle Preise netto pro Monat.       </div>        {abo?.status === "trial" && (         <div style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#92400e" }}>           ⏳ Ihr seid aktuell in der <strong>Testphase</strong>{abo.tage_uebrig != null ? ` (noch ${abo.tage_uebrig} Tage)` : ""}. Nach Ablauf wählt ihr hier euer Paket.         </div>       )}        {laedt ? (         <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:TH.textMut }}>Pakete werden geladen…</div>       ) : (         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))", gap:14 }}>           {pakete.map(p => {             const aktiv = aktuellesPaket === p.id;             return (               <div key={p.id} style={{ border: aktiv ? "2px solid #ea580c" : "1.5px solid "+TH.border, borderRadius:14, overflow:"hidden", background:TH.panel, boxShadow:"0 1px 4px #0000000d", display:"flex", flexDirection:"column" }}>                 <div style={{ background: aktiv ? "linear-gradient(135deg,#ea580c 0%,#f97316 100%)" : TH.panel2, color: aktiv ? "#fff" : TH.text, padding:"12px 16px", fontWeight:800, fontSize:16 }}>                   {p.name}                   {aktiv && <span style={{ display:"block", fontSize:11, fontWeight:600, opacity:0.9, marginTop:2 }}>✓ Euer aktuelles Paket</span>}                 </div>                 <div style={{ padding:"16px", display:"flex", flexDirection:"column", gap:10, flex:1 }}>                   <div>                     <span style={{ fontSize:28, fontWeight:800, color:TH.text }}>{fmtPreis(p.preis_monat_netto)}</span>                     <span style={{ fontSize:13, color:TH.textMut }}> / Monat</span>                   </div>                   <div style={{ fontSize:13, color:TH.textMut }}>bis zu <strong style={{ color:TH.text }}>{p.max_mitarbeiter}</strong> Mitarbeiter</div>                   <button                     onClick={() => alert("Die Online-Bezahlung wird gerade eingerichtet. Für einen Paket-Wechsel meldet euch bitte direkt bei uns.")}                     style={{ marginTop:"auto", padding:"10px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:700, fontSize:13,                       background: aktiv ? TH.panel2 : "linear-gradient(135deg,#ea580c 0%,#f97316 100%)",                       color: aktiv ? TH.textMut : "#fff" }}                     disabled={aktiv}                   >                     {aktiv ? "Aktiv" : "Dieses Paket wählen"}                   </button>                 </div>               </div>             );           })}           {!pakete.length && <div style={{ gridColumn:"1/-1", background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:TH.textMut }}>Noch keine Pakete hinterlegt.</div>}         </div>       )}        <div style={{ marginTop:18, fontSize:11.5, color:TH.textMut }}>         Mitarbeitergrenzen sind als Orientierung gedacht – ihr werdet nicht hart gesperrt. Bei Bedarf einfach ins nächstgrößere Paket wechseln.       </div>     </div>   ); }  */ 
-function darfTab(rolle, tabId) {
-  if (rolle==="Admin") return true;
-  const rechte = {
+const ADMIN_BEREICHE = [
+  { id:"dashboard", label:"Dashboard" },
+  { id:"kosten", label:"Kosten" },
+  { id:"assistent", label:"Assistent" },
+  { id:"karte", label:"Karte" },
+  { id:"baustellen", label:"Baustellen" },
+  { id:"verlauf", label:"Verlauf" },
+  { id:"heute", label:"Heute" },
+  { id:"woche", label:"Woche" },
+  { id:"monat", label:"Monat" },
+  { id:"stundenzettel", label:"Stundenzettel" },
+  { id:"berichte", label:"Tagesberichte" },
+  { id:"messprotokolle", label:"Messprotokolle" },
+  { id:"chat", label:"Chat" },
+  { id:"antraege", label:"Anträge" },
+  { id:"projekte", label:"Projekte" },
+  { id:"mitarbeiter", label:"Mitarbeiter" },
+  { id:"fahrzeuge", label:"Fahrzeuge" },
+  { id:"unterkuenfte", label:"Unterkünfte" },
+  { id:"werkzeuge", label:"Werkzeuge" },
+  { id:"warnungen", label:"Warnungen" },
+  { id:"verwaltung", label:"Verwaltung (Admin-Bereich)" },
+  { id:"abo", label:"Abo & Pakete" },
+];
+const ADMIN_BEREICH_IDS = ADMIN_BEREICHE.map(b=>b.id);
+
+function darfTab(rolle, tabId, rechte) {
+  if (rolle==="Admin") {
+    if (Array.isArray(rechte)) return tabId==="postfach" || rechte.includes(tabId);
+    return true;
+  }
+  const standard = {
     "Projektleiter": ["karte","verlauf","baustellen","postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
     "Bauleiter":   ["karte","verlauf","baustellen","postfach","dashboard","kosten","assistent","chat","heute","woche","monat","stundenzettel","berichte","messprotokolle","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge","warnungen"],
     "Vorarbeiter": ["karte","verlauf","baustellen","postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Monteur":     ["baustellen","postfach","heute","woche","monat","stundenzettel","berichte","messprotokolle","chat","antraege","projekte","mitarbeiter","fahrzeuge","unterkuenfte","werkzeuge"],
     "Unbekannt":   ["heute","woche","monat"],
   };
-  return (rechte[rolle]||rechte["Unbekannt"]).includes(tabId);
+  return (standard[rolle]||standard["Unbekannt"]).includes(tabId);
 }
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
@@ -3903,6 +3974,8 @@ export default function EinsatzplanungInner({
   }, [userEmail]);
   
   const { rolle: meineRolle, ma: meinMA } = useMemo(()=>ermittleRolle(userEmail, mitarbeiter, dbRolle), [userEmail, mitarbeiter, dbRolle]);
+  const meineRechte = (meineRolle==="Admin" && meinMA && Array.isArray(meinMA.rechte)) ? meinMA.rechte : null;
+  const darf = (tabId) => darfTab(meineRolle, tabId, meineRechte);
 
   // ── Rang-System: Jeder sieht nur das Relevante ──
   // Admin: alles · Projektleiter/Bauleiter: zugeteilte Projekte (+Vertretung) · Vorarbeiter/Monteur: eigenes Team
@@ -4151,7 +4224,7 @@ export default function EinsatzplanungInner({
   // Verwaltung nur für Admin
   const tabs = alleTabs.filter(t => {
     if (t.id==="verwaltung") return istAdmin;     if (t.id==="abo") return istAdmin;
-    return darfTab(meineRolle, t.id);
+    return darf(t.id);
   });
   // Falls aktueller Tab nicht erlaubt: zurück auf "heute"
   useEffect(()=>{ if(!tabs.some(t=>t.id===tab)) setTab("heute"); }, [meineRolle]); // eslint-disable-line
@@ -4203,7 +4276,7 @@ export default function EinsatzplanungInner({
             </div>
             {!mitteilungen.length && <div style={{ padding:"22px 14px", fontSize:12.5, color:TH.textMut, textAlign:"center" }}>Alles erledigt – keine Mitteilungen. 🦊</div>}
             {mitteilungen.map(m=>(
-              <div key={m.id} onClick={()=>{ if(darfTab(meineRolle,m.tab)){ setTab(m.tab); } setMittOffen(false); }}
+              <div key={m.id} onClick={()=>{ if(darf(m.tab)){ setTab(m.tab); } setMittOffen(false); }}
                    style={{ padding:"10px 14px", borderBottom:"1px solid "+TH.border, fontSize:12.5, color:TH.text, cursor:"pointer", display:"flex", gap:9, alignItems:"flex-start" }}>
                 <span style={{ width:8, height:8, borderRadius:99, background:m.farbe, marginTop:4, flexShrink:0, boxShadow:m.ts>gelesenAb?`0 0 0 3px ${m.farbe}33`:"none" }} />
                 <span style={{ flex:1, fontWeight:m.ts>gelesenAb?700:400 }}>{m.text}</span>
@@ -4285,28 +4358,28 @@ export default function EinsatzplanungInner({
             ⚠️ Dein Login ist noch keinem Mitarbeiter zugeordnet. Bitte den Administrator, deine E-Mail (<strong>{userEmail}</strong>) in der Mitarbeiter-Verwaltung einzutragen. Bis dahin siehst du nur die Übersichten.
           </div>
         )}
-        {tab==="dashboard"    && darfTab(meineRolle,"dashboard")    && <Dashboard mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} antraege={vAntraege} warnungen={warnungen} unterkuenfte={vUnterkuenfte} setTab={setTab} T={T} />}
-        {tab==="kosten"       && darfTab(meineRolle,"kosten")       && <KostenControlling projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} T={T} />}
-        {tab==="assistent"    && darfTab(meineRolle,"assistent")    && <SmartAssistent projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} werkzeuge={werkzeuge} berichte={vBerichte} T={T} />}
-        {tab==="verlauf"      && darfTab(meineRolle,"verlauf")      && <Verlauf projekte={vProjekte} mitarbeiter={mitarbeiter} einsaetze={einsaetze} stunden={vStunden} berichte={vBerichte} antraege={vAntraege} warnungen={warnungen} setTab={setTab} />}
-        {tab==="karte"        && darfTab(meineRolle,"karte")        && <KartenStart projekte={vProjekte} einsaetze={einsaetze} setTab={setTab} />}
-        {tab==="baustellen"   && darfTab(meineRolle,"baustellen")   && <Baustellen projekte={vProjekte} mitarbeiter={mitarbeiter} einsaetze={einsaetze} stunden={vStunden} berichte={vBerichte} unterkuenfte={vUnterkuenfte} fahrzeuge={fahrzeuge} kannPlanen={kannPlanen} setTab={setTab} />}
-        {tab==="heute"        && darfTab(meineRolle,"heute")        && (kannPlanen || !meinMA ? <Tagesansicht   mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} /> : <MeinTag meinMA={meinMA} mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setTab={setTab} />)}
-        {tab==="woche"        && darfTab(meineRolle,"woche")        && <Timeline key="woche" modus="woche" mitarbeiter={vMitarbeiter} alleMA={mitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setEinsaetze={setEinsaetze} kannPlanen={kannPlanen} meinMaId={meinMA?.id} />}
-        {tab==="monat"        && darfTab(meineRolle,"monat")        && <Timeline key="monat" modus="monat" mitarbeiter={vMitarbeiter} alleMA={mitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setEinsaetze={setEinsaetze} kannPlanen={kannPlanen} meinMaId={meinMA?.id} />}
-        {tab==="stundenzettel"&& darfTab(meineRolle,"stundenzettel")&& <Stundenzettel  mitarbeiter={vMitarbeiter} projekte={vProjekte} stunden={vStunden} setStunden={setStunden} rolle={meineRolle} meinMA={meinMA} sonder={vSonder} neuLaden={neuLaden} />}
+        {tab==="dashboard"    && darf("dashboard")    && <Dashboard mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} antraege={vAntraege} warnungen={warnungen} unterkuenfte={vUnterkuenfte} setTab={setTab} T={T} />}
+        {tab==="kosten"       && darf("kosten")       && <KostenControlling projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} T={T} />}
+        {tab==="assistent"    && darf("assistent")    && <SmartAssistent projekte={vProjekte} stunden={vStunden} mitarbeiter={mitarbeiter} unterkuenfte={vUnterkuenfte} werkzeuge={werkzeuge} berichte={vBerichte} T={T} />}
+        {tab==="verlauf"      && darf("verlauf")      && <Verlauf projekte={vProjekte} mitarbeiter={mitarbeiter} einsaetze={einsaetze} stunden={vStunden} berichte={vBerichte} antraege={vAntraege} warnungen={warnungen} setTab={setTab} />}
+        {tab==="karte"        && darf("karte")        && <KartenStart projekte={vProjekte} einsaetze={einsaetze} setTab={setTab} />}
+        {tab==="baustellen"   && darf("baustellen")   && <Baustellen projekte={vProjekte} mitarbeiter={mitarbeiter} einsaetze={einsaetze} stunden={vStunden} berichte={vBerichte} unterkuenfte={vUnterkuenfte} fahrzeuge={fahrzeuge} kannPlanen={kannPlanen} setTab={setTab} />}
+        {tab==="heute"        && darf("heute")        && (kannPlanen || !meinMA ? <Tagesansicht   mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} /> : <MeinTag meinMA={meinMA} mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setTab={setTab} />)}
+        {tab==="woche"        && darf("woche")        && <Timeline key="woche" modus="woche" mitarbeiter={vMitarbeiter} alleMA={mitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setEinsaetze={setEinsaetze} kannPlanen={kannPlanen} meinMaId={meinMA?.id} />}
+        {tab==="monat"        && darf("monat")        && <Timeline key="monat" modus="monat" mitarbeiter={vMitarbeiter} alleMA={mitarbeiter} projekte={vProjekte} sonder={vSonder} einsaetze={einsaetze} setEinsaetze={setEinsaetze} kannPlanen={kannPlanen} meinMaId={meinMA?.id} />}
+        {tab==="stundenzettel"&& darf("stundenzettel")&& <Stundenzettel  mitarbeiter={vMitarbeiter} projekte={vProjekte} stunden={vStunden} setStunden={setStunden} rolle={meineRolle} meinMA={meinMA} sonder={vSonder} neuLaden={neuLaden} />}
         {tab==="postfach" && <MeinPostfach meinMA={meinMA} meineRolle={meineRolle} userEmail={userEmail} stunden={stunden} projekte={projekte} />}
-        {tab==="chat" && darfTab(meineRolle,"chat") && <TeamChat meinMA={meinMA} meineRolle={meineRolle} userEmail={userEmail} />}
-        {tab==="berichte"     && darfTab(meineRolle,"berichte")     && <Tagesberichte projekte={vProjekte} mitarbeiter={vMitarbeiter} berichte={vBerichte} setBerichte={setBerichte} rolle={meineRolle} meinMA={meinMA} userEmail={userEmail} />}
-        {tab==="messprotokolle" && darfTab(meineRolle,"messprotokolle") && <Messprotokolle projekte={vProjekte} meinMA={meinMA} userEmail={userEmail} messprotokolle={messprotokolle} setMessprotokolle={setMessprotokolle} />}
-        {tab==="antraege"     && darfTab(meineRolle,"antraege")     && <Antraege mitarbeiter={vMitarbeiter} antraege={vAntraege} setAntraege={setAntraege} setSonder={setSonder} />}
-        {tab==="projekte"     && darfTab(meineRolle,"projekte")     && <ProjektUebersicht projekte={vProjekte} fahrzeuge={fahrzeuge} mitarbeiter={mitarbeiter} />}
-        {tab==="mitarbeiter"  && darfTab(meineRolle,"mitarbeiter")  && <MitarbeiterUebersicht mitarbeiter={vMitarbeiter} projekte={vProjekte} />}
-        {tab==="fahrzeuge"    && darfTab(meineRolle,"fahrzeuge")    && <FahrzeugUebersicht fahrzeuge={fahrzeuge} projekte={projekte} />}
-        {tab==="unterkuenfte" && darfTab(meineRolle,"unterkuenfte") && <UnterkunftUebersicht unterkuenfte={vUnterkuenfte} projekte={vProjekte} />}
-        {tab==="werkzeuge"    && darfTab(meineRolle,"werkzeuge")    && <WerkzeugUebersicht werkzeuge={werkzeuge} mitarbeiter={mitarbeiter} />}
+        {tab==="chat" && darf("chat") && <TeamChat meinMA={meinMA} meineRolle={meineRolle} userEmail={userEmail} />}
+        {tab==="berichte"     && darf("berichte")     && <Tagesberichte projekte={vProjekte} mitarbeiter={vMitarbeiter} berichte={vBerichte} setBerichte={setBerichte} rolle={meineRolle} meinMA={meinMA} userEmail={userEmail} />}
+        {tab==="messprotokolle" && darf("messprotokolle") && <Messprotokolle projekte={vProjekte} meinMA={meinMA} userEmail={userEmail} messprotokolle={messprotokolle} setMessprotokolle={setMessprotokolle} />}
+        {tab==="antraege"     && darf("antraege")     && <Antraege mitarbeiter={vMitarbeiter} antraege={vAntraege} setAntraege={setAntraege} setSonder={setSonder} />}
+        {tab==="projekte"     && darf("projekte")     && <ProjektUebersicht projekte={vProjekte} fahrzeuge={fahrzeuge} mitarbeiter={mitarbeiter} />}
+        {tab==="mitarbeiter"  && darf("mitarbeiter")  && <MitarbeiterUebersicht mitarbeiter={vMitarbeiter} projekte={vProjekte} />}
+        {tab==="fahrzeuge"    && darf("fahrzeuge")    && <FahrzeugUebersicht fahrzeuge={fahrzeuge} projekte={projekte} />}
+        {tab==="unterkuenfte" && darf("unterkuenfte") && <UnterkunftUebersicht unterkuenfte={vUnterkuenfte} projekte={vProjekte} />}
+        {tab==="werkzeuge"    && darf("werkzeuge")    && <WerkzeugUebersicht werkzeuge={werkzeuge} mitarbeiter={mitarbeiter} />}
         {tab==="verwaltung"   && istAdmin                          && <VerwaltungMemo projekte={projekte} setProjekte={setProjekte} mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} fahrzeuge={fahrzeuge} setFahrzeuge={setFahrzeuge} unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte} werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge} sonder={sonder} antraege={antraege} stunden={stunden} berichte={berichte} teams={teams} setTeams={setTeams} onReset={onReset} dunkel={dunkel} />}
-        {tab==="warnungen"    && darfTab(meineRolle,"warnungen")    && <WarnPanel warnungen={warnungen} />}         {tab==="abo"          && istAdmin                          && <AboPakete abo={abo} />}
+        {tab==="warnungen"    && darf("warnungen")    && <WarnPanel warnungen={warnungen} />}         {tab==="abo"          && istAdmin                          && <AboPakete abo={abo} />}
       </div>
     </div>
   );
