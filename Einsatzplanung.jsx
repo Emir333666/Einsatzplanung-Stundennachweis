@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef, memo, useCallback } from "react";
 import { supabase } from "./supabaseClient.js";
-import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Plus, Bell, MessageCircle, Send, Inbox, Thermometer, CircleSlash, Ruler, Mic, ClipboardList, Camera } from "lucide-react";
+import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Plus, Bell, MessageCircle, Send, Inbox, Thermometer, CircleSlash, Ruler, Mic, ClipboardList, Camera, Search } from "lucide-react";
 
 // ─── Farbschema Hell/Dunkel (wird vom Schalter im Header umgestellt) ──────────
 const THEME_HELL   = { panel:"#ffffff", panel2:"#f9fafb", text:"#1f2937", textMut:"#6b7280", border:"#e5e7eb", input:"#ffffff" };
@@ -2896,6 +2896,63 @@ function DiktierKnopf({ wert, onText }) {
   );
 }
 
+function GlobaleSuche({ mitarbeiter, projekte, berichte, aufgaben, onClose, onGehe }) {
+  const [q, setQ] = useState("");
+  const inputRef = useRef(null);
+  useEffect(() => { if (inputRef.current) inputRef.current.focus(); }, []);
+
+  const begriff = q.trim().toLowerCase();
+  const treffer = useMemo(() => {
+    if (begriff.length < 2) return [];
+    const t = (s) => String(s||"").toLowerCase().includes(begriff);
+    const out = [];
+    (mitarbeiter||[]).forEach(m => {
+      if (t(m.name) || t(m.rolle) || t(m.team) || t(m.tel) || t(m.email))
+        out.push({ typ:"Mitarbeiter", tab:"mitarbeiter", titel:m.name, zusatz:[m.rolle, m.team].filter(Boolean).join(" · ") });
+    });
+    (projekte||[]).forEach(p => {
+      if (t(p.name) || t(p.nummer) || t(p.kunde) || t(p.auftraggeber) || t(p.ort) || t(p.ansprechpartner))
+        out.push({ typ:"Baustelle", tab:"baustellen", titel:p.name, zusatz:[p.nummer, p.kunde, p.ort].filter(Boolean).join(" · ") });
+    });
+    (aufgaben||[]).forEach(a => {
+      if (t(a.titel) || t(a.beschreibung))
+        out.push({ typ:(a.typ==="mangel"?"Mangel":"Aufgabe"), tab:"aufgaben", titel:a.titel, zusatz:a.status||"" });
+    });
+    (berichte||[]).forEach(b => {
+      if (t(b.fortschritt) || t(b.probleme) || t(b.material) || t(b.verfasser) || t(b.anwesende))
+        out.push({ typ:"Tagesbericht", tab:"berichte", titel:(b.datum||"Bericht")+(b.verfasser?(" – "+b.verfasser):""), zusatz:(b.fortschritt||"").slice(0,60) });
+    });
+    return out.slice(0, 40);
+  }, [begriff, mitarbeiter, projekte, berichte, aufgaben]);
+
+  const typFarbe = { Mitarbeiter:"#2563eb", Baustelle:"#ea580c", Aufgabe:"#2563eb", Mangel:"#dc2626", Tagesbericht:"#16a34a" };
+
+  return (
+    <div onClick={onClose} style={{ position:"fixed", inset:0, zIndex:90, background:"#0008", display:"flex", justifyContent:"center", alignItems:"flex-start", paddingTop:70 }}>
+      <div onClick={ev=>ev.stopPropagation()} style={{ width:560, maxWidth:"calc(100vw - 24px)", maxHeight:"75vh", display:"flex", flexDirection:"column", background:TH.panel, border:"1px solid "+TH.border, borderRadius:14, boxShadow:"0 20px 60px #00000044", overflow:"hidden" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 16px", borderBottom:"1px solid "+TH.border }}>
+          <Search size={18} color={TH.textMut}/>
+          <input ref={inputRef} value={q} onChange={ev=>setQ(ev.target.value)} placeholder={"Suche nach Mitarbeiter, Baustelle, Aufgabe, Bericht…"} style={{ flex:1, border:"none", outline:"none", background:"transparent", fontSize:15, color:TH.text }}/>
+          <button onClick={onClose} style={{ background:"none", border:"none", color:TH.textMut, cursor:"pointer", fontSize:18, lineHeight:1 }}><X size={18}/></button>
+        </div>
+        <div style={{ overflowY:"auto", padding:"6px 0" }}>
+          {begriff.length<2 && <div style={{ padding:"20px 16px", color:TH.textMut, fontSize:13 }}>{"Mindestens 2 Zeichen eingeben…"}</div>}
+          {begriff.length>=2 && treffer.length===0 && <div style={{ padding:"20px 16px", color:TH.textMut, fontSize:13 }}>{"Nichts gefunden für „"}{q}{"“."}</div>}
+          {treffer.map((tr,i)=>(
+            <div key={i} onClick={()=>{ onGehe(tr.tab); onClose(); }} style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 16px", cursor:"pointer", borderBottom:"1px solid "+TH.border }} onMouseEnter={ev=>ev.currentTarget.style.background=TH.panel2} onMouseLeave={ev=>ev.currentTarget.style.background="transparent"}>
+              <span style={{ fontSize:10, fontWeight:800, color:"#fff", background:typFarbe[tr.typ]||"#64748b", borderRadius:5, padding:"2px 7px", whiteSpace:"nowrap" }}>{tr.typ}</span>
+              <div style={{ minWidth:0, flex:1 }}>
+                <div style={{ fontSize:14, fontWeight:600, color:TH.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{tr.titel}</div>
+                {tr.zusatz && <div style={{ fontSize:12, color:TH.textMut, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{tr.zusatz}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AufgabenBereich({ aufgaben, setAufgaben, projekte, mitarbeiter, rolle, meinMA, userEmail }) {
   const istLeitung = rolle==="Admin" || rolle==="Projektleiter" || rolle==="Bauleiter" || rolle==="Vorarbeiter";
   const leer = { typ:"aufgabe", titel:"", beschreibung:"", projektId:"", zustaendigMa:"", prioritaet:"mittel", faellig:"", status:"offen", fotos:[] };
@@ -4405,6 +4462,7 @@ export default function EinsatzplanungInner({
 
   const [tab, setTab] = useState(kannPlanen ? "karte" : "heute");
   const [menueOffen, setMenueOffen] = useState(false);
+  const [suchOffen, setSuchOffen] = useState(false);
   useEffect(()=>{ window.scrollTo({ top:0, behavior:"smooth" }); }, [tab]);
   const [breit, setBreit] = useState(()=>typeof window!=="undefined" && window.innerWidth>=1100);
 
@@ -4634,7 +4692,8 @@ export default function EinsatzplanungInner({
         <div style={{ marginLeft:"auto", display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
           {userEmail && <span className="hide-klein" style={{ fontSize:11, color:"#fff", opacity:0.85, marginLeft:8 }}>{userEmail}</span>}
           <span style={{ background:istAdmin?"#16a34a":"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"2px 9px", fontSize:10, color:"#fff", fontWeight:700, marginLeft:2 }}>{meineRolle}</span>
-          <button onClick={mittOeffnen} title="Mitteilungen" style={{ background:"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"3px 9px", color:"#fff", cursor:"pointer", marginLeft:4, position:"relative", display:"inline-flex", alignItems:"center" }}>
+          <button onClick={()=>setSuchOffen(true)} title="Suche" style={{ background:"#ffffff33", border:"1px solid #ffffff55", borderRadius:6, padding:"3px 9px", color:"#fff", cursor:"pointer", marginLeft:4, display:"inline-flex", alignItems:"center" }}><Search size={15}/></button>
+              <button onClick={mittOeffnen} title="Mitteilungen" style={{ background:"#fff3", border:"1px solid #fff5", borderRadius:6, padding:"3px 9px", color:"#fff", cursor:"pointer", marginLeft:4, position:"relative", display:"inline-flex", alignItems:"center" }}>
             <Bell size={15} />
             {ungelesen>0 && <span style={{ position:"absolute", top:-6, right:-6, background:"#dc2626", color:"#fff", borderRadius:99, fontSize:9.5, fontWeight:800, minWidth:16, height:16, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 4px", boxShadow:"0 1px 4px #0006" }}>{ungelesen>9?"9+":ungelesen}</span>}
           </button>
@@ -4658,7 +4717,8 @@ export default function EinsatzplanungInner({
         </div>
       )}
 
-      {mittOffen && (
+      {suchOffen && <GlobaleSuche mitarbeiter={mitarbeiter} projekte={projekte} berichte={berichte} aufgaben={aufgaben} onClose={()=>setSuchOffen(false)} onGehe={(ziel)=>{ setTab(ziel); setSuchOffen(false); }} />}
+        {mittOffen && (
         <>
           <div onClick={()=>setMittOffen(false)} style={{ position:"fixed", inset:0, zIndex:80 }} />
           <div className="mitt-panel" style={{ position:"fixed", top:60, right:10, width:340, maxWidth:"calc(100vw - 20px)", maxHeight:"70vh", overflowY:"auto", background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 12px 40px #00000033", zIndex:81 }}>
