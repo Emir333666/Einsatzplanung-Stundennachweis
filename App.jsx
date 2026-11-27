@@ -4,7 +4,7 @@ import EinsatzplanungInner, {
   initProjekte, initMitarbeiter, initFahrzeuge, initSonder
 } from "./Einsatzplanung.jsx";
 
-// ─── Umwandlung DB <-> App (snake_case <-> camelCase bei Datumsfeldern) ───────
+// âââ Umwandlung DB <-> App (snake_case <-> camelCase bei Datumsfeldern) âââââââ
 const toAppProjekt = r => ({ ...r, dateStart: r.date_start, dateEnd: r.date_end, apTel:r.ap_tel, apEmail:r.ap_email, auftragssumme:r.auftragssumme, planStunden:r.plan_stunden, planKosten:r.plan_kosten, projektleiterId:r.projektleiter_id, bauleiterId:r.bauleiter_id, vertretungId:r.vertretung_id });
 const toDbProjekt  = p => ({
   id:p.id, name:p.name, kunde:p.kunde, ort:p.ort,
@@ -47,6 +47,14 @@ const toDbBericht  = b => ({
   leistung: b.leistung!=null && b.leistung!=="" ? Number(b.leistung) : null,
   fotos: b.fotos||[]
 });
+const toAppAufgabe = r => ({ ...r, projektId:r.projekt_id, zustaendigMa:r.zustaendig_ma, erledigtAm:r.erledigt_am, erstelltVon:r.erstellt_von, fotos:Array.isArray(r.fotos)?r.fotos:[] });
+const toDbAufgabe = x => ({
+  id:x.id, typ:x.typ||'aufgabe', titel:x.titel||null,
+  beschreibung:x.beschreibung||null, projekt_id:x.projektId||null,
+  zustaendig_ma:(x.zustaendigMa==null||x.zustaendigMa==='')?null:Number(x.zustaendigMa),
+  prioritaet:x.prioritaet||'mittel', faellig:x.faellig||null, status:x.status||'offen',
+  fotos:x.fotos||[], erstellt_von:x.erstelltVon||null, erledigt_am:x.erledigtAm||null
+});
 const toAppEinsatz = r => ({ id:r.id, ma:r.ma, projektId:r.projekt_id, dateStart:r.date_start, dateEnd:r.date_end });
 const toDbEinsatz  = e => ({ id:e.id, ma:e.ma, projekt_id:e.projektId, date_start:e.dateStart, date_end:e.dateEnd });
 const toAppWerkzeug = r => ({ ...r, zugeordnetMa:r.zugeordnet_ma, pruefDatum:r.pruef_datum });
@@ -71,7 +79,7 @@ const toDbStunde  = s => ({
 });
 
 
-// ─── Login- / Registrierungs-Bildschirm ──────────────────────────────────────
+// âââ Login- / Registrierungs-Bildschirm ââââââââââââââââââââââââââââââââââââââ
 function Login({ onLogin }) {
   const [modus, setModus] = useState("login");   // "login" | "register" | "beitreten"
   const [email, setEmail] = useState("");
@@ -91,7 +99,7 @@ function Login({ onLogin }) {
     setFehler(""); setHinweis(""); setLaden(true);
 
     if (modus === "login") {
-      // ── Anmelden (unverändert) ──
+      // ââ Anmelden (unverÃ¤ndert) ââ
       const { error } = await supabase.auth.signInWithPassword({ email, password: pw });
       setLaden(false);
       if (error) setFehler("Anmeldung fehlgeschlagen. E-Mail oder Passwort falsch.");
@@ -100,13 +108,13 @@ function Login({ onLogin }) {
     }
 
     if (modus === "reset") {
-      // ── Passwort vergessen: Reset-E-Mail anfordern ──
+      // ââ Passwort vergessen: Reset-E-Mail anfordern ââ
       if (!email.trim()) { setLaden(false); setFehler("Bitte deine E-Mail-Adresse eingeben."); return; }
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: window.location.origin
       });
       setLaden(false);
-      setHinweis("Wenn ein Konto mit dieser E-Mail existiert, haben wir dir einen Link zum Zurücksetzen geschickt. Schau auch im Spam-Ordner nach.");
+      setHinweis("Wenn ein Konto mit dieser E-Mail existiert, haben wir dir einen Link zum ZurÃ¼cksetzen geschickt. Schau auch im Spam-Ordner nach.");
       setModus("login"); setPw("");
       return;
     }
@@ -115,19 +123,19 @@ function Login({ onLogin }) {
 
     let metaDaten;
     if (istReg) {
-      // ── Neue Firma + erster Admin ──
+      // ââ Neue Firma + erster Admin ââ
       const name = firmaName.trim();
       if (!name) { setLaden(false); setFehler("Bitte einen Firmennamen eingeben."); return; }
       metaDaten = { firma_name: name };
     } else {
-      // ── Mitarbeiter tritt mit Firmencode bei ──
+      // ââ Mitarbeiter tritt mit Firmencode bei ââ
       const code = firmenCode.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
       if (code.length !== 8) { setLaden(false); setFehler("Bitte den 8-stelligen Firmencode eingeben."); return; }
       if (maName.trim().length < 2) { setLaden(false); setFehler("Bitte deinen Namen eingeben."); return; }
       const { data: gueltig, error: codeFehler } = await supabase.rpc("firmencode_gueltig", { p_code: code });
       if (codeFehler || !gueltig) {
         setLaden(false);
-        setFehler("Dieser Firmencode ist ungültig oder die Firma ist nicht aktiv.");
+        setFehler("Dieser Firmencode ist ungÃ¼ltig oder die Firma ist nicht aktiv.");
         return;
       }
       metaDaten = { firmencode: code, name: maName.trim() };
@@ -142,16 +150,16 @@ function Login({ onLogin }) {
 
     if (error) {
       setFehler(istBeitritt
-        ? "Registrierung nicht möglich. Die E-Mail ist evtl. schon vergeben oder das Mitarbeiterlimit der Firma ist erreicht."
+        ? "Registrierung nicht mÃ¶glich. Die E-Mail ist evtl. schon vergeben oder das Mitarbeiterlimit der Firma ist erreicht."
         : (error.message || "Registrierung fehlgeschlagen."));
       return;
     }
 
     if (data.session) {
-      onLogin();   // E-Mail-Bestätigung aus -> direkt drin
+      onLogin();   // E-Mail-BestÃ¤tigung aus -> direkt drin
     } else {
-      // E-Mail-Bestätigung an -> erst bestätigen, dann anmelden
-      setHinweis("Fast fertig! Wir haben dir eine Bestätigungs-E-Mail geschickt. Bitte bestätige deine Adresse und melde dich anschließend an.");
+      // E-Mail-BestÃ¤tigung an -> erst bestÃ¤tigen, dann anmelden
+      setHinweis("Fast fertig! Wir haben dir eine BestÃ¤tigungs-E-Mail geschickt. Bitte bestÃ¤tige deine Adresse und melde dich anschlieÃend an.");
       setModus("login"); setPw(""); setFirmaName(""); setFirmenCode(""); setMaName("");
     }
   }
@@ -206,7 +214,7 @@ function Login({ onLogin }) {
           <div style={{ marginBottom:18 }}>
             <div style={labelStyle}>Passwort</div>
             <input type="password" value={pw} onChange={e=>setPw(e.target.value)} required
-              style={inputStyle} placeholder="••••••••" />
+              style={inputStyle} placeholder="â¢â¢â¢â¢â¢â¢â¢â¢" />
             {modus === "login" && (
               <div style={{ textAlign:"right", marginTop:6 }}>
                 <span onClick={()=>wechsel("reset")} style={{ ...linkStyle, fontSize:12, fontWeight:600 }}>Passwort vergessen?</span>
@@ -226,13 +234,13 @@ function Login({ onLogin }) {
 
         <button type="submit" disabled={laden} style={{ width:"100%", padding:"12px", borderRadius:9, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", fontWeight:700, fontSize:15, cursor:"pointer", opacity:laden?0.6:1 }}>
           {laden
-            ? (modus === "login" ? "Anmelden…" : modus === "reset" ? "Senden…" : "Registrieren…")
-            : (istReg ? "Firma registrieren" : istBeitritt ? "Mit Firmencode beitreten" : modus === "reset" ? "Link zum Zurücksetzen senden" : "Anmelden")}
+            ? (modus === "login" ? "Anmeldenâ¦" : modus === "reset" ? "Sendenâ¦" : "Registrierenâ¦")
+            : (istReg ? "Firma registrieren" : istBeitritt ? "Mit Firmencode beitreten" : modus === "reset" ? "Link zum ZurÃ¼cksetzen senden" : "Anmelden")}
         </button>
 
         <div style={{ textAlign:"center", marginTop:16, fontSize:13, color:"#6b7280", lineHeight:1.9 }}>
           {modus === "reset" ? (
-            <div>Doch wieder eingefallen? <span onClick={()=>wechsel("login")} style={linkStyle}>Zurück zur Anmeldung</span></div>
+            <div>Doch wieder eingefallen? <span onClick={()=>wechsel("login")} style={linkStyle}>ZurÃ¼ck zur Anmeldung</span></div>
           ) : (<>
             {modus !== "login" && (
               <div>Schon ein Konto? <span onClick={()=>wechsel("login")} style={linkStyle}>Anmelden</span></div>
@@ -250,7 +258,7 @@ function Login({ onLogin }) {
   );
 }
 
-// ─── Neues Passwort setzen (nach Klick auf den Reset-Link aus der E-Mail) ─────
+// âââ Neues Passwort setzen (nach Klick auf den Reset-Link aus der E-Mail) âââââ
 function PasswortNeu({ onFertig }) {
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
@@ -262,11 +270,11 @@ function PasswortNeu({ onFertig }) {
     e.preventDefault();
     setFehler("");
     if (pw.length < 6) { setFehler("Das Passwort muss mindestens 6 Zeichen haben."); return; }
-    if (pw !== pw2) { setFehler("Die beiden Passwörter stimmen nicht überein."); return; }
+    if (pw !== pw2) { setFehler("Die beiden PasswÃ¶rter stimmen nicht Ã¼berein."); return; }
     setLaden(true);
     const { error } = await supabase.auth.updateUser({ password: pw });
     setLaden(false);
-    if (error) { setFehler("Das hat nicht geklappt. Bitte fordere den Link neu an – er ist evtl. abgelaufen."); return; }
+    if (error) { setFehler("Das hat nicht geklappt. Bitte fordere den Link neu an â er ist evtl. abgelaufen."); return; }
     setOk(true);
     setTimeout(() => { onFertig && onFertig(); }, 2200);
   }
@@ -283,21 +291,21 @@ function PasswortNeu({ onFertig }) {
         </div>
         {ok ? (
           <div style={{ background:"#dcfce7", color:"#166534", borderRadius:10, padding:"14px", fontSize:14, textAlign:"center", lineHeight:1.5 }}>
-            ✓ Passwort geändert!<br/>Du wirst gleich weitergeleitet…
+            â Passwort geÃ¤ndert!<br/>Du wirst gleich weitergeleitetâ¦
           </div>
         ) : (<>
-          <div style={{ fontSize:12.5, color:"#6b7280", marginBottom:16, lineHeight:1.5 }}>Vergib jetzt ein neues Passwort für dein Baufox-Konto.</div>
+          <div style={{ fontSize:12.5, color:"#6b7280", marginBottom:16, lineHeight:1.5 }}>Vergib jetzt ein neues Passwort fÃ¼r dein Baufox-Konto.</div>
           <div style={{ marginBottom:14 }}>
             <div style={labelStyle}>Neues Passwort</div>
-            <input type="password" value={pw} onChange={e=>setPw(e.target.value)} required style={inputStyle} placeholder="••••••••" />
+            <input type="password" value={pw} onChange={e=>setPw(e.target.value)} required style={inputStyle} placeholder="â¢â¢â¢â¢â¢â¢â¢â¢" />
           </div>
           <div style={{ marginBottom:18 }}>
             <div style={labelStyle}>Passwort wiederholen</div>
-            <input type="password" value={pw2} onChange={e=>setPw2(e.target.value)} required style={inputStyle} placeholder="••••••••" />
+            <input type="password" value={pw2} onChange={e=>setPw2(e.target.value)} required style={inputStyle} placeholder="â¢â¢â¢â¢â¢â¢â¢â¢" />
           </div>
           {fehler && <div style={{ background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"9px 12px", fontSize:13, marginBottom:14 }}>{fehler}</div>}
           <button type="submit" disabled={laden} style={{ width:"100%", padding:"12px", borderRadius:9, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", fontWeight:700, fontSize:15, cursor:"pointer", opacity:laden?0.6:1 }}>
-            {laden ? "Speichern…" : "Passwort speichern"}
+            {laden ? "Speichernâ¦" : "Passwort speichern"}
           </button>
         </>)}
       </form>
@@ -305,8 +313,8 @@ function PasswortNeu({ onFertig }) {
   );
 }
 
-// ─── Alle Zeilen einer Tabelle laden (Supabase liefert pro Abfrage max. 1000) ─
-const MA_SPALTEN = "id,name,rolle,team,tel,fuehrerschein,stapler,schweisser,urlaub,created_at,email,firma_id,rechte"; // ohne Stundensatz (kommt über meine_saetze)
+// âââ Alle Zeilen einer Tabelle laden (Supabase liefert pro Abfrage max. 1000) â
+const MA_SPALTEN = "id,name,rolle,team,tel,fuehrerschein,stapler,schweisser,urlaub,created_at,email,firma_id,rechte"; // ohne Stundensatz (kommt Ã¼ber meine_saetze)
 async function holeAlle(tabelle, spalten = "*") {
   const SEITE = 1000;
   let alle = [];
@@ -319,13 +327,13 @@ async function holeAlle(tabelle, spalten = "*") {
   return { data: alle, error: null };
 }
 
-// ─── Offline-Betrieb: Warteschlange + Zwischenspeicher (pro Benutzer) ─────────
+// âââ Offline-Betrieb: Warteschlange + Zwischenspeicher (pro Benutzer) âââââââââ
 const QKEY = uid => "baufox-queue-" + uid;
 const CKEY = uid => "baufox-cache-" + uid;
 function qLesen(uid) { try { return JSON.parse(localStorage.getItem(QKEY(uid)) || "[]"); } catch (e) { return []; } }
 function qSchreiben(uid, q) { try { localStorage.setItem(QKEY(uid), JSON.stringify(q)); return true; } catch (e) { return false; } }
 function cacheLesen(uid) { try { const t = localStorage.getItem(CKEY(uid)); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
-function cacheSchreiben(uid, obj) { try { localStorage.setItem(CKEY(uid), JSON.stringify(obj)); } catch (e) { /* zu groß: ohne Zwischenspeicher weiter */ } }
+function cacheSchreiben(uid, obj) { try { localStorage.setItem(CKEY(uid), JSON.stringify(obj)); } catch (e) { /* zu groÃ: ohne Zwischenspeicher weiter */ } }
 function offlineSession() {
   try {
     if (navigator.onLine !== false) return null;
@@ -352,13 +360,13 @@ async function opAusfuehren(op) {
   return { error: null };
 }
 
-// ─── Haupt-App mit Login-Schutz und Cloud-Daten ──────────────────────────────
+// âââ Haupt-App mit Login-Schutz und Cloud-Daten ââââââââââââââââââââââââââââââ
 export default function App() {
   const [session, setSession] = useState(null);
   const [pruefe, setPruefe] = useState(true);
   const [laden, setLaden] = useState(false);
   const [bereit, setBereit] = useState(false);
-  const [recovery, setRecovery] = useState(false);  // Passwort-Zurücksetzen-Modus (Link aus E-Mail)
+  const [recovery, setRecovery] = useState(false);  // Passwort-ZurÃ¼cksetzen-Modus (Link aus E-Mail)
 
   const [projekte, setProjekteState] = useState([]);
   const [mitarbeiter, setMitarbeiterState] = useState([]);
@@ -368,6 +376,7 @@ export default function App() {
   const [stunden, setStundenState] = useState([]);
   const [unterkuenfte, setUnterkuenfteState] = useState([]);
   const [berichte, setBerichteState] = useState([]);
+  const [aufgaben, setAufgabenState] = useState([]);
   const [werkzeuge, setWerkzeugeState] = useState([]);
   const [teams, setTeamsState] = useState([]);
   const [einsaetze, setEinsaetzeState] = useState([]);
@@ -380,7 +389,7 @@ export default function App() {
   const uid = session?.user?.id || null;
   uidRef.current = uid;
 
-  // Session prüfen (offline: gespeicherte Anmeldung verwenden)
+  // Session prÃ¼fen (offline: gespeicherte Anmeldung verwenden)
   useEffect(() => {
     if (typeof window !== "undefined" && window.location.hash.includes("type=recovery")) setRecovery(true);
     supabase.auth.getSession().then(({ data }) => { setSession(data.session || offlineSession()); setPruefe(false); })
@@ -396,19 +405,19 @@ export default function App() {
   const wendeAn = (c) => {
     setProjekteState(c.projekte||[]); setMitarbeiterState(c.mitarbeiter||[]); setFahrzeugeState(c.fahrzeuge||[]);
     setSonderState(c.sonder||[]); setAntraegeState(c.antraege||[]); setStundenState(c.stunden||[]);
-    setUnterkuenfteState(c.unterkuenfte||[]); setBerichteState(c.berichte||[]); setWerkzeugeState(c.werkzeuge||[]);
+    setUnterkuenfteState(c.unterkuenfte||[]); setBerichteState(c.berichte||[]); setAufgabenState(c.aufgaben||[]); setWerkzeugeState(c.werkzeuge||[]);
     setTeamsState(c.teams||[]); setEinsaetzeState(c.einsaetze||[]);
   };
   const ladeDaten = useCallback(async () => {
     const u = uidRef.current;
-    // Solange noch ungesendete Änderungen vorliegen, nicht überschreiben
+    // Solange noch ungesendete Ãnderungen vorliegen, nicht Ã¼berschreiben
     if (u && qLesen(u).length) {
       if (!bereitRef.current) { const c0 = cacheLesen(u); if (c0) { wendeAn(c0); setBereit(true); } }
       return;
     }
     setLaden(true);
     try {
-    const namen = ["projekte","mitarbeiter","fahrzeuge","sonder","antraege","stunden","unterkuenfte","tagesberichte","werkzeuge","teams","einsaetze"];
+    const namen = ["projekte","mitarbeiter","fahrzeuge","sonder","antraege","stunden","unterkuenfte","tagesberichte","aufgaben","werkzeuge","teams","einsaetze"];
     const [erg, saetze, krankR] = await Promise.all([
       Promise.all(namen.map(n => holeAlle(n, n === "mitarbeiter" ? MA_SPALTEN : "*"))),
       supabase.rpc("meine_saetze"),
@@ -418,24 +427,24 @@ export default function App() {
     if (saetze.error) fehlerhaft.push("stundensaetze");
     if (krankR.error) fehlerhaft.push("krankheitstage");
     if (fehlerhaft.length) {
-      // Nichts überschreiben: lieber alter Stand als leere Listen
+      // Nichts Ã¼berschreiben: lieber alter Stand als leere Listen
       const c = u ? cacheLesen(u) : null;
       if (c) {
         // Zwischenspeicher vom letzten Online-Stand verwenden
         if (!bereitRef.current) wendeAn(c);
-        if (navigator.onLine !== false) setSpeicherFehler("Daten konnten nicht vollständig geladen werden (" + fehlerhaft.join(", ") + "). Es wird der zuletzt gespeicherte Stand angezeigt.");
+        if (navigator.onLine !== false) setSpeicherFehler("Daten konnten nicht vollstÃ¤ndig geladen werden (" + fehlerhaft.join(", ") + "). Es wird der zuletzt gespeicherte Stand angezeigt.");
         setLaden(false); setBereit(true);
         return;
       }
       setSpeicherFehler(navigator.onLine === false
-        ? "Keine Internetverbindung und noch keine gespeicherten Daten auf diesem Gerät. Bitte einmal mit Netz öffnen."
-        : "Daten konnten nicht vollständig geladen werden (" + fehlerhaft.join(", ") + "). Bitte Seite neu laden.");
+        ? "Keine Internetverbindung und noch keine gespeicherten Daten auf diesem GerÃ¤t. Bitte einmal mit Netz Ã¶ffnen."
+        : "Daten konnten nicht vollstÃ¤ndig geladen werden (" + fehlerhaft.join(", ") + "). Bitte Seite neu laden.");
       setLaden(false);
       return;
     }
-    const [p, m, f, s, a, st, u, tb, wz, tm, ei] = erg;
+    const [p, m, f, s, a, st, u, tb, auf, wz, tm, ei] = erg;
     setProjekteState((p.data||[]).map(toAppProjekt));
-    // Stundensätze liefert die Datenbank nur an Admin, Projektleiter und Bauleiter
+    // StundensÃ¤tze liefert die Datenbank nur an Admin, Projektleiter und Bauleiter
     const satzMap = new Map((saetze.data||[]).map(x=>[x.id, x.stundensatz]));
     // Krankheitstage: Leitung sieht alle, alle anderen nur die eigenen
     const krankMap = new Map((krankR.data||[]).map(x=>[x.id, Number(x.krank)||0]));
@@ -446,6 +455,7 @@ export default function App() {
     setStundenState((st.data||[]).map(toAppStunde));
     setUnterkuenfteState((u.data||[]).map(toAppUnterkunft));
     setBerichteState((tb.data||[]).map(toAppBericht));
+    setAufgabenState((auf.data||[]).map(toAppAufgabe));
     setWerkzeugeState((wz.data||[]).map(toAppWerkzeug));
     setTeamsState((tm.data||[]).sort((x,y)=>(x.created_at||"").localeCompare(y.created_at||"")));
     setEinsaetzeState((ei.data||[]).map(toAppEinsatz));
@@ -455,7 +465,7 @@ export default function App() {
       const c = u ? cacheLesen(u) : null;
       if (c && !bereitRef.current) wendeAn(c);
       setLaden(false);
-      if (c) setBereit(true); else setSpeicherFehler("Daten konnten nicht geladen werden. Bitte Verbindung prüfen und Seite neu laden.");
+      if (c) setBereit(true); else setSpeicherFehler("Daten konnten nicht geladen werden. Bitte Verbindung prÃ¼fen und Seite neu laden.");
     }
   }, []);
   ladeRef.current = ladeDaten;
@@ -464,7 +474,7 @@ export default function App() {
 
   useEffect(() => { if (session) ladeDaten(); }, [uid, ladeDaten]); // eslint-disable-line
 
-  // Zwischenspeicher für Offline-Start (nach kurzer Ruhe schreiben)
+  // Zwischenspeicher fÃ¼r Offline-Start (nach kurzer Ruhe schreiben)
   useEffect(() => {
     if (!bereit || !uid) return;
     const t = setTimeout(() => cacheSchreiben(uid, { projekte, mitarbeiter, fahrzeuge, sonder, antraege, stunden, unterkuenfte, berichte, werkzeuge, teams, einsaetze }), 1500);
@@ -485,8 +495,8 @@ export default function App() {
         let res;
         try { res = await opAusfuehren(q[0]); } catch (e) { res = { error: { message: String(e && e.message || e) } }; }
         if (res && res.error) {
-          if (istNetzFehler(res.error) || istAuthFehler(res.error)) break; // später erneut versuchen
-          fehlerText = "Eine Änderung konnte nicht gespeichert werden (" + q[0].t + "): " + (res.error.message || "Unbekannter Fehler");
+          if (istNetzFehler(res.error) || istAuthFehler(res.error)) break; // spÃ¤ter erneut versuchen
+          fehlerText = "Eine Ãnderung konnte nicht gespeichert werden (" + q[0].t + "): " + (res.error.message || "Unbekannter Fehler");
         }
         qSchreiben(u, qLesen(u).slice(1));
         gesendet++;
@@ -508,27 +518,27 @@ export default function App() {
     return () => { window.removeEventListener("online", an); window.removeEventListener("offline", aus); clearInterval(iv); };
   }, [flush]);
 
-  // Beim Start: übrig gebliebene Änderungen senden
+  // Beim Start: Ã¼brig gebliebene Ãnderungen senden
   useEffect(() => { if (uid) { setOffen(qLesen(uid).length); flush(); } }, [uid, flush]);
 
-  // ── Speicher-Funktionen: schreiben in die Cloud, dann neu laden ──
-  // ── Hilfsfunktion: Unterschiede berechnen und gezielt speichern ──
+  // ââ Speicher-Funktionen: schreiben in die Cloud, dann neu laden ââ
+  // ââ Hilfsfunktion: Unterschiede berechnen und gezielt speichern ââ
   async function syncTabelle(tabelle, alt, neu, toDb = (x)=>x, idFeld = "id", einzeln = false) {
     const ops = [];
     const altIds = new Set(alt.map(x=>x[idFeld]).filter(v=>v!=null));
     const neuIds = new Set(neu.map(x=>x[idFeld]).filter(v=>v!=null));
-    // Gelöschte: waren in alt, sind nicht mehr in neu
+    // GelÃ¶schte: waren in alt, sind nicht mehr in neu
     const geloescht = [...altIds].filter(id=>!neuIds.has(id));
     if (geloescht.length) ops.push({ t:tabelle, a:"delete", f:idFeld, ids:geloescht });
-    // Neue (ohne id) einfügen
+    // Neue (ohne id) einfÃ¼gen
     const neueOhneId = neu.filter(x=>x[idFeld]==null).map(x=>{ const d=toDb(x); delete d[idFeld]; return d; });
     if (neueOhneId.length) ops.push({ t:tabelle, a:"insert", d:neueOhneId });
-    // Nur wirklich geänderte oder neue Zeilen schreiben (nicht die ganze Tabelle)
+    // Nur wirklich geÃ¤nderte oder neue Zeilen schreiben (nicht die ganze Tabelle)
     const altJson = new Map(alt.filter(x=>x[idFeld]!=null).map(x=>[x[idFeld], JSON.stringify(toDb(x))]));
     const mitId = neu.filter(x=>x[idFeld]!=null).map(toDb).filter(d => altJson.get(d[idFeld]) !== JSON.stringify(d));
     if (mitId.length) {
       if (einzeln) {
-        // Zeile für Zeile schreiben (nötig, wenn einzelne Spalten nicht lesbar sind, z.B. Stundensatz)
+        // Zeile fÃ¼r Zeile schreiben (nÃ¶tig, wenn einzelne Spalten nicht lesbar sind, z.B. Stundensatz)
         for (const d of mitId) {
           if (altJson.has(d[idFeld])) { const { [idFeld]: _id, ...rest } = d; ops.push({ t:tabelle, a:"update", f:idFeld, id:d[idFeld], d:rest }); }
           else ops.push({ t:tabelle, a:"insert", d });
@@ -539,10 +549,10 @@ export default function App() {
     const u = uidRef.current;
     if (u && qSchreiben(u, qLesen(u).concat(ops))) { setOffen(qLesen(u).length); await flush(); }
     else {
-      // Warteschlange nicht möglich (Speicher voll): direkt senden
+      // Warteschlange nicht mÃ¶glich (Speicher voll): direkt senden
       for (const op of ops) {
         let res; try { res = await opAusfuehren(op); } catch (e) { res = { error: e }; }
-        if (res && res.error) { setSpeicherFehler("Deine letzte Änderung konnte nicht gespeichert werden (" + tabelle + "): " + (res.error.message || "Verbindung fehlgeschlagen")); return; }
+        if (res && res.error) { setSpeicherFehler("Deine letzte Ãnderung konnte nicht gespeichert werden (" + tabelle + "): " + (res.error.message || "Verbindung fehlgeschlagen")); return; }
       }
       setSpeicherFehler("");
     }
@@ -596,6 +606,12 @@ export default function App() {
     await syncTabelle("tagesberichte", berichte, arr, toDbBericht);
     ladeDaten();
   };
+  const setAufgaben = async (next) => {
+    const arr = typeof next === "function" ? next(aufgaben) : next;
+    setAufgabenState(arr);
+    await syncTabelle("aufgaben", aufgaben, arr, toDbAufgabe);
+    ladeDaten();
+  };
   const setWerkzeuge = async (next) => {
     const arr = typeof next === "function" ? next(werkzeuge) : next;
     setWerkzeugeState(arr);
@@ -627,28 +643,28 @@ export default function App() {
 
   async function abmelden() {
     const n = uid ? qLesen(uid).length : 0;
-    if (n && !window.confirm(n + " Änderung(en) wurden noch nicht gesendet (kein Netz). Beim Abmelden gehen sie verloren. Trotzdem abmelden?")) return;
+    if (n && !window.confirm(n + " Ãnderung(en) wurden noch nicht gesendet (kein Netz). Beim Abmelden gehen sie verloren. Trotzdem abmelden?")) return;
     try { if (uid) { localStorage.removeItem(QKEY(uid)); localStorage.removeItem(CKEY(uid)); } } catch (e) {}
     try { await supabase.auth.signOut(); } catch (e) {}
     setSession(null); setBereit(false); setOffen(0);
   }
 
-  if (pruefe) return <Splash text="Lädt…" />;
+  if (pruefe) return <Splash text="LÃ¤dtâ¦" />;
   if (recovery) return <PasswortNeu onFertig={()=>{ setRecovery(false); try { history.replaceState(null, "", window.location.pathname); } catch(e){} }} />;
   if (!session) return <Login onLogin={()=>{}} />;
-  if (laden && !bereit) return <Splash text="Daten werden geladen…" />;
+  if (laden && !bereit) return <Splash text="Daten werden geladenâ¦" />;
 
   return (
     <>
       {(offline || offen > 0) && !speicherFehler && (
         <div role="status" style={{ position:"fixed", top:0, left:0, right:0, zIndex:9999, background:"#c2410c", color:"#fff", padding:"8px 14px", fontSize:13, fontWeight:600, textAlign:"center", boxShadow:"0 2px 8px #0003" }}>
-          {offline ? "📴 Offline – du kannst weiterarbeiten. " : "🔄 Senden… "}
-          {offen > 0 ? offen + " Änderung(en) werden gesendet, sobald du wieder Netz hast." : "Neue Änderungen werden gespeichert und später gesendet."}
+          {offline ? "ð´ Offline â du kannst weiterarbeiten. " : "ð Sendenâ¦ "}
+          {offen > 0 ? offen + " Ãnderung(en) werden gesendet, sobald du wieder Netz hast." : "Neue Ãnderungen werden gespeichert und spÃ¤ter gesendet."}
         </div>
       )}
       {speicherFehler && (
         <div role="alert" style={{ position:"fixed", top:0, left:0, right:0, zIndex:10000, background:"#991b1b", color:"#fff", padding:"10px 14px", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, boxShadow:"0 2px 10px #0006", fontFamily:"'Inter',system-ui,sans-serif" }}>
-          <span>⚠️ {speicherFehler}</span>
+          <span>â ï¸ {speicherFehler}</span>
           <button onClick={()=>setSpeicherFehler("")} style={{ background:"#fff3", color:"#fff", border:"none", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontWeight:700 }}>OK</button>
         </div>
       )}
@@ -661,6 +677,7 @@ export default function App() {
         stunden={stunden} setStunden={setStunden}
         unterkuenfte={unterkuenfte} setUnterkuenfte={setUnterkuenfte}
         berichte={berichte} setBerichte={setBerichte}
+        aufgaben={aufgaben} setAufgaben={setAufgaben}
         werkzeuge={werkzeuge} setWerkzeuge={setWerkzeuge}
         teams={teams} setTeams={setTeams}
         einsaetze={einsaetze} setEinsaetze={setEinsaetze} neuLaden={ladeDaten}
