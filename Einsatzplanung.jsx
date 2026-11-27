@@ -2,12 +2,12 @@ import { useState, useMemo, useEffect, useRef, memo, useCallback } from "react";
 import { supabase } from "./supabaseClient.js";
 import { LayoutDashboard, Euro, Sparkles, CalendarDays, Calendar, CalendarRange, Clock, FileText, TreePalm, Building2, Users, User, Truck, BedDouble, Wrench, Settings, AlertTriangle, Pencil, Trash2, Save, FileDown, FileSpreadsheet, List, TrendingUp, Lightbulb, Zap, HardHat, Menu, X, Moon, Sun, MapPin, Plus, Bell, MessageCircle, Send, Inbox, Thermometer, CircleSlash, Ruler, Mic, ClipboardList, Camera } from "lucide-react";
 
-// âââ Farbschema Hell/Dunkel (wird vom Schalter im Header umgestellt) ââââââââââ
+// ─── Farbschema Hell/Dunkel (wird vom Schalter im Header umgestellt) ──────────
 const THEME_HELL   = { panel:"#ffffff", panel2:"#f9fafb", text:"#1f2937", textMut:"#6b7280", border:"#e5e7eb", input:"#ffffff" };
 const THEME_DUNKEL = { panel:"#1e293b", panel2:"#0f172a", text:"#e2e8f0", textMut:"#94a3b8", border:"#334155", input:"#0f172a" };
 let TH = THEME_HELL;
 
-// âââ Dauerhaftes Speichern (mit Fallback im Vorschaufenster) ââââââââââââââââââ
+// ─── Dauerhaftes Speichern (mit Fallback im Vorschaufenster) ──────────────────
 const _mem = {};
 const store = {
   get(key) {
@@ -32,8 +32,8 @@ function usePersist(key, initial) {
   return [val, setVal];
 }
 
-// âââ Farben & Konstanten âââââââââââââââââââââââââââââââââââââââââââââââââââââ
-// Farbpalette â Teams bekommen automatisch eine Farbe zugewiesen
+// ─── Farben & Konstanten ─────────────────────────────────────────────────────
+// Farbpalette – Teams bekommen automatisch eine Farbe zugewiesen
 const TEAM_PALETTE = [
   { bg:"#1d4ed8", light:"#dbeafe", text:"#1e40af" },
   { bg:"#059669", light:"#d1fae5", text:"#047857" },
@@ -63,20 +63,20 @@ const EINSATZ_FARBEN = {
   "Werkstatt": { bg:"#f5f3ff", border:"#8b5cf6", badge:"#5b21b6" },
 };
 const STATUS_FARBEN = {
-  "geplant":"#6b7280","bestÃ¤tigt":"#2563eb","laufend":"#16a34a",
+  "geplant":"#6b7280","bestätigt":"#2563eb","laufend":"#16a34a",
   "abgeschlossen":"#374151","verschoben":"#d97706","storniert":"#dc2626",
 };
 const WOCHENTAGE = ["So","Mo","Di","Mi","Do","Fr","Sa"];
 const WOCHENTAGE_LANG = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
-const MONATE = ["Januar","Februar","MÃ¤rz","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+const MONATE = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
 
-// âââ Demodaten âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── Demodaten ───────────────────────────────────────────────────────────────
 export const initMitarbeiter = [
   { id:1,  name:"Klaus Weber",    rolle:"Vorarbeiter", team:"Team Alpha", tel:"0171-1111111", fuehrerschein:true,  stapler:true,  schweisser:false, urlaub:12, krank:3 },
   { id:2,  name:"Marco Schulz",   rolle:"Monteur",     team:"Team Alpha", tel:"0172-2222222", fuehrerschein:true,  stapler:false, schweisser:true,  urlaub:15, krank:1 },
   { id:3,  name:"Timo Braun",     rolle:"Monteur",     team:"Team Alpha", tel:"0173-3333333", fuehrerschein:false, stapler:false, schweisser:true,  urlaub:10, krank:0 },
   { id:4,  name:"Stefan Bauer",   rolle:"Monteur",     team:"Team Alpha", tel:"0174-4444444", fuehrerschein:true,  stapler:true,  schweisser:false, urlaub:8,  krank:2 },
-  { id:5,  name:"Dirk MÃ¼ller",    rolle:"Vorarbeiter", team:"Team Beta",  tel:"0175-5555555", fuehrerschein:true,  stapler:true,  schweisser:true,  urlaub:14, krank:0 },
+  { id:5,  name:"Dirk Müller",    rolle:"Vorarbeiter", team:"Team Beta",  tel:"0175-5555555", fuehrerschein:true,  stapler:true,  schweisser:true,  urlaub:14, krank:0 },
   { id:6,  name:"Jonas Klein",    rolle:"Monteur",     team:"Team Beta",  tel:"0176-6666666", fuehrerschein:true,  stapler:false, schweisser:false, urlaub:12, krank:4 },
   { id:7,  name:"Nico Hoffmann",  rolle:"Monteur",     team:"Team Beta",  tel:"0177-7777777", fuehrerschein:false, stapler:true,  schweisser:true,  urlaub:10, krank:1 },
   { id:8,  name:"Lars Fischer",   rolle:"Vorarbeiter", team:"Team Gamma", tel:"0178-8888888", fuehrerschein:true,  stapler:false, schweisser:false, urlaub:16, krank:2 },
@@ -94,21 +94,21 @@ export const initFahrzeuge = [
 ];
 // Projekte jetzt mit echten Datumsangaben (2026)
 export const initProjekte = [
-  { id:"P1", name:"Kranbahn Halle A",   kunde:"MÃ¼ller Stahl GmbH",    ort:"Dortmund",  dateStart:"2026-05-25", dateEnd:"2026-06-19", team:"Team Alpha", status:"laufend",       fzg:"F1", vorarbeiter:"Klaus Weber",  bemerkung:"Anreise Sonntag, Hotel gebucht" },
-  { id:"P2", name:"RBG-Schienen Werk2", kunde:"AutoParts AG",          ort:"Wolfsburg", dateStart:"2026-06-01", dateEnd:"2026-06-26", team:"Team Beta",  status:"bestÃ¤tigt",     fzg:"F2", vorarbeiter:"Dirk MÃ¼ller", bemerkung:"Material fehlt â RÃ¼cksprache mit Bauleiter" },
+  { id:"P1", name:"Kranbahn Halle A",   kunde:"Müller Stahl GmbH",    ort:"Dortmund",  dateStart:"2026-05-25", dateEnd:"2026-06-19", team:"Team Alpha", status:"laufend",       fzg:"F1", vorarbeiter:"Klaus Weber",  bemerkung:"Anreise Sonntag, Hotel gebucht" },
+  { id:"P2", name:"RBG-Schienen Werk2", kunde:"AutoParts AG",          ort:"Wolfsburg", dateStart:"2026-06-01", dateEnd:"2026-06-26", team:"Team Beta",  status:"bestätigt",     fzg:"F2", vorarbeiter:"Dirk Müller", bemerkung:"Material fehlt – Rücksprache mit Bauleiter" },
   { id:"P3", name:"Montage Kran K12",   kunde:"Chemie Nord GmbH",      ort:"Hamburg",   dateStart:"2026-06-08", dateEnd:"2026-06-19", team:"Team Gamma", status:"geplant",       fzg:"F3", vorarbeiter:"Lars Fischer",bemerkung:"Kunde wartet auf Freigabe" },
-  { id:"P4", name:"Kranbahnrep. West",  kunde:"Logistik Zentrum GmbH", ort:"KÃ¶ln",      dateStart:"2026-06-15", dateEnd:"2026-07-10", team:"Team Delta", status:"geplant",       fzg:"F4", vorarbeiter:"Frank Vogel", bemerkung:"" },
-  { id:"P5", name:"Wartung Lager",      kunde:"intern",                ort:"Werkstatt", dateStart:"2026-05-25", dateEnd:"2026-05-29", team:"Team Beta",  status:"abgeschlossen", fzg:"F2", vorarbeiter:"Dirk MÃ¼ller", bemerkung:"Abgeschlossen" },
+  { id:"P4", name:"Kranbahnrep. West",  kunde:"Logistik Zentrum GmbH", ort:"Köln",      dateStart:"2026-06-15", dateEnd:"2026-07-10", team:"Team Delta", status:"geplant",       fzg:"F4", vorarbeiter:"Frank Vogel", bemerkung:"" },
+  { id:"P5", name:"Wartung Lager",      kunde:"intern",                ort:"Werkstatt", dateStart:"2026-05-25", dateEnd:"2026-05-29", team:"Team Beta",  status:"abgeschlossen", fzg:"F2", vorarbeiter:"Dirk Müller", bemerkung:"Abgeschlossen" },
 ];
-// SondereinsÃ¤tze ebenfalls mit echten Daten
+// Sondereinsätze ebenfalls mit echten Daten
 export const initSonder = [
   { id:"S1", ma:2,  typ:"Urlaub",   dateStart:"2026-06-29", dateEnd:"2026-07-10", bemerkung:"Sommerurlaub" },
   { id:"S2", ma:7,  typ:"Krank",    dateStart:"2026-06-02", dateEnd:"2026-06-05", bemerkung:"" },
-  { id:"S3", ma:10, typ:"Schulung", dateStart:"2026-06-22", dateEnd:"2026-06-22", bemerkung:"SchweiÃerschein Auffrischung" },
+  { id:"S3", ma:10, typ:"Schulung", dateStart:"2026-06-22", dateEnd:"2026-06-22", bemerkung:"Schweißerschein Auffrischung" },
   { id:"S4", ma:13, typ:"Frei",     dateStart:"2026-06-15", dateEnd:"2026-06-15", bemerkung:"" },
 ];
 
-// âââ Datums-Helpers âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── Datums-Helpers ───────────────────────────────────────────────────────────
 function parseDate(s) { return new Date(s + "T00:00:00"); }
 function fmtDate(d) {
   return `${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}.${d.getFullYear()}`;
@@ -141,7 +141,7 @@ function dateInRange(d, start, end) {
 function getProjektForTeamDate(projekte, team, date) {
   return projekte.find(p => p.team === team && dateInRange(date, p.dateStart, p.dateEnd));
 }
-// ââ EinsÃ¤tze: wer ist an welchem Tag auf welchem Projekt (pro Person, unabhÃ¤ngig vom Team) ââ
+// ── Einsätze: wer ist an welchem Tag auf welchem Projekt (pro Person, unabhängig vom Team) ──
 let EINSAETZE = [];
 function setEinsaetzeListe(l) { EINSAETZE = Array.isArray(l) ? l : []; }
 function projekteFuerMa(projekte, maId, d) {
@@ -193,12 +193,12 @@ function pruefKonflikte(projekte, sonder, mitarbeiter) {
   sonder.forEach(s => {
     const ma = mitarbeiter.find(m => m.id===s.ma); if (!ma) return;
     const proj = projekte.find(p => p.status!=="storniert" && EINSAETZE.some(e => e.ma===ma.id && e.projektId===p.id && e.dateStart<=s.dateEnd && e.dateEnd>=s.dateStart));
-    if (proj && (s.typ==="Urlaub"||s.typ==="Krank")) warn.push({ typ:"Konflikt", msg:`${ma.name} ist ${s.typ} (${fmtDate(parseDate(s.dateStart))}â${fmtDate(parseDate(s.dateEnd))}), aber im Projekt "${proj.name}" eingeplant` });
+    if (proj && (s.typ==="Urlaub"||s.typ==="Krank")) warn.push({ typ:"Konflikt", msg:`${ma.name} ist ${s.typ} (${fmtDate(parseDate(s.dateStart))}–${fmtDate(parseDate(s.dateEnd))}), aber im Projekt "${proj.name}" eingeplant` });
   });
   return warn;
 }
 
-// âââ UI Atoms ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── UI Atoms ────────────────────────────────────────────────────────────────
 function Badge({ children, color="#6b7280" }) {
   return <span style={{ display:"inline-block", padding:"1px 7px", borderRadius:9999, fontSize:10, fontWeight:700, backgroundColor:color+"22", color, border:`1px solid ${color}44`, whiteSpace:"nowrap" }}>{children}</span>;
 }
@@ -209,7 +209,7 @@ const thS = () => ({ padding:"7px 8px", background:TH.panel2, fontWeight:700, fo
 const tdS = () => ({ padding:"5px 8px", verticalAlign:"middle", color:TH.text });
 const inpS = () => ({ padding:"5px 8px", borderRadius:6, border:"1.5px solid "+TH.border, fontSize:12, width:"100%", boxSizing:"border-box", background:TH.input, color:TH.text });
 
-// âââ TAGESANSICHT âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── TAGESANSICHT ─────────────────────────────────────────────────────────────
 function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
   const [datum, setDatum] = useState(isoDate(new Date()));
   const d = parseDate(datum);
@@ -231,19 +231,19 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
     <div>
       {/* Datumsauswahl */}
       <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:18, flexWrap:"wrap" }}>
-        <button onClick={() => setDatum(isoDate(addDays(d,-1)))} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>â¹</button>
+        <button onClick={() => setDatum(isoDate(addDays(d,-1)))} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>‹</button>
         <div style={{ textAlign:"center" }}>
           <div style={{ fontWeight:800, fontSize:20, color:TH.text }}>{wt}, {fmtDate(d)}</div>
-          <div style={{ fontSize:12, color:"#9ca3af" }}>Kalenderwoche {kw} Â· {MONATE[d.getMonth()]} {d.getFullYear()}</div>
+          <div style={{ fontSize:12, color:"#9ca3af" }}>Kalenderwoche {kw} · {MONATE[d.getMonth()]} {d.getFullYear()}</div>
         </div>
-        <button onClick={() => setDatum(isoDate(addDays(d,1)))} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>âº</button>
+        <button onClick={() => setDatum(isoDate(addDays(d,1)))} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, cursor:"pointer", fontSize:16 }}>›</button>
         <input type="date" value={datum} onChange={e=>setDatum(e.target.value)} style={{ ...inpS(), width:160, marginLeft:8 }} />
         <button onClick={() => setDatum(isoDate(new Date()))} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid #ea580c", background:"#ffedd5", color:"#ea580c", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
       </div>
 
       {isWeekend(d) && (
         <div style={{ background:"#fef9c3", border:"1.5px solid #fcd34d", borderRadius:8, padding:"10px 14px", marginBottom:14, color:"#92400e", fontSize:13, fontWeight:600 }}>
-          Wochenende â kein regulÃ¤rer Arbeitstag
+          Wochenende – kein regulärer Arbeitstag
         </div>
       )}
 
@@ -252,7 +252,7 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
         {[
           { label:"Auf Baustelle", wert:aufBaustelle.length, farbe:"#1d4ed8" },
           { label:"Abwesend",      wert:abwesend.length,     farbe:"#dc2626" },
-          { label:"VerfÃ¼gbar",     wert:frei.length,          farbe:"#16a34a" },
+          { label:"Verfügbar",     wert:frei.length,          farbe:"#16a34a" },
         ].map(k => (
           <div key={k.label} style={{ background:TH.panel, border:`1.5px solid ${k.farbe}33`, borderRadius:12, padding:"10px 14px", textAlign:"center" }}>
             <div style={{ fontSize:22, fontWeight:800, color:k.farbe }}>{k.wert}</div>
@@ -284,7 +284,7 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
                   </div>
                   <div style={{ padding:"10px 14px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"5px 16px", fontSize:12 }}>
                     <Info label="Kunde" value={p.kunde} />
-                    <Info label="Fahrzeug" value={fzg ? `${fzg.kz} (${fzg.typ})` : "â"} />
+                    <Info label="Fahrzeug" value={fzg ? `${fzg.kz} (${fzg.typ})` : "–"} />
                     <Info label="Bis" value={fmtDate(parseDate(p.dateEnd))} />
                     <Info label="Status" value={p.status} />
                     <div style={{ gridColumn:"1/-1", marginTop:6 }}>
@@ -297,7 +297,7 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
                             color: ma.rolle==="Vorarbeiter" ? "#fff" : col.text,
                             border:`1px solid ${col.bg}44`
                           }}>
-                            {ma.rolle==="Vorarbeiter" ? "â " : ""}{ma.name}
+                            {ma.rolle==="Vorarbeiter" ? "★ " : ""}{ma.name}
                           </span>
                         ))}
                       </div>
@@ -330,16 +330,16 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
         </div>
       )}
 
-      {/* VerfÃ¼gbar */}
+      {/* Verfügbar */}
       {frei.length > 0 && (
         <div>
-          <div style={{ fontWeight:700, fontSize:13, color:TH.text, marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>â VerfÃ¼gbar / Nicht eingeplant</div>
+          <div style={{ fontWeight:700, fontSize:13, color:TH.text, marginBottom:8, textTransform:"uppercase", letterSpacing:0.5 }}>✅ Verfügbar / Nicht eingeplant</div>
           <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
             {frei.map(({ ma }) => {
               const col = getTeamColor(ma.team);
               return (
                 <span key={ma.id} style={{ background:col.light, border:`1px solid ${col.bg}44`, borderRadius:8, padding:"5px 12px", fontSize:12, color:col.text, fontWeight:500 }}>
-                  {ma.rolle==="Vorarbeiter" ? "â " : ""}{ma.name}
+                  {ma.rolle==="Vorarbeiter" ? "★ " : ""}{ma.name}
                 </span>
               );
             })}
@@ -350,7 +350,7 @@ function Tagesansicht({ mitarbeiter, projekte, sonder, fahrzeuge }) {
   );
 }
 
-// âââ Einplanen-Dialog: Personen (einzeln oder als Gruppe) auf ein Projekt setzen âââ
+// ─── Einplanen-Dialog: Personen (einzeln oder als Gruppe) auf ein Projekt setzen ───
 function EinsatzDialog({ projekte, personen, sonder, einsaetze, setEinsaetze, vorgabe, onClose }) {
   const aktive = projekte.filter(p => p.status!=="storniert");
   const [projektId, setProjektId] = useState(vorgabe.projektId || (aktive[0] && aktive[0].id) || "");
@@ -368,7 +368,7 @@ function EinsatzDialog({ projekte, personen, sonder, einsaetze, setEinsaetze, vo
   const hinweise = gewaehlt.map(id => {
     const m = personen.find(x => x.id===id);
     const se = sonder.find(x => x.ma===id && (x.typ==="Urlaub"||x.typ==="Krank") && x.dateStart<=bis && x.dateEnd>=von);
-    return m && se ? `${m.name}: ${se.typ} (${fmtDate(parseDate(se.dateStart))}â${fmtDate(parseDate(se.dateEnd))})` : null;
+    return m && se ? `${m.name}: ${se.typ} (${fmtDate(parseDate(se.dateStart))}–${fmtDate(parseDate(se.dateEnd))})` : null;
   }).filter(Boolean);
   const ok = projektId && gewaehlt.length>0 && von && bis && bis>=von;
 
@@ -399,19 +399,19 @@ function EinsatzDialog({ projekte, personen, sonder, einsaetze, setEinsaetze, vo
       <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:TH.text, marginBottom:12 }}>
         <input type="checkbox" checked={wochenende} onChange={e=>setWochenende(e.target.checked)} /> Wochenenden mit einplanen
       </label>
-      <Feld label="Gruppe auf einmal wÃ¤hlen">
+      <Feld label="Gruppe auf einmal wählen">
         <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
           {TEAM_NAMEN_AKTUELL.map(t => { const c = getTeamColor(t); return (
             <button key={t} type="button" onClick={()=>gruppeToggle(t)} style={{ padding:"4px 12px", borderRadius:99, border:"1.5px solid "+c.bg, background:c.light, color:c.text, cursor:"pointer", fontSize:12, fontWeight:600 }}>{t}</button>
           ); })}
         </div>
       </Feld>
-      <Feld label={"Personen (" + gewaehlt.length + " gewÃ¤hlt)"}>
+      <Feld label={"Personen (" + gewaehlt.length + " gewählt)"}>
         <div style={{ maxHeight:220, overflowY:"auto", border:"1.5px solid "+TH.border, borderRadius:8, padding:"6px 10px" }}>
           {personen.map(m => (
             <label key={m.id} style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, padding:"3px 0", color:TH.text, cursor:"pointer" }}>
               <input type="checkbox" checked={gewaehlt.includes(m.id)} onChange={()=>toggle(m.id)} />
-              <span>{m.rolle==="Vorarbeiter"?"â ":""}{m.name}</span>
+              <span>{m.rolle==="Vorarbeiter"?"★ ":""}{m.name}</span>
               <span style={{ fontSize:10, color:"#9ca3af", marginLeft:"auto" }}>{m.team}</span>
             </label>
           ))}
@@ -419,7 +419,7 @@ function EinsatzDialog({ projekte, personen, sonder, einsaetze, setEinsaetze, vo
       </Feld>
       {hinweise.length>0 && (
         <div style={{ background:"#fef9c3", border:"1.5px solid #fcd34d", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#92400e", marginBottom:12 }}>
-          â ï¸ Achtung, in diesem Zeitraum abwesend:<br/>{hinweise.map(h => <div key={h}>â¢ {h}</div>)}
+          ⚠️ Achtung, in diesem Zeitraum abwesend:<br/>{hinweise.map(h => <div key={h}>• {h}</div>)}
         </div>
       )}
       <div style={{ display:"flex", gap:10, marginTop:4 }}>
@@ -430,7 +430,7 @@ function EinsatzDialog({ projekte, personen, sonder, einsaetze, setEinsaetze, vo
   );
 }
 
-// âââ TIMELINE (Woche / Monat): Personen-Zeilen mit Einsatz-Balken âââââââââââââ
+// ─── TIMELINE (Woche / Monat): Personen-Zeilen mit Einsatz-Balken ─────────────
 const PROJ_PALETTE = ["#2563eb","#16a34a","#9333ea","#0891b2","#db2777","#ca8a04","#4f46e5","#0d9488","#ea580c","#65a30d"];
 const SONDER_BALKEN = { Urlaub:"#f59e0b", Krank:"#ef4444", Frei:"#94a3b8", Schulung:"#8b5cf6", Werkstatt:"#a855f7" };
 function montagVon(d) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return addDays(x, -((x.getDay() + 6) % 7)); }
@@ -543,8 +543,8 @@ function Timeline({ modus: modusStart, mitarbeiter, alleMA, projekte, sonder, ei
   const aktive = projekte.filter(p => p.status !== "storniert" && p.status !== "abgeschlossen");
   const NAME_B = 160, BAHN = 30;
   const minB = NAME_B + n * (monat ? 30 : 62);
-  const titel = monat ? MONATE[anker.getMonth()] + " " + anker.getFullYear() : "KW " + getKW(tage[0]) + " â " + getKW(tage[n - 1]) + " Â· " + tage[n - 1].getFullYear();
-  const untertitel = monat ? "" : fmtDate(tage[0]) + " â " + fmtDate(tage[n - 1]);
+  const titel = monat ? MONATE[anker.getMonth()] + " " + anker.getFullYear() : "KW " + getKW(tage[0]) + " – " + getKW(tage[n - 1]) + " · " + tage[n - 1].getFullYear();
+  const untertitel = monat ? "" : fmtDate(tage[0]) + " – " + fmtDate(tage[n - 1]);
   const btnNav = { padding:"6px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, color:TH.text, cursor:"pointer", fontSize:16 };
 
   // Legende: Projekte, die im Zeitraum vorkommen
@@ -553,12 +553,12 @@ function Timeline({ modus: modusStart, mitarbeiter, alleMA, projekte, sonder, ei
   return (
     <div>
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14, flexWrap:"wrap" }}>
-        <button onClick={() => weiter(-1)} style={btnNav}>â¹</button>
+        <button onClick={() => weiter(-1)} style={btnNav}>‹</button>
         <div style={{ textAlign:"center", minWidth:130 }}>
           <div style={{ fontWeight:800, fontSize:16, color:TH.text }}>{titel}</div>
           {untertitel && <div style={{ fontSize:11, color:"#9ca3af" }}>{untertitel}</div>}
         </div>
-        <button onClick={() => weiter(1)} style={btnNav}>âº</button>
+        <button onClick={() => weiter(1)} style={btnNav}>›</button>
         <div style={{ display:"flex", background:TH.panel2, border:"1px solid "+TH.border, borderRadius:8, padding:3 }}>
           {[["woche","Woche"],["monat","Monat"]].map(([id, l]) => (
             <button key={id} onClick={() => setzeModus(id)} style={{ padding:"5px 14px", borderRadius:6, border:"none", cursor:"pointer", fontSize:12, fontWeight:700, background: modus === id ? TH.panel : "transparent", color: modus === id ? TH.text : TH.textMut, boxShadow: modus === id ? "0 1px 3px #0002" : "none" }}>{l}</button>
@@ -568,7 +568,7 @@ function Timeline({ modus: modusStart, mitarbeiter, alleMA, projekte, sonder, ei
           {["Alle", ...TEAM_NAMEN_AKTUELL].map(t => <option key={t} value={t}>{t === "Alle" ? "Alle Gruppen" : t}</option>)}
         </select>
         <button onClick={aufHeute} style={{ padding:"6px 14px", borderRadius:8, border:"1.5px solid #ea580c", background:"#ffedd5", color:"#ea580c", cursor:"pointer", fontSize:12, fontWeight:700 }}>Heute</button>
-        {kannPlanen && <button onClick={() => setDialog({ projektId:(aktive[0] || {}).id || "", von, bis:von })} style={{ ...btnPrimary("#2563eb"), padding:"7px 14px", marginLeft:"auto" }}>ï¼ Einsatz</button>}
+        {kannPlanen && <button onClick={() => setDialog({ projektId:(aktive[0] || {}).id || "", von, bis:von })} style={{ ...btnPrimary("#2563eb"), padding:"7px 14px", marginLeft:"auto" }}>＋ Einsatz</button>}
       </div>
 
       <div style={{ overflowX:"auto", background:TH.panel, border:"1px solid "+TH.border, borderRadius:12 }}>
@@ -600,7 +600,7 @@ function Timeline({ modus: modusStart, mitarbeiter, alleMA, projekte, sonder, ei
                 <div style={{ width:NAME_B, flexShrink:0, position:"sticky", left:0, zIndex:2, background: ich ? "#eff6ff" : TH.panel, display:"flex", alignItems:"center", gap:8, padding:"0 10px", borderRight:"1px solid "+TH.border }}>
                   <span style={{ width:24, height:24, borderRadius:"50%", background: ich ? "#2563eb" : TH.panel2, color: ich ? "#fff" : TH.textMut, border:"1px solid "+TH.border, fontSize:10, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>{String(m.name).split(" ").slice(0, 2).map(w => w.charAt(0)).join("")}</span>
                   <div style={{ minWidth:0 }}>
-                    <div style={{ fontSize:12, fontWeight:700, color: ich ? "#2563eb" : TH.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{m.rolle === "Vorarbeiter" ? "â " : ""}{m.name}</div>
+                    <div style={{ fontSize:12, fontWeight:700, color: ich ? "#2563eb" : TH.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{m.rolle === "Vorarbeiter" ? "★ " : ""}{m.name}</div>
                     <div style={{ fontSize:9, color:"#9ca3af" }}>{ich ? "Du" : m.team}</div>
                   </div>
                 </div>
@@ -622,7 +622,7 @@ function Timeline({ modus: modusStart, mitarbeiter, alleMA, projekte, sonder, ei
                     const griff = { position:"absolute", top:0, bottom:0, width:8, cursor:"ew-resize", touchAction:"none" };
                     return (
                       <div key={it.art + it.id}
-                        title={it.label + " Â· " + fmtDate(parseDate(it.fs)) + (it.fe !== it.fs ? " â " + fmtDate(parseDate(it.fe)) : "")}
+                        title={it.label + " · " + fmtDate(parseDate(it.fs)) + (it.fe !== it.fs ? " – " + fmtDate(parseDate(it.fe)) : "")}
                         onPointerDown={kannBearb ? ev => { if (trackEl) starteZiehen(ev, "move", { e: it.e }, trackEl); } : e2 => e2.stopPropagation()}
                         style={{ position:"absolute", top:5 + it.bahn * BAHN, height:BAHN - 4, left:"calc(" + (i0 / n * 100) + "% + 2px)", width:"calc(" + ((i1 - i0 + 1) / n * 100) + "% - 4px)",
                           background:it.farbe, color:"#fff", borderRadius:8, display:"flex", alignItems:"center", padding:"0 " + (kannBearb ? 10 : 8) + "px", fontSize: monat ? 10 : 11, fontWeight:700,
@@ -644,7 +644,7 @@ function Timeline({ modus: modusStart, mitarbeiter, alleMA, projekte, sonder, ei
       <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginTop:12, alignItems:"center", fontSize:11, color:TH.textMut }}>
         {legende.map(p => <span key={p.id} style={{ display:"flex", alignItems:"center", gap:5 }}><i style={{ width:11, height:11, borderRadius:4, background:farbeVon.get(p.id), display:"inline-block" }} />{p.name}</span>)}
         {Object.entries(SONDER_BALKEN).slice(0, 3).map(([k, c]) => <span key={k} style={{ display:"flex", alignItems:"center", gap:5 }}><i style={{ width:11, height:11, borderRadius:4, background:c, display:"inline-block" }} />{k}</span>)}
-        {kannPlanen && <span style={{ marginLeft:"auto" }}>Leere FlÃ¤che ziehen = neuer Einsatz Â· Balken ziehen = verschieben Â· Rand ziehen = verlÃ¤ngern Â· Balken anklicken = Ã¤ndern</span>}
+        {kannPlanen && <span style={{ marginLeft:"auto" }}>Leere Fläche ziehen = neuer Einsatz · Balken ziehen = verschieben · Rand ziehen = verlängern · Balken anklicken = ändern</span>}
       </div>
 
       {neu && (() => {
@@ -659,11 +659,11 @@ function Timeline({ modus: modusStart, mitarbeiter, alleMA, projekte, sonder, ei
           setNeu(null);
         }
         return (
-          <Modal titel={"Einplanen Â· " + (m ? m.name : "")} onClose={() => setNeu(null)} farbe="#2563eb">
+          <Modal titel={"Einplanen · " + (m ? m.name : "")} onClose={() => setNeu(null)} farbe="#2563eb">
             <div style={{ fontSize:13, color:TH.text, marginBottom:12 }}>
-              <b>{fmtDate(parseDate(neu.von))}{neu.bis !== neu.von ? " â " + fmtDate(parseDate(neu.bis)) : ""}</b> Â· Wochenenden werden Ã¼bersprungen. Welches Projekt?
+              <b>{fmtDate(parseDate(neu.von))}{neu.bis !== neu.von ? " – " + fmtDate(parseDate(neu.bis)) : ""}</b> · Wochenenden werden übersprungen. Welches Projekt?
             </div>
-            {se && <div style={{ background:"#fef9c3", border:"1.5px solid #fcd34d", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#92400e", marginBottom:12 }}>â ï¸ {se.typ} im gewÃ¤hlten Zeitraum ({fmtDate(parseDate(se.dateStart))} â {fmtDate(parseDate(se.dateEnd))})</div>}
+            {se && <div style={{ background:"#fef9c3", border:"1.5px solid #fcd34d", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#92400e", marginBottom:12 }}>⚠️ {se.typ} im gewählten Zeitraum ({fmtDate(parseDate(se.dateStart))} – {fmtDate(parseDate(se.dateEnd))})</div>}
             <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
               {aktive.map(p => (
                 <button key={p.id} onClick={() => waehle(p.id)} style={{ ...btnPrimary(farbeVon.get(p.id)), textAlign:"left", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -671,7 +671,7 @@ function Timeline({ modus: modusStart, mitarbeiter, alleMA, projekte, sonder, ei
                 </button>
               ))}
               {!aktive.length && <div style={{ color:"#9ca3af", fontSize:13 }}>Es gibt noch kein aktives Projekt. Lege zuerst unter Projekte eines an.</div>}
-              <button style={btnGhost()} onClick={() => { setDialog({ projektId:(aktive[0] || {}).id || "", von:neu.von, bis:neu.bis }); setNeu(null); }}>Mehrere Personen einplanenâ¦</button>
+              <button style={btnGhost()} onClick={() => { setDialog({ projektId:(aktive[0] || {}).id || "", von:neu.von, bis:neu.bis }); setNeu(null); }}>Mehrere Personen einplanen…</button>
             </div>
           </Modal>
         );
@@ -681,7 +681,7 @@ function Timeline({ modus: modusStart, mitarbeiter, alleMA, projekte, sonder, ei
         const m = mitarbeiter.find(x => x.id === bearb.e.ma) || (alleMA || []).find(x => x.id === bearb.e.ma);
         const ok = bearb.projektId && bearb.von && bearb.bis && bearb.bis >= bearb.von;
         return (
-          <Modal titel={"Einsatz Ã¤ndern Â· " + (m ? m.name : "")} onClose={() => setBearb(null)} farbe="#2563eb">
+          <Modal titel={"Einsatz ändern · " + (m ? m.name : "")} onClose={() => setBearb(null)} farbe="#2563eb">
             <Feld label="Projekt">
               <select value={bearb.projektId} onChange={ev => setBearb(b => ({ ...b, projektId: ev.target.value }))} style={inpS()}>
                 {projekte.filter(p => p.status !== "storniert").map(p => <option key={p.id} value={p.id}>{p.name} ({p.ort})</option>)}
@@ -693,7 +693,7 @@ function Timeline({ modus: modusStart, mitarbeiter, alleMA, projekte, sonder, ei
             </div>
             <div style={{ display:"flex", gap:10, marginTop:4, flexWrap:"wrap" }}>
               <button disabled={!ok} style={{ ...btnPrimary("#2563eb"), opacity: ok ? 1 : 0.5 }} onClick={() => { setEinsaetze(prev => prev.map(x => x.id === bearb.e.id ? { ...x, projektId: bearb.projektId, dateStart: bearb.von, dateEnd: bearb.bis } : x)); setBearb(null); }}>Speichern</button>
-              <button style={btnPrimary("#dc2626")} onClick={() => { setEinsaetze(prev => prev.filter(x => x.id !== bearb.e.id)); setBearb(null); }}>Einsatz lÃ¶schen</button>
+              <button style={btnPrimary("#dc2626")} onClick={() => { setEinsaetze(prev => prev.filter(x => x.id !== bearb.e.id)); setBearb(null); }}>Einsatz löschen</button>
               <button style={btnGhost()} onClick={() => setBearb(null)}>Abbrechen</button>
             </div>
           </Modal>
@@ -705,7 +705,7 @@ function Timeline({ modus: modusStart, mitarbeiter, alleMA, projekte, sonder, ei
   );
 }
 
-// âââ MEIN TAG: einfache Handy-Ansicht fÃ¼r Angestellte âââââââââââââââââââââââââ
+// ─── MEIN TAG: einfache Handy-Ansicht für Angestellte ─────────────────────────
 function MeinTag({ meinMA, mitarbeiter, projekte, sonder, einsaetze, setTab }) {
   const heute = new Date();
   const vorname = String(meinMA.name || "").split(" ")[0];
@@ -726,7 +726,7 @@ function MeinTag({ meinMA, mitarbeiter, projekte, sonder, einsaetze, setTab }) {
   return (
     <div style={{ maxWidth:520, margin:"0 auto" }}>
       <div style={{ fontSize:12, color:TH.textMut }}>{WOCHENTAGE_LANG[heute.getDay()]}, {heute.getDate()}. {MONATE[heute.getMonth()]}</div>
-      <div style={{ fontSize:22, fontWeight:800, color:TH.text, marginBottom:12 }}>Hallo {vorname} ð</div>
+      <div style={{ fontSize:22, fontWeight:800, color:TH.text, marginBottom:12 }}>Hallo {vorname} 👋</div>
 
       {t0.se && (
         <div style={{ background:SONDER_BALKEN[t0.se.typ] || "#94a3b8", color:"#fff", borderRadius:18, padding:"18px 18px", marginBottom:12 }}>
@@ -743,8 +743,8 @@ function MeinTag({ meinMA, mitarbeiter, projekte, sonder, einsaetze, setTab }) {
           <div key={p.id} style={{ background:farbe, color:"#fff", borderRadius:18, padding:"18px 18px", marginBottom:12, boxShadow:"0 4px 14px #0002" }}>
             <div style={{ fontSize:11, opacity:0.85, fontWeight:700 }}>HEUTE</div>
             <div style={{ fontSize:22, fontWeight:800, margin:"2px 0 8px" }}>{p.name}</div>
-            <div style={{ fontSize:13, display:"flex", justifyContent:"space-between", gap:8, margin:"4px 0" }}><span>ð {p.ort}</span>{p.kunde && p.kunde !== "intern" && <span style={{ opacity:0.85 }}>{p.kunde}</span>}</div>
-            {va && <div style={{ fontSize:13, margin:"4px 0" }}>â Vorarbeiter: <b>{va.name}</b></div>}
+            <div style={{ fontSize:13, display:"flex", justifyContent:"space-between", gap:8, margin:"4px 0" }}><span>📍 {p.ort}</span>{p.kunde && p.kunde !== "intern" && <span style={{ opacity:0.85 }}>{p.kunde}</span>}</div>
+            {va && <div style={{ fontSize:13, margin:"4px 0" }}>★ Vorarbeiter: <b>{va.name}</b></div>}
             {kol.length > 0 && (
               <div style={{ marginTop:8 }}>
                 <div style={{ fontSize:11, opacity:0.85 }}>Mit dir dort:</div>
@@ -753,21 +753,21 @@ function MeinTag({ meinMA, mitarbeiter, projekte, sonder, einsaetze, setTab }) {
                 </div>
               </div>
             )}
-            {p.bemerkung && <div style={{ marginTop:10, fontSize:12, background:"#00000022", borderRadius:10, padding:"8px 10px" }}>â¹ï¸ {p.bemerkung}</div>}
+            {p.bemerkung && <div style={{ marginTop:10, fontSize:12, background:"#00000022", borderRadius:10, padding:"8px 10px" }}>ℹ️ {p.bemerkung}</div>}
             <a href={"https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(p.ort)} target="_blank" rel="noopener noreferrer"
-              style={{ display:"block", marginTop:12, background:"#fff", color:farbe, textAlign:"center", padding:"11px", borderRadius:11, fontWeight:800, fontSize:14, textDecoration:"none" }}>ð§­ Route starten</a>
+              style={{ display:"block", marginTop:12, background:"#fff", color:farbe, textAlign:"center", padding:"11px", borderRadius:11, fontWeight:800, fontSize:14, textDecoration:"none" }}>🧭 Route starten</a>
           </div>
         );
       })}
       {!t0.se && t0.ps.length === 0 && (
         <div style={{ background:TH.panel, border:"1.5px dashed "+TH.border, borderRadius:18, padding:"22px 18px", marginBottom:12, textAlign:"center" }}>
           <div style={{ fontSize:11, color:TH.textMut, fontWeight:700 }}>HEUTE</div>
-          <div style={{ fontSize:18, fontWeight:800, color:TH.text, marginTop:2 }}>{isWeekend(heute) ? "Wochenende ð" : "Noch nicht eingeplant"}</div>
+          <div style={{ fontSize:18, fontWeight:800, color:TH.text, marginTop:2 }}>{isWeekend(heute) ? "Wochenende 🎉" : "Noch nicht eingeplant"}</div>
           {!isWeekend(heute) && <div style={{ fontSize:12, color:TH.textMut, marginTop:4 }}>Frag bei deiner Leitung nach, wo du heute eingesetzt bist.</div>}
         </div>
       )}
 
-      <div style={{ fontSize:11, fontWeight:700, color:TH.textMut, margin:"16px 0 6px", letterSpacing:0.5 }}>DIE NÃCHSTEN TAGE</div>
+      <div style={{ fontSize:11, fontWeight:700, color:TH.textMut, margin:"16px 0 6px", letterSpacing:0.5 }}>DIE NÄCHSTEN TAGE</div>
       {kommend.map(({ d, ps, se }) => {
         const farbe = se ? (SONDER_BALKEN[se.typ] || "#94a3b8") : ps[0] ? getTeamColor(ps[0].team).bg : null;
         return (
@@ -775,22 +775,22 @@ function MeinTag({ meinMA, mitarbeiter, projekte, sonder, einsaetze, setTab }) {
             <span style={{ width:10, height:10, borderRadius:"50%", flexShrink:0, background: farbe || "transparent", border: farbe ? "none" : "1.5px dashed #cbd5e1" }} />
             <div style={{ fontSize:13 }}>
               <div style={{ fontWeight:700, color:TH.text }}>{WOCHENTAGE[d.getDay()]} {fmtDateShort(d)}</div>
-              <div style={{ color: farbe ? TH.textMut : "#9ca3af" }}>{se ? se.typ : ps.length ? ps.map(p => p.name + " Â· " + p.ort).join(" / ") : "noch nicht eingeplant"}</div>
+              <div style={{ color: farbe ? TH.textMut : "#9ca3af" }}>{se ? se.typ : ps.length ? ps.map(p => p.name + " · " + p.ort).join(" / ") : "noch nicht eingeplant"}</div>
             </div>
           </div>
         );
       })}
 
-      <button onClick={() => setTab("stundenzettel")} style={{ ...btnPrimary("#2563eb"), width:"100%", marginTop:12, padding:"13px", fontSize:14 }}>â± Stunden ansehen</button>
+      <button onClick={() => setTab("stundenzettel")} style={{ ...btnPrimary("#2563eb"), width:"100%", marginTop:12, padding:"13px", fontSize:14 }}>⏱ Stunden ansehen</button>
       <button onClick={() => setTab("woche")} style={{ ...btnGhost(), width:"100%", marginTop:8 }}>Gesamtplan ansehen</button>
     </div>
   );
 }
 
-// âââ MEINE STUNDEN: Angestellte sehen ihre Stunden und bestÃ¤tigen sie âââââââââ
+// ─── MEINE STUNDEN: Angestellte sehen ihre Stunden und bestätigen sie ─────────
 const STUNDEN_STATUS = {
   offen:       { text:"offen",       bg:"#fef3c7", fg:"#92400e" },
-  bestaetigt:  { text:"bestÃ¤tigt",   bg:"#dcfce7", fg:"#166534" },
+  bestaetigt:  { text:"bestätigt",   bg:"#dcfce7", fg:"#166534" },
   gemeldet:    { text:"gemeldet",    bg:"#fee2e2", fg:"#991b1b" },
   freigegeben: { text:"abgerechnet", bg:"#e5e7eb", fg:"#374151" },
 };
@@ -810,7 +810,7 @@ function MeineStunden({ meinMA, stunden, neuLaden }) {
     setLaeuft(true); setFehler("");
     const { error } = await supabase.rpc("stunden_bestaetigen", { p_ids: ids, p_status: status, p_meldung: text || null });
     setLaeuft(false);
-    if (error) { setFehler((error.message || "Das hat nicht geklappt") + " â bist du online?"); return; }
+    if (error) { setFehler((error.message || "Das hat nicht geklappt") + " – bist du online?"); return; }
     setMelde(null);
     neuLaden && neuLaden();
   }
@@ -818,17 +818,17 @@ function MeineStunden({ meinMA, stunden, neuLaden }) {
   return (
     <div style={{ maxWidth:560, margin:"0 auto" }}>
       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
-        <button onClick={() => verschieben(-1)} style={btnNav}>â¹</button>
+        <button onClick={() => verschieben(-1)} style={btnNav}>‹</button>
         <div style={{ fontWeight:800, fontSize:18, color:TH.text, flex:1, textAlign:"center" }}>{MONATE[mm - 1]} {jahr}</div>
-        <button onClick={() => verschieben(1)} style={btnNav}>âº</button>
+        <button onClick={() => verschieben(1)} style={btnNav}>›</button>
       </div>
       <div style={{ background:"#2563eb", color:"#fff", borderRadius:18, padding:"16px 18px", marginBottom:12 }}>
-        <div style={{ fontSize:11, opacity:0.8, fontWeight:700 }}>MEINE STUNDEN Â· {meinMA.name}</div>
+        <div style={{ fontSize:11, opacity:0.8, fontWeight:700 }}>MEINE STUNDEN · {meinMA.name}</div>
         <div style={{ fontSize:32, fontWeight:800 }}>{summe.toFixed(1).replace(".", ",")} h</div>
-        <div style={{ fontSize:12, opacity:0.85 }}>{imMonat.length} {imMonat.length === 1 ? "Tag" : "Tage"}{imMonat.length ? " Â· Ã " + (summe / imMonat.length).toFixed(1).replace(".", ",") + " h pro Tag" : ""}</div>
+        <div style={{ fontSize:12, opacity:0.85 }}>{imMonat.length} {imMonat.length === 1 ? "Tag" : "Tage"}{imMonat.length ? " · Ø " + (summe / imMonat.length).toFixed(1).replace(".", ",") + " h pro Tag" : ""}</div>
       </div>
       {offene.length > 0 && (
-        <button disabled={laeuft} onClick={() => senden(offene.map(e => e.id), "bestaetigt")} style={{ ...btnPrimary("#16a34a"), width:"100%", marginBottom:12, padding:"13px", fontSize:14, opacity: laeuft ? 0.6 : 1 }}>â Alle {offene.length} offenen bestÃ¤tigen</button>
+        <button disabled={laeuft} onClick={() => senden(offene.map(e => e.id), "bestaetigt")} style={{ ...btnPrimary("#16a34a"), width:"100%", marginBottom:12, padding:"13px", fontSize:14, opacity: laeuft ? 0.6 : 1 }}>✓ Alle {offene.length} offenen bestätigen</button>
       )}
       {fehler && <div style={{ background:"#fee2e2", color:"#991b1b", borderRadius:10, padding:"8px 12px", fontSize:12, marginBottom:10 }}>{fehler}</div>}
       {!imMonat.length && <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:"#9ca3af" }}>In diesem Monat sind noch keine Stunden eingetragen.</div>}
@@ -845,19 +845,19 @@ function MeineStunden({ meinMA, stunden, neuLaden }) {
               <span style={{ fontSize:10, fontWeight:700, background:st.bg, color:st.fg, borderRadius:99, padding:"2px 9px" }}>{st.text}</span>
             </div>
             <div style={{ fontSize:11, color:"#9ca3af", marginTop:3 }}>
-              {e.start}â{e.end}{e.pause ? " Â· Pause " + e.pause + " Min" : ""}{e.fahrzeit ? " Â· Fahrzeit " + e.fahrzeit + " h" : ""}{e.uebernachtung ? " Â· Ãbernachtung" : ""}{e.spesen ? " Â· Spesen " + e.spesen + " â¬" : ""}
+              {e.start}–{e.end}{e.pause ? " · Pause " + e.pause + " Min" : ""}{e.fahrzeit ? " · Fahrzeit " + e.fahrzeit + " h" : ""}{e.uebernachtung ? " · Übernachtung" : ""}{e.spesen ? " · Spesen " + e.spesen + " €" : ""}
             </div>
             {e.status === "gemeldet" && e.meldung && <div style={{ marginTop:6, fontSize:12, background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"6px 10px" }}>Dein Hinweis: {e.meldung}</div>}
             {kannMelden && (
               <div style={{ display:"flex", gap:8, marginTop:8 }}>
-                {(e.status || "offen") === "offen" && <button disabled={laeuft} onClick={() => senden([e.id], "bestaetigt")} style={{ ...btnPrimary("#16a34a"), padding:"7px 14px", fontSize:12 }}>â Stimmt</button>}
-                <button disabled={laeuft} onClick={() => setMelde({ id:e.id, text:"", datum:e.datum })} style={{ padding:"7px 14px", borderRadius:8, background:TH.panel2, color:TH.text, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:12, fontWeight:600 }}>â Falsch melden</button>
+                {(e.status || "offen") === "offen" && <button disabled={laeuft} onClick={() => senden([e.id], "bestaetigt")} style={{ ...btnPrimary("#16a34a"), padding:"7px 14px", fontSize:12 }}>✓ Stimmt</button>}
+                <button disabled={laeuft} onClick={() => setMelde({ id:e.id, text:"", datum:e.datum })} style={{ padding:"7px 14px", borderRadius:8, background:TH.panel2, color:TH.text, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:12, fontWeight:600 }}>✗ Falsch melden</button>
               </div>
             )}
           </div>
         );
       })}
-      <div style={{ background:"#eff6ff", color:"#1e40af", borderRadius:12, padding:"10px 14px", fontSize:12, marginTop:10 }}>Stimmt eine Zeit nicht? Tippe auf âFalsch meldenâ und schreib kurz, was nicht passt. Dein Vorarbeiter bekommt den Hinweis und korrigiert es.</div>
+      <div style={{ background:"#eff6ff", color:"#1e40af", borderRadius:12, padding:"10px 14px", fontSize:12, marginTop:10 }}>Stimmt eine Zeit nicht? Tippe auf „Falsch melden“ und schreib kurz, was nicht passt. Dein Vorarbeiter bekommt den Hinweis und korrigiert es.</div>
       {melde && (
         <Modal titel="Stunden falsch melden" onClose={() => setMelde(null)} farbe="#dc2626">
           <div style={{ fontSize:13, color:TH.text, marginBottom:10 }}>Was stimmt am {fmtDate(parseDate(melde.datum))} nicht?</div>
@@ -872,7 +872,7 @@ function MeineStunden({ meinMA, stunden, neuLaden }) {
   );
 }
 
-// âââ STUNDENZETTEL âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── STUNDENZETTEL ─────────────────────────────────────────────────────────────
 function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, meinMA, sonder, neuLaden }) {
   const istLeitung = rolle==="Admin" || rolle==="Projektleiter" || rolle==="Bauleiter" || rolle==="Vorarbeiter";
   const vorarbeiter = mitarbeiter.filter(m=>m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter");
@@ -895,7 +895,7 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
   const teamProjekt = vaProjs[0] || null;
   const col = va ? getTeamColor(va.team) : { bg:"#6b7280", light:"#f3f4f6", text:"#374151" };
 
-  // ââ Standardzeit (wird gemerkt) und Auswahl der Crew ââ
+  // ── Standardzeit (wird gemerkt) und Auswahl der Crew ──
   const [std, setStd] = useState(() => { const g = store.get("bfx_std_zeit"); return g && g.start ? g : { start:"07:00", end:"16:00", pause:30 }; });
   useEffect(() => { store.set("bfx_std_zeit", std); }, [std]);
   const [auswahl, setAuswahl] = useState({});
@@ -930,30 +930,30 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
         if (gleich) return;
         geaendert.set(ex.id, { ...ex, ...werte, arbeitsstunden:h.toFixed(2), status:(ex.status==="freigegeben"?"freigegeben":"offen"), bestaetigt_am:null, meldung:null });
       } else {
-        neue.push({ id:"H"+Date.now()+"_"+ma.id, maId:ma.id, maName:ma.name, team:va.team, datum, wochentag:WOCHENTAGE_LANG[d.getDay()], kw:getKW(d), projekt:((projekteFuerMa(projekte, ma.id, d).find(p=>vaProjIds.has(p.id)))||teamProjekt)?.name||"â", ...werte, arbeitsstunden:h.toFixed(2), status:"offen", bestaetigt_am:null, meldung:null });
+        neue.push({ id:"H"+Date.now()+"_"+ma.id, maId:ma.id, maName:ma.name, team:va.team, datum, wochentag:WOCHENTAGE_LANG[d.getDay()], kw:getKW(d), projekt:((projekteFuerMa(projekte, ma.id, d).find(p=>vaProjIds.has(p.id)))||teamProjekt)?.name||"–", ...werte, arbeitsstunden:h.toFixed(2), status:"offen", bestaetigt_am:null, meldung:null });
       }
       n++;
     });
-    if (!n) { setInfo("Nichts zu speichern â wÃ¤hle Personen aus oder Ã¤ndere eine Zeit."); return; }
+    if (!n) { setInfo("Nichts zu speichern – wähle Personen aus oder ändere eine Zeit."); return; }
     setStunden(prev => [...(prev||[]).map(e => geaendert.get(e.id) || e), ...neue]);
     setEntwurf({}); setAuswahl({});
-    setInfo("â FÃ¼r " + n + (n===1 ? " Person" : " Personen") + " gespeichert.");
+    setInfo("✓ Für " + n + (n===1 ? " Person" : " Personen") + " gespeichert.");
   }
 
   async function monatFreigeben() {
     const imMonat = (stunden || []).filter(e => String(e.datum||"").startsWith(lohnMonat));
     const z = s => imMonat.filter(e => (e.status||"offen")===s).length;
     const frei = z("offen") + z("bestaetigt");
-    if (!frei) { alert("FÃ¼r " + lohnMonat + " gibt es nichts freizugeben" + (z("gemeldet") ? " (" + z("gemeldet") + " gemeldete EintrÃ¤ge mÃ¼ssen erst geklÃ¤rt werden)." : ".")); return; }
-    if (!window.confirm(frei + " EintrÃ¤ge fÃ¼r " + lohnMonat + " freigeben (" + z("bestaetigt") + " bestÃ¤tigt, " + z("offen") + " noch nicht bestÃ¤tigt)?" + (z("gemeldet") ? "\n" + z("gemeldet") + " gemeldete EintrÃ¤ge bleiben offen und kommen nicht in den Lohn-Export." : "") + "\n\nFreigegebene Stunden kÃ¶nnen danach nur noch Admin, Projektleiter und Bauleiter Ã¤ndern.")) return;
+    if (!frei) { alert("Für " + lohnMonat + " gibt es nichts freizugeben" + (z("gemeldet") ? " (" + z("gemeldet") + " gemeldete Einträge müssen erst geklärt werden)." : ".")); return; }
+    if (!window.confirm(frei + " Einträge für " + lohnMonat + " freigeben (" + z("bestaetigt") + " bestätigt, " + z("offen") + " noch nicht bestätigt)?" + (z("gemeldet") ? "\n" + z("gemeldet") + " gemeldete Einträge bleiben offen und kommen nicht in den Lohn-Export." : "") + "\n\nFreigegebene Stunden können danach nur noch Admin, Projektleiter und Bauleiter ändern.")) return;
     const { error } = await supabase.rpc("stunden_monat_freigeben", { p_monat: lohnMonat });
-    if (error) { alert("Freigabe nicht mÃ¶glich: " + (error.message||"")); return; }
+    if (error) { alert("Freigabe nicht möglich: " + (error.message||"")); return; }
     neuLaden && neuLaden();
   }
 
   function excelExport() {
     const sorted = [...gespeichert].sort((a,b)=>(a.datum||"").localeCompare(b.datum||"")||String(a.maName).localeCompare(String(b.maName)));
-    const kopf = ["Datum","Wochentag","KW","Mitarbeiter","Team","Projekt","Beginn","Ende","Pause (Min)","Arbeitsstunden","Ãberstunden","Fahrzeit (h)","Ãbernachtung","Spesen (â¬)","Bemerkung"];
+    const kopf = ["Datum","Wochentag","KW","Mitarbeiter","Team","Projekt","Beginn","Ende","Pause (Min)","Arbeitsstunden","Überstunden","Fahrzeit (h)","Übernachtung","Spesen (€)","Bemerkung"];
     const zelle = v => `"${String(v==null?"":v).replace(/"/g,'""')}"`;
     const zeilen = sorted.map(e=>[
       fmtDate(parseDate(e.datum)), e.wochentag||"", "KW "+(e.kw||""), e.maName||"", e.team||"", e.projekt||"",
@@ -974,7 +974,7 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
   // Lohn-Export: Monatssumme je Mitarbeiter (CSV, Semikolon, Komma als Dezimaltrenner)
   function lohnExport() {
     const eintraege = gespeichert.filter(e => String(e.datum||"").startsWith(lohnMonat) && (e.status||"offen")==="freigegeben");
-    if (!eintraege.length) { alert("FÃ¼r " + lohnMonat + " ist noch nichts freigegeben. Klicke zuerst auf âMonat freigebenâ."); return; }
+    if (!eintraege.length) { alert("Für " + lohnMonat + " ist noch nichts freigegeben. Klicke zuerst auf „Monat freigeben“."); return; }
     const proMA = {};
     eintraege.forEach(e => {
       const k = e.maId!=null ? e.maId : e.maName;
@@ -985,7 +985,7 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
     });
     const dez = n => n.toFixed(2).replace(".",",");
     const zelle = v => `"${String(v==null?"":v).replace(/"/g,'""')}"`;
-    const kopf = ["Monat","Personal-Nr. (Baufox)","Mitarbeiter","Arbeitstage","Arbeitsstunden","davon Ãberstunden (>8 h/Tag)","Fahrzeit (h)","Ãbernachtungen","Spesen (â¬)"];
+    const kopf = ["Monat","Personal-Nr. (Baufox)","Mitarbeiter","Arbeitstage","Arbeitsstunden","davon Überstunden (>8 h/Tag)","Fahrzeit (h)","Übernachtungen","Spesen (€)"];
     const zeilen = Object.values(proMA).sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(z=>
       [lohnMonat, z.id!=null?z.id:"", z.name, z.tage.size, dez(z.std), dez(z.ueber), dez(z.fahrt), z.ueb, dez(z.spesen)].map(zelle).join(";"));
     const csv = "\uFEFF" + kopf.map(zelle).join(";") + "\n" + zeilen.join("\n");
@@ -1008,12 +1008,12 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
     const heute = new Date();
     const rows = sorted.map(e=>`<tr>
       <td>${esc(fmtDate(parseDate(e.datum)))}</td><td>${esc(e.wochentag||"")}</td><td class="c">KW ${esc(e.kw)}</td>
-      <td><b>${esc(e.maName)}</b></td><td>${esc(e.projekt||"â")}</td>
-      <td class="c">${esc(e.start||"â")}</td><td class="c">${esc(e.end||"â")}</td><td class="c">${e.pause?esc(e.pause)+" min":"â"}</td>
-      <td class="c"><b>${esc(e.arbeitsstunden)} h</b></td><td class="c">${e.fahrzeit?esc(e.fahrzeit)+" h":"â"}</td>
-      <td class="c">${e.uebernachtung?"Ja":"â"}</td><td class="c">${e.spesen?esc(e.spesen)+" â¬":"â"}</td><td>${esc(e.bemerkung||"")}</td>
+      <td><b>${esc(e.maName)}</b></td><td>${esc(e.projekt||"–")}</td>
+      <td class="c">${esc(e.start||"–")}</td><td class="c">${esc(e.end||"–")}</td><td class="c">${e.pause?esc(e.pause)+" min":"–"}</td>
+      <td class="c"><b>${esc(e.arbeitsstunden)} h</b></td><td class="c">${e.fahrzeit?esc(e.fahrzeit)+" h":"–"}</td>
+      <td class="c">${e.uebernachtung?"Ja":"–"}</td><td class="c">${e.spesen?esc(e.spesen)+" €":"–"}</td><td>${esc(e.bemerkung||"")}</td>
     </tr>`).join("");
-    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Baufox â Stundennachweis</title>
+    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Baufox – Stundennachweis</title>
     <style>
       body{font-family:Arial,Helvetica,sans-serif;margin:28px;color:#1e293b;}
       .kopf{display:flex;align-items:center;gap:12px;border-bottom:3px solid #ea580c;padding-bottom:12px;margin-bottom:6px;}
@@ -1032,16 +1032,16 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
       .linie{border-top:1px solid #94a3b8;padding-top:4px;width:220px;}
       @media print{ body{margin:10mm;} }
     </style></head><body>
-      <div class="kopf"><img src="/icon-192.png" width="44" height="44" style="border-radius:10px"/><div><h1>Baufox â Stundennachweis</h1><p class="unter">Montage-Steuerung</p></div></div>
-      <div class="meta">Erstellt am ${esc(fmtDate(heute))} Â· ${sorted.length} EintrÃ¤ge</div>
-      <table><thead><tr><th>Datum</th><th>Tag</th><th>KW</th><th>Mitarbeiter</th><th>Projekt</th><th>Beginn</th><th>Ende</th><th>Pause</th><th>Arbeitsstd.</th><th>Fahrzeit</th><th>Ãbern.</th><th>Spesen</th><th>Bemerkung</th></tr></thead>
+      <div class="kopf"><img src="/icon-192.png" width="44" height="44" style="border-radius:10px"/><div><h1>Baufox – Stundennachweis</h1><p class="unter">Montage-Steuerung</p></div></div>
+      <div class="meta">Erstellt am ${esc(fmtDate(heute))} · ${sorted.length} Einträge</div>
+      <table><thead><tr><th>Datum</th><th>Tag</th><th>KW</th><th>Mitarbeiter</th><th>Projekt</th><th>Beginn</th><th>Ende</th><th>Pause</th><th>Arbeitsstd.</th><th>Fahrzeit</th><th>Übern.</th><th>Spesen</th><th>Bemerkung</th></tr></thead>
       <tbody>${rows}</tbody></table>
       <div class="summen">
         <span>Arbeitsstunden gesamt: <b>${sumStd.toFixed(2)} h</b></span>
-        <span>Ãberstunden gesamt: <b>${sumUeberstd.toFixed(2)} h</b></span>
+        <span>Überstunden gesamt: <b>${sumUeberstd.toFixed(2)} h</b></span>
         <span>Fahrzeit gesamt: <b>${sumFahrt.toFixed(1)} h</b></span>
-        <span>Ãbernachtungen: <b>${sumUeb}</b></span>
-        <span>Spesen gesamt: <b>${sumSpesen.toFixed(2)} â¬</b></span>
+        <span>Übernachtungen: <b>${sumUeb}</b></span>
+        <span>Spesen gesamt: <b>${sumSpesen.toFixed(2)} €</b></span>
       </div>
       <div class="fuss"><div class="linie">Datum, Unterschrift Vorarbeiter</div><div class="linie">Datum, Unterschrift Auftraggeber</div></div>
       <script>window.onload=function(){window.print();};<\/script>
@@ -1083,46 +1083,46 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
             {datum && (
               <div style={{ background:col.light, border:`1.5px solid ${col.bg}44`, borderRadius:8, padding:"7px 12px", fontSize:12 }}>
                 <span style={{ fontWeight:700, color:col.bg }}>{WOCHENTAGE_LANG[d.getDay()]}</span>
-                <span style={{ color:"#6b7280", marginLeft:6 }}>{fmtDate(d)} Â· KW {getKW(d)}</span>
+                <span style={{ color:"#6b7280", marginLeft:6 }}>{fmtDate(d)} · KW {getKW(d)}</span>
               </div>
             )}
           </>
         ) : (
           <div style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:8, padding:"8px 14px", fontSize:13, color:"#92400e" }}>
-            <span style={{display:"inline-flex",alignItems:"center",gap:6}}><HardHat size={14}/>Deine persÃ¶nliche StundenÃ¼bersicht</span>{meinMA?` â ${meinMA.name}`:""}. Stunden trÃ¤gt dein Vorarbeiter ein.
+            <span style={{display:"inline-flex",alignItems:"center",gap:6}}><HardHat size={14}/>Deine persönliche Stundenübersicht</span>{meinMA?` – ${meinMA.name}`:""}. Stunden trägt dein Vorarbeiter ein.
           </div>
         )}
         <div style={{ marginLeft:"auto", display:"flex", gap:8 }}>
           {istLeitung && <button onClick={()=>setAnsicht("erfassen")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, background:ansicht==="erfassen"?col.bg:TH.panel, color:ansicht==="erfassen"?"#fff":TH.text, fontWeight:600 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Pencil size={13}/>Erfassen</span></button>}
-          <button onClick={()=>setAnsicht("uebersicht")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, background:ansicht==="uebersicht"?col.bg:TH.panel, color:ansicht==="uebersicht"?"#fff":TH.text, fontWeight:600 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><List size={13}/>Ãbersicht ({gespeichert.length})</span></button>
+          <button onClick={()=>setAnsicht("uebersicht")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, background:ansicht==="uebersicht"?col.bg:TH.panel, color:ansicht==="uebersicht"?"#fff":TH.text, fontWeight:600 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><List size={13}/>Übersicht ({gespeichert.length})</span></button>
           {meinMA && <button onClick={()=>setAnsicht("meine")} style={{ padding:"7px 16px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, background:ansicht==="meine"?col.bg:TH.panel, color:ansicht==="meine"?"#fff":TH.text, fontWeight:600 }}>Meine Stunden</button>}
         </div>
       </div>
 
       {va && ansicht==="erfassen" && (
         <div style={{ background:col.light, border:`1.5px solid ${col.bg}44`, borderRadius:12, padding:"10px 14px", marginBottom:16, display:"flex", gap:20, flexWrap:"wrap", fontSize:12 }}>
-          <Info label="Vorarbeiter" value={`â ${va.name}`} />
+          <Info label="Vorarbeiter" value={`★ ${va.name}`} />
           <Info label="Team" value={va.team} />
-          <Info label="Projekt" value={teamProjekt?.name||"kein aktives Projekt fÃ¼r dieses Datum"} />
-          <Info label="Ort" value={teamProjekt?.ort||"â"} />
+          <Info label="Projekt" value={teamProjekt?.name||"kein aktives Projekt für dieses Datum"} />
+          <Info label="Ort" value={teamProjekt?.ort||"–"} />
         </div>
       )}
 
       {ansicht==="erfassen" && va && (
         <>
           <div style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
-            <div style={{ fontSize:10, color:"#9ca3af", fontWeight:700, textTransform:"uppercase", marginBottom:6 }}>Arbeitszeit fÃ¼r die Crew</div>
+            <div style={{ fontSize:10, color:"#9ca3af", fontWeight:700, textTransform:"uppercase", marginBottom:6 }}>Arbeitszeit für die Crew</div>
             <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
               <label style={{ fontSize:11, color:TH.textMut }}>Beginn<br/><input type="time" value={std.start} onChange={e=>setStd(s=>({...s,start:e.target.value}))} style={{ ...inpS(), width:110 }} /></label>
               <label style={{ fontSize:11, color:TH.textMut }}>Ende<br/><input type="time" value={std.end} onChange={e=>setStd(s=>({...s,end:e.target.value}))} style={{ ...inpS(), width:110 }} /></label>
               <label style={{ fontSize:11, color:TH.textMut }}>Pause (Min)<br/><input type="number" min={0} max={120} value={std.pause} onChange={e=>setStd(s=>({...s,pause:e.target.value}))} style={{ ...inpS(), width:90 }} /></label>
               <button onClick={()=>setEntwurf(p=>{ const n={...p}; teamMA.forEach(ma=>{ n[ma.id]={...(n[ma.id]||{}),start:std.start,end:std.end,pause:Number(std.pause)||0}; }); return n; })}
-                style={{ padding:"8px 14px", borderRadius:8, background:TH.panel2, color:TH.text, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:12, fontWeight:600 }}>FÃ¼r alle neu anwenden</button>
-              <span style={{ fontSize:11, color:"#9ca3af" }}>= {calcStunden(std.start, std.end, Number(std.pause)||0).toFixed(2)} h pro Person Â· wird gemerkt</span>
+                style={{ padding:"8px 14px", borderRadius:8, background:TH.panel2, color:TH.text, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:12, fontWeight:600 }}>Für alle neu anwenden</button>
+              <span style={{ fontSize:11, color:"#9ca3af" }}>= {calcStunden(std.start, std.end, Number(std.pause)||0).toFixed(2)} h pro Person · wird gemerkt</span>
             </div>
           </div>
 
-          {!teamMA.length && <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:"#9ca3af" }}>FÃ¼r dieses Datum ist niemand eingeplant.</div>}
+          {!teamMA.length && <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:"#9ca3af" }}>Für dieses Datum ist niemand eingeplant.</div>}
           <div style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderRadius:12, overflow:"hidden" }}>
             {teamMA.map(ma => {
               const ex = vorhanden.get(ma.id), abw = abwesend(ma), sperr = gesperrt(ma), an = aktiv(ma), h = stundenVon(ma);
@@ -1133,22 +1133,22 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
                 <div key={ma.id} style={{ borderTop:"1px solid "+TH.border, padding:"8px 12px", opacity: sperr ? 0.6 : 1 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
                     <input type="checkbox" checked={an} disabled={sperr} onChange={e=>setAuswahl(p=>({...p,[ma.id]:e.target.checked}))} style={{ width:20, height:20, cursor:"pointer" }} />
-                    <div style={{ fontWeight:700, fontSize:13, color:TH.text }}>{ma.rolle==="Vorarbeiter"?"â ":""}{ma.name}</div>
+                    <div style={{ fontWeight:700, fontSize:13, color:TH.text }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</div>
                     {abw && <span style={{ fontSize:10, fontWeight:700, background:"#fee2e2", color:"#991b1b", borderRadius:99, padding:"2px 8px" }}>{abw.typ}</span>}
-                    {stat && <span style={{ fontSize:10, fontWeight:700, background:stFarbe[0], color:stFarbe[1], borderRadius:99, padding:"2px 8px" }}>{stat==="freigegeben"?"freigegeben":stat==="bestaetigt"?"bestÃ¤tigt":stat==="gemeldet"?"gemeldet":"gespeichert"}</span>}
-                    <span style={{ marginLeft:"auto", fontWeight:800, fontSize:14, color: an && h>0 ? col.bg : "#9ca3af" }}>{an && h>0 ? h.toFixed(2).replace(".",",")+" h" : "â"}{geaendert ? " â" : ""}</span>
-                    <button onClick={()=>setOffenId(offenId===ma.id?null:ma.id)} disabled={sperr} style={{ padding:"4px 10px", borderRadius:7, background:TH.panel2, color:TH.textMut, border:"1px solid "+TH.border, cursor:"pointer", fontSize:11 }}>{offenId===ma.id?"schlieÃen":"Zeit Ã¤ndern"}</button>
+                    {stat && <span style={{ fontSize:10, fontWeight:700, background:stFarbe[0], color:stFarbe[1], borderRadius:99, padding:"2px 8px" }}>{stat==="freigegeben"?"freigegeben":stat==="bestaetigt"?"bestätigt":stat==="gemeldet"?"gemeldet":"gespeichert"}</span>}
+                    <span style={{ marginLeft:"auto", fontWeight:800, fontSize:14, color: an && h>0 ? col.bg : "#9ca3af" }}>{an && h>0 ? h.toFixed(2).replace(".",",")+" h" : "–"}{geaendert ? " ✎" : ""}</span>
+                    <button onClick={()=>setOffenId(offenId===ma.id?null:ma.id)} disabled={sperr} style={{ padding:"4px 10px", borderRadius:7, background:TH.panel2, color:TH.textMut, border:"1px solid "+TH.border, cursor:"pointer", fontSize:11 }}>{offenId===ma.id?"schließen":"Zeit ändern"}</button>
                   </div>
-                  {stat==="gemeldet" && ex.meldung && <div style={{ marginTop:6, fontSize:12, background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"6px 10px" }}>ð¬ Hinweis von {ma.name.split(" ")[0]}: {ex.meldung}</div>}
+                  {stat==="gemeldet" && ex.meldung && <div style={{ marginTop:6, fontSize:12, background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"6px 10px" }}>💬 Hinweis von {ma.name.split(" ")[0]}: {ex.meldung}</div>}
                   {offenId===ma.id && (
                     <div style={{ marginTop:8, display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
                       <label style={{ fontSize:11, color:TH.textMut }}>Beginn<br/><input type="time" value={wert(ma,"start")} onChange={e=>setFeld(ma.id,"start",e.target.value)} style={{ ...inpS(), width:105 }} /></label>
                       <label style={{ fontSize:11, color:TH.textMut }}>Ende<br/><input type="time" value={wert(ma,"end")} onChange={e=>setFeld(ma.id,"end",e.target.value)} style={{ ...inpS(), width:105 }} /></label>
                       <label style={{ fontSize:11, color:TH.textMut }}>Pause (Min)<br/><input type="number" min={0} max={120} value={wert(ma,"pause",0)} onChange={e=>setFeld(ma.id,"pause",e.target.value)} style={{ ...inpS(), width:80 }} /></label>
                       <label style={{ fontSize:11, color:TH.textMut }}>Fahrzeit (h)<br/><input type="number" min={0} step={0.5} value={wert(ma,"fahrzeit","")} onChange={e=>setFeld(ma.id,"fahrzeit",e.target.value)} style={{ ...inpS(), width:80 }} placeholder="0" /></label>
-                      <label style={{ fontSize:11, color:TH.textMut }}>Spesen (â¬)<br/><input type="number" min={0} step={0.5} value={wert(ma,"spesen","")} onChange={e=>setFeld(ma.id,"spesen",e.target.value)} style={{ ...inpS(), width:80 }} placeholder="0" /></label>
-                      <label style={{ fontSize:12, color:TH.text, display:"flex", alignItems:"center", gap:5, paddingBottom:6 }}><input type="checkbox" checked={!!wert(ma,"uebernachtung",false)} onChange={e=>setFeld(ma.id,"uebernachtung",e.target.checked)} style={{ width:16, height:16 }} />Ãbernachtung</label>
-                      <label style={{ fontSize:11, color:TH.textMut, flex:1, minWidth:160 }}>Notiz<br/><input type="text" value={wert(ma,"bemerkung","")} onChange={e=>setFeld(ma.id,"bemerkung",e.target.value)} style={inpS()} placeholder="z.B. Material verspÃ¤tetâ¦" /></label>
+                      <label style={{ fontSize:11, color:TH.textMut }}>Spesen (€)<br/><input type="number" min={0} step={0.5} value={wert(ma,"spesen","")} onChange={e=>setFeld(ma.id,"spesen",e.target.value)} style={{ ...inpS(), width:80 }} placeholder="0" /></label>
+                      <label style={{ fontSize:12, color:TH.text, display:"flex", alignItems:"center", gap:5, paddingBottom:6 }}><input type="checkbox" checked={!!wert(ma,"uebernachtung",false)} onChange={e=>setFeld(ma.id,"uebernachtung",e.target.checked)} style={{ width:16, height:16 }} />Übernachtung</label>
+                      <label style={{ fontSize:11, color:TH.textMut, flex:1, minWidth:160 }}>Notiz<br/><input type="text" value={wert(ma,"bemerkung","")} onChange={e=>setFeld(ma.id,"bemerkung",e.target.value)} style={inpS()} placeholder="z.B. Material verspätet…" /></label>
                     </div>
                   )}
                 </div>
@@ -1156,10 +1156,10 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
             })}
           </div>
           <div style={{ marginTop:12, display:"flex", gap:14, flexWrap:"wrap", alignItems:"center" }}>
-            <div style={{ fontSize:12, color:TH.textMut }}>Gesamt <b style={{ fontSize:16, color:col.bg }}>{teamMA.filter(aktiv).reduce((s,ma)=>s+stundenVon(ma),0).toFixed(2).replace(".",",")} h</b> Â· {teamMA.filter(aktiv).length} von {teamMA.length} ausgewÃ¤hlt</div>
-            <button onClick={speichern} style={{ marginLeft:"auto", padding:"11px 26px", borderRadius:10, background:col.bg, color:"#fff", border:"none", cursor:"pointer", fontWeight:800, fontSize:14 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Save size={15}/>FÃ¼r {teamMA.filter(aktiv).length} {teamMA.filter(aktiv).length===1?"Person":"Personen"} speichern</span></button>
+            <div style={{ fontSize:12, color:TH.textMut }}>Gesamt <b style={{ fontSize:16, color:col.bg }}>{teamMA.filter(aktiv).reduce((s,ma)=>s+stundenVon(ma),0).toFixed(2).replace(".",",")} h</b> · {teamMA.filter(aktiv).length} von {teamMA.length} ausgewählt</div>
+            <button onClick={speichern} style={{ marginLeft:"auto", padding:"11px 26px", borderRadius:10, background:col.bg, color:"#fff", border:"none", cursor:"pointer", fontWeight:800, fontSize:14 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Save size={15}/>Für {teamMA.filter(aktiv).length} {teamMA.filter(aktiv).length===1?"Person":"Personen"} speichern</span></button>
           </div>
-          {info && <div style={{ marginTop:10, fontSize:13, fontWeight:600, color: info.startsWith("â") ? "#166534" : "#92400e" }}>{info}</div>}
+          {info && <div style={{ marginTop:10, fontSize:13, fontWeight:600, color: info.startsWith("✓") ? "#166534" : "#92400e" }}>{info}</div>}
         </>
       )}
 
@@ -1175,9 +1175,9 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
                 {lohnDarf && (
                   <>
                     <input type="month" value={lohnMonat} onChange={e=>setLohnMonat(e.target.value)} style={{ padding:"8px 10px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel2, color:TH.text, fontSize:13 }} />
-                    <button onClick={lohnExport} style={{ padding:"9px 18px", borderRadius:8, background:"#2563eb", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>ð¶ Lohn-Export (Monat)</button>
-                    <button onClick={monatFreigeben} style={{ padding:"9px 18px", borderRadius:8, background:"#16a34a", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>â Monat freigeben</button>
-                    {(() => { const im=(stunden||[]).filter(e=>String(e.datum||"").startsWith(lohnMonat)); const z=x=>im.filter(e=>(e.status||"offen")===x).length; return <span style={{ fontSize:11, color:TH.textMut }}>{z("offen")} offen Â· {z("bestaetigt")} bestÃ¤tigt Â· <b style={{ color: z("gemeldet") ? "#dc2626" : undefined }}>{z("gemeldet")} gemeldet</b> Â· {z("freigegeben")} freigegeben</span>; })()}
+                    <button onClick={lohnExport} style={{ padding:"9px 18px", borderRadius:8, background:"#2563eb", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>💶 Lohn-Export (Monat)</button>
+                    <button onClick={monatFreigeben} style={{ padding:"9px 18px", borderRadius:8, background:"#16a34a", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>✅ Monat freigeben</button>
+                    {(() => { const im=(stunden||[]).filter(e=>String(e.datum||"").startsWith(lohnMonat)); const z=x=>im.filter(e=>(e.status||"offen")===x).length; return <span style={{ fontSize:11, color:TH.textMut }}>{z("offen")} offen · {z("bestaetigt")} bestätigt · <b style={{ color: z("gemeldet") ? "#dc2626" : undefined }}>{z("gemeldet")} gemeldet</b> · {z("freigegeben")} freigegeben</span>; })()}
                   </>
                 )}
                 <button onClick={excelExport} style={{ padding:"9px 18px", borderRadius:8, background:"#16a34a", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileSpreadsheet size={14}/>Excel (CSV)</span></button>
@@ -1189,13 +1189,13 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
                   const c=ma?getTeamColor(ma.team):{bg:"#6b7280",light:"#f3f4f6",text:"#374151"};
                   return (
                     <div key={s.name} style={{ border:`1.5px solid ${c.bg}`, borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px #0000000d" }}>
-                      <div style={{ background:c.bg, color:"#fff", padding:"7px 12px", fontWeight:700, fontSize:13 }}>{ma?.rolle==="Vorarbeiter"?"â ":""}{s.name}</div>
+                      <div style={{ background:c.bg, color:"#fff", padding:"7px 12px", fontWeight:700, fontSize:13 }}>{ma?.rolle==="Vorarbeiter"?"★ ":""}{s.name}</div>
                       <div style={{ padding:"10px 12px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"5px 12px", fontSize:12 }}>
                         <Info label="Arbeitsstunden" value={s.stunden.toFixed(2)+" h"} />
-                        <Info label="Ãberstunden" value={s.ueberstunden>0 ? <span style={{color:"#ea580c",fontWeight:700}}>{s.ueberstunden.toFixed(2)+" h"}</span> : "0 h"} />
+                        <Info label="Überstunden" value={s.ueberstunden>0 ? <span style={{color:"#ea580c",fontWeight:700}}>{s.ueberstunden.toFixed(2)+" h"}</span> : "0 h"} />
                         <Info label="Fahrzeit" value={s.fahrzeit.toFixed(1)+" h"} />
-                        <Info label="Ãbernachtungen" value={s.uebernachtungen} />
-                        <Info label="Spesen" value={s.spesen.toFixed(2)+" â¬"} />
+                        <Info label="Übernachtungen" value={s.uebernachtungen} />
+                        <Info label="Spesen" value={s.spesen.toFixed(2)+" €"} />
                         <Info label="Tage erfasst" value={s.eintraege.length} />
                       </div>
                     </div>
@@ -1204,7 +1204,7 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
               </div>
               <div style={{ overflowX:"auto" }}>
                 <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-                  <thead><tr>{["Datum","Wochentag","KW","Mitarbeiter","Projekt","Beginn","Ende","Pause","Arbeitsstd.","Fahrzeit","Ãbern.","Spesen","Bemerkung","Status"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
+                  <thead><tr>{["Datum","Wochentag","KW","Mitarbeiter","Projekt","Beginn","Ende","Pause","Arbeitsstd.","Fahrzeit","Übern.","Spesen","Bemerkung","Status"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
                   <tbody>
                     {[...gespeichert].reverse().map((e,i)=>{
                       const ma=mitarbeiter.find(m=>m.id===e.maId);
@@ -1214,16 +1214,16 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
                           <td style={tdS()}>{fmtDate(parseDate(e.datum))}</td>
                           <td style={tdS()}>{e.wochentag}</td>
                           <td style={{ ...tdS(), textAlign:"center" }}>KW {e.kw}</td>
-                          <td style={{ ...tdS(), borderLeft:`4px solid ${c.bg}`, fontWeight:ma?.rolle==="Vorarbeiter"?700:400 }}>{ma?.rolle==="Vorarbeiter"?"â ":""}{e.maName}</td>
+                          <td style={{ ...tdS(), borderLeft:`4px solid ${c.bg}`, fontWeight:ma?.rolle==="Vorarbeiter"?700:400 }}>{ma?.rolle==="Vorarbeiter"?"★ ":""}{e.maName}</td>
                           <td style={tdS()}>{e.projekt}</td>
-                          <td style={{ ...tdS(), textAlign:"center" }}>{e.start||"â"}</td>
-                          <td style={{ ...tdS(), textAlign:"center" }}>{e.end||"â"}</td>
-                          <td style={{ ...tdS(), textAlign:"center" }}>{e.pause?e.pause+"min":"â"}</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}>{e.start||"–"}</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}>{e.end||"–"}</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}>{e.pause?e.pause+"min":"–"}</td>
                           <td style={{ ...tdS(), textAlign:"center", fontWeight:700, color:c.bg }}>{e.arbeitsstunden} h</td>
-                          <td style={{ ...tdS(), textAlign:"center" }}>{e.fahrzeit?e.fahrzeit+" h":"â"}</td>
-                          <td style={{ ...tdS(), textAlign:"center" }}>{e.uebernachtung?"â":"â"}</td>
-                          <td style={{ ...tdS(), textAlign:"center" }}>{e.spesen?e.spesen+" â¬":"â"}</td>
-                          <td style={tdS()}>{e.bemerkung||"â"}</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}>{e.fahrzeit?e.fahrzeit+" h":"–"}</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}>{e.uebernachtung?"✅":"–"}</td>
+                          <td style={{ ...tdS(), textAlign:"center" }}>{e.spesen?e.spesen+" €":"–"}</td>
+                          <td style={tdS()}>{e.bemerkung||"–"}</td>
                           <td style={tdS()}>{(() => { const st=STUNDEN_STATUS[e.status||"offen"]||STUNDEN_STATUS.offen; return <span title={e.meldung||""} style={{ fontSize:10, fontWeight:700, background:st.bg, color:st.fg, borderRadius:99, padding:"2px 9px", whiteSpace:"nowrap" }}>{st.text}</span>; })()}</td>
                         </tr>
                       );
@@ -1239,8 +1239,8 @@ function Stundenzettel({ mitarbeiter, projekte, stunden, setStunden, rolle, mein
   );
 }
 
-// âââ Andere Tabs (unverÃ¤ndert) ââââââââââââââââââââââââââââââââââââââââââââââââ
-// âââ VERLAUF (Meldungen mit KnÃ¶pfen) ââââââââââââââââââââââââââââââââââââââââââ
+// ─── Andere Tabs (unverändert) ────────────────────────────────────────────────
+// ─── VERLAUF (Meldungen mit Knöpfen) ──────────────────────────────────────────
 // Oben: was jetzt zu tun ist. Darunter: was zuletzt passiert ist. Alles aus vorhandenen Daten abgeleitet.
 function Verlauf({ projekte, mitarbeiter, einsaetze, stunden, berichte, antraege, warnungen, setTab }) {
   const heuteIso = isoDate(new Date());
@@ -1253,28 +1253,28 @@ function Verlauf({ projekte, mitarbeiter, einsaetze, stunden, berichte, antraege
   const todo = [];
   const gem = (stunden || []).filter(s => s.status === "gemeldet");
   gem.slice(0, 8).forEach(s => todo.push({
-    key: "g" + s.id, farbe: "#dc2626", icon: "â ï¸",
+    key: "g" + s.id, farbe: "#dc2626", icon: "⚠️",
     titel: `${s.maName || s.ma_name || "Mitarbeiter"} meldet ein Problem bei den Stunden`,
-    text: `${s.projekt || ""} Â· ${s.datum ? fmtDate(parseDate(s.datum)) : ""}${s.meldung ? " â â" + s.meldung + "â" : ""}`,
-    knopf: { label: "Stundenzettel Ã¶ffnen", tab: "stundenzettel" },
+    text: `${s.projekt || ""} · ${s.datum ? fmtDate(parseDate(s.datum)) : ""}${s.meldung ? " – „" + s.meldung + "“" : ""}`,
+    knopf: { label: "Stundenzettel öffnen", tab: "stundenzettel" },
   }));
-  if (gem.length > 8) todo.push({ key: "gmehr", farbe: "#dc2626", icon: "â ï¸", titel: `â¦ und ${gem.length - 8} weitere gemeldete Stunden`, text: "", knopf: { label: "Stundenzettel Ã¶ffnen", tab: "stundenzettel" } });
+  if (gem.length > 8) todo.push({ key: "gmehr", farbe: "#dc2626", icon: "⚠️", titel: `… und ${gem.length - 8} weitere gemeldete Stunden`, text: "", knopf: { label: "Stundenzettel öffnen", tab: "stundenzettel" } });
   const offenAlt = (stunden || []).filter(s => (s.status || "offen") === "offen" && s.datum && s.datum < heuteIso);
   if (offenAlt.length) todo.push({
-    key: "offen", farbe: "#d97706", icon: "ð",
-    titel: `${offenAlt.length} Stunden-EintrÃ¤ge warten auf BestÃ¤tigung`,
+    key: "offen", farbe: "#d97706", icon: "🕒",
+    titel: `${offenAlt.length} Stunden-Einträge warten auf Bestätigung`,
     text: `von ${new Set(offenAlt.map(s => s.ma_id || s.maId)).size} Personen`,
-    knopf: { label: "Stundenzettel Ã¶ffnen", tab: "stundenzettel" },
+    knopf: { label: "Stundenzettel öffnen", tab: "stundenzettel" },
   });
   (antraege || []).filter(a => a.status === "offen").forEach(a => todo.push({
-    key: "a" + a.id, farbe: "#2563eb", icon: "ð´",
+    key: "a" + a.id, farbe: "#2563eb", icon: "🌴",
     titel: `${a.typ}-Antrag von ${a.maName || maName(a.ma)}`,
-    text: `${kurz(a.dateStart)} â ${kurz(a.dateEnd)}${a.grund ? " Â· " + a.grund : ""}`,
-    knopf: { label: "AntrÃ¤ge Ã¶ffnen", tab: "antraege" },
+    text: `${kurz(a.dateStart)} – ${kurz(a.dateEnd)}${a.grund ? " · " + a.grund : ""}`,
+    knopf: { label: "Anträge öffnen", tab: "antraege" },
   }));
   (warnungen || []).slice(0, 6).forEach((w, i) => todo.push({
-    key: "w" + i, farbe: "#ea580c", icon: "ð§", titel: w.typ, text: w.msg,
-    knopf: { label: "Planung Ã¶ffnen", tab: "woche" },
+    key: "w" + i, farbe: "#ea580c", icon: "🚧", titel: w.typ, text: w.msg,
+    knopf: { label: "Planung öffnen", tab: "woche" },
   }));
 
   // Was zuletzt passiert ist
@@ -1292,9 +1292,9 @@ function Verlauf({ projekte, mitarbeiter, einsaetze, stunden, berichte, antraege
   gruppen.forEach((g, k) => {
     const namen = [...g.mas].map(maName);
     ereignisse.push({
-      key: "e" + k, ts: g.ts, farbe: "#16a34a", icon: "ð·",
+      key: "e" + k, ts: g.ts, farbe: "#16a34a", icon: "👷",
       titel: `${namen.length > 2 ? namen.length + " Personen" : namen.join(" und ")} eingeplant auf ${projName(g.projektId)}`,
-      text: `${kurz(g.von)} â ${kurz(g.bis)}`,
+      text: `${kurz(g.von)} – ${kurz(g.bis)}`,
       knopf: { label: "Zur Baustelle", tab: "baustellen" },
     });
   });
@@ -1303,10 +1303,10 @@ function Verlauf({ projekte, mitarbeiter, einsaetze, stunden, berichte, antraege
     const ts = parseDate(b.datum).getTime();
     if (jetzt - ts > 7 * 86400000) return;
     ereignisse.push({
-      key: "b" + b.id, ts: ts + 43200000, farbe: b.probleme ? "#dc2626" : "#2563eb", icon: b.probleme ? "â ï¸" : "ð",
+      key: "b" + b.id, ts: ts + 43200000, farbe: b.probleme ? "#dc2626" : "#2563eb", icon: b.probleme ? "⚠️" : "📝",
       titel: `Bericht ${projName(b.projektId)}${b.verfasser ? " von " + b.verfasser : ""}`,
       text: b.probleme ? "Problem: " + b.probleme : (b.fortschritt || ""),
-      knopf: { label: "Berichte Ã¶ffnen", tab: "berichte" },
+      knopf: { label: "Berichte öffnen", tab: "berichte" },
     });
   });
   ereignisse.sort((a, b) => b.ts - a.ts);
@@ -1328,14 +1328,14 @@ function Verlauf({ projekte, mitarbeiter, einsaetze, stunden, berichte, antraege
         </div>
         {x.ts && <span style={{ fontSize:11, color:TH.textMut, whiteSpace:"nowrap" }}>{zeigeZeit(x.ts)}</span>}
       </div>
-      {x.knopf && <button onClick={()=>setTab(x.knopf.tab)} style={{ marginTop:8, background:"#ea580c", color:"#fff", border:"none", borderRadius:8, padding:"6px 12px", fontSize:12, fontWeight:700, cursor:"pointer" }}>{x.knopf.label} â</button>}
+      {x.knopf && <button onClick={()=>setTab(x.knopf.tab)} style={{ marginTop:8, background:"#ea580c", color:"#fff", border:"none", borderRadius:8, padding:"6px 12px", fontSize:12, fontWeight:700, cursor:"pointer" }}>{x.knopf.label} →</button>}
     </div>
   );
   return (
     <div style={{ maxWidth:720, margin:"0 auto" }}>
       <div style={{ fontSize:20, fontWeight:800, color:TH.text, marginBottom:10 }}>Verlauf</div>
       <div style={{ fontSize:12, fontWeight:700, color:TH.textMut, textTransform:"uppercase", letterSpacing:0.5, margin:"4px 0 8px" }}>Jetzt zu tun ({todo.length})</div>
-      {todo.length === 0 && <div style={{ ...karte, padding:16, color:"#166534", background:"#f0fdf4", borderColor:"#86efac", fontSize:13, marginBottom:8 }}>â Nichts offen. Alles erledigt.</div>}
+      {todo.length === 0 && <div style={{ ...karte, padding:16, color:"#166534", background:"#f0fdf4", borderColor:"#86efac", fontSize:13, marginBottom:8 }}>✅ Nichts offen. Alles erledigt.</div>}
       {todo.map(x => <Karte key={x.key} x={x} />)}
       <div style={{ fontSize:12, fontWeight:700, color:TH.textMut, textTransform:"uppercase", letterSpacing:0.5, margin:"16px 0 8px" }}>Zuletzt passiert</div>
       {ereignisse.length === 0 && <div style={{ ...karte, padding:16, color:TH.textMut, fontSize:13 }}>In den letzten Tagen ist nichts Neues passiert.</div>}
@@ -1344,9 +1344,9 @@ function Verlauf({ projekte, mitarbeiter, einsaetze, stunden, berichte, antraege
   );
 }
 
-// âââ KARTE ALLER BAUSTELLEN âââââââââââââââââââââââââââââââââââââââââââââââââââ
-// Karte mit OpenStreetMap-Kacheln (Leaflet wird beim ersten Ãffnen nachgeladen).
-// Koordinaten werden aus dem Ort der Baustelle Ã¼ber Nominatim ermittelt und auf dem GerÃ¤t zwischengespeichert.
+// ─── KARTE ALLER BAUSTELLEN ───────────────────────────────────────────────────
+// Karte mit OpenStreetMap-Kacheln (Leaflet wird beim ersten Öffnen nachgeladen).
+// Koordinaten werden aus dem Ort der Baustelle über Nominatim ermittelt und auf dem Gerät zwischengespeichert.
 let BAUSTELLE_VORWAHL = null;
 function ladeLeaflet() {
   if (window.L) return Promise.resolve(window.L);
@@ -1385,7 +1385,7 @@ function KartenStart({ projekte, einsaetze, setTab }) {
     return () => { aktiv = false; };
   }, []);
 
-  // Orte in Koordinaten umwandeln (nur fehlende, hÃ¶chstens 1 Anfrage pro Sekunde)
+  // Orte in Koordinaten umwandeln (nur fehlende, höchstens 1 Anfrage pro Sekunde)
   useEffect(() => {
     let aktiv = true;
     (async () => {
@@ -1401,7 +1401,7 @@ function KartenStart({ projekte, einsaetze, setTab }) {
             store.set("baufox-geo", cache);
             if (aktiv) setGeo(cache);
           }
-        } catch { /* offline: nÃ¤chstes Mal wieder */ }
+        } catch { /* offline: nächstes Mal wieder */ }
         await new Promise(r => setTimeout(r, 1100));
       }
     })();
@@ -1414,7 +1414,7 @@ function KartenStart({ projekte, einsaetze, setTab }) {
     const L = window.L;
     if (!mapRef.current) {
       mapRef.current = L.map(boxRef.current, { scrollWheelZoom: false }).setView([51.1, 10.4], 6);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "Â© OpenStreetMap" }).addTo(mapRef.current);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap" }).addTo(mapRef.current);
     }
     markerRef.current.forEach(m => m.remove());
     markerRef.current = [];
@@ -1452,15 +1452,15 @@ function KartenStart({ projekte, einsaetze, setTab }) {
       {fehler
         ? <div style={{ ...karte, padding:24, textAlign:"center", color:TH.textMut }}>Karte konnte nicht geladen werden (keine Verbindung?).</div>
         : <div ref={boxRef} style={{ position:"relative", zIndex:0, isolation:"isolate", height:380, borderRadius:14, overflow:"hidden", border:"1px solid "+TH.border, background:TH.panel2 }} />}
-      <div style={{ fontSize:11, color:TH.textMut, margin:"6px 2px 12px" }}>Zahl im Pin = Leute heute auf der Baustelle. Pin antippen Ã¶ffnet die Baustelle.</div>
+      <div style={{ fontSize:11, color:TH.textMut, margin:"6px 2px 12px" }}>Zahl im Pin = Leute heute auf der Baustelle. Pin antippen öffnet die Baustelle.</div>
       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
         {aktive.map(p => (
           <div key={p.id} onClick={()=>{ BAUSTELLE_VORWAHL = p.id; setTab("baustellen"); }} style={{ ...karte, borderLeft:"8px solid "+farbeVon(p), padding:"10px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:10 }}>
             <div>
               <div style={{ fontWeight:800, fontSize:14, color:TH.text }}>{p.name}</div>
-              <div style={{ fontSize:12, color:TH.textMut }}>{p.ort || "kein Ort angegeben"}{ohneOrt.includes(p) && p.ort ? " (Position wird gesucht â¦)" : ""}</div>
+              <div style={{ fontSize:12, color:TH.textMut }}>{p.ort || "kein Ort angegeben"}{ohneOrt.includes(p) && p.ort ? " (Position wird gesucht …)" : ""}</div>
             </div>
-            <span style={{ marginLeft:"auto", background:crewAnz(p)?"#dcfce7":TH.panel2, color:crewAnz(p)?"#166534":TH.textMut, borderRadius:8, padding:"2px 9px", fontWeight:700, fontSize:12 }}>ð· {crewAnz(p)} heute</span>
+            <span style={{ marginLeft:"auto", background:crewAnz(p)?"#dcfce7":TH.panel2, color:crewAnz(p)?"#166534":TH.textMut, borderRadius:8, padding:"2px 9px", fontWeight:700, fontSize:12 }}>👷 {crewAnz(p)} heute</span>
           </div>
         ))}
       </div>
@@ -1468,7 +1468,7 @@ function KartenStart({ projekte, einsaetze, setTab }) {
   );
 }
 
-// âââ BAUSTELLEN-HUB âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── BAUSTELLEN-HUB ───────────────────────────────────────────────────────────
 // Alles zu einer Baustelle an einem Ort: Crew, Stunden, Berichte, Infos.
 function Baustellen({ projekte, mitarbeiter, einsaetze, stunden, berichte, unterkuenfte, fahrzeuge, kannPlanen, setTab }) {
   const [selId, setSelId] = useState(() => { const v = BAUSTELLE_VORWAHL; BAUSTELLE_VORWAHL = null; return v; });
@@ -1495,7 +1495,7 @@ function Baustellen({ projekte, mitarbeiter, einsaetze, stunden, berichte, unter
   const sichtbar = (projekte || []).filter(p => zeigeAlle || istAktiv(p));
   const proj = (projekte || []).find(p => p.id === selId);
 
-  // ââ Liste ââ
+  // ── Liste ──
   if (!proj) {
     return (
       <div style={{ maxWidth:720, margin:"0 auto" }}>
@@ -1516,7 +1516,7 @@ function Baustellen({ projekte, mitarbeiter, einsaetze, stunden, berichte, unter
                   <div style={{ fontWeight:800, fontSize:15, color:TH.text }}>{p.name}</div>
                   <span style={{ marginLeft:"auto", border:"1px solid "+sc, color:sc, borderRadius:99, padding:"1px 9px", fontSize:11, fontWeight:700 }}>{p.status}</span>
                 </div>
-                <div style={{ fontSize:12, color:TH.textMut, marginTop:2 }}>{[p.ort, p.kunde].filter(Boolean).join(" Â· ") || "â"}</div>
+                <div style={{ fontSize:12, color:TH.textMut, marginTop:2 }}>{[p.ort, p.kunde].filter(Boolean).join(" · ") || "–"}</div>
                 {fo && (
                   <div style={{ marginTop:8 }}>
                     <div style={{ height:6, background:TH.border, borderRadius:99, overflow:"hidden" }}><div style={{ width:fo.prozent+"%", height:"100%", background:col }} /></div>
@@ -1524,8 +1524,8 @@ function Baustellen({ projekte, mitarbeiter, einsaetze, stunden, berichte, unter
                   </div>
                 )}
                 <div style={{ display:"flex", gap:8, marginTop:8, flexWrap:"wrap", fontSize:12 }}>
-                  <span style={{ background:crew.length?"#dcfce7":TH.panel2, color:crew.length?"#166534":TH.textMut, borderRadius:8, padding:"2px 9px", fontWeight:700 }}>ð· {crew.length} heute</span>
-                  {gm > 0 && <span style={{ background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"2px 9px", fontWeight:700 }}>â  {gm} Stunden gemeldet</span>}
+                  <span style={{ background:crew.length?"#dcfce7":TH.panel2, color:crew.length?"#166534":TH.textMut, borderRadius:8, padding:"2px 9px", fontWeight:700 }}>👷 {crew.length} heute</span>
+                  {gm > 0 && <span style={{ background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"2px 9px", fontWeight:700 }}>⚠ {gm} Stunden gemeldet</span>}
                 </div>
               </div>
             );
@@ -1535,7 +1535,7 @@ function Baustellen({ projekte, mitarbeiter, einsaetze, stunden, berichte, unter
     );
   }
 
-  // ââ Detail ââ
+  // ── Detail ──
   const col = farbeVon(proj), crew = crewHeute(proj), fo = fortschritt(proj);
   const st = stundenVon(proj);
   const sumH = st.reduce((a, s) => a + (Number(s.arbeitsstunden) || 0), 0);
@@ -1554,11 +1554,11 @@ function Baustellen({ projekte, mitarbeiter, einsaetze, stunden, berichte, unter
 
   return (
     <div style={{ maxWidth:720, margin:"0 auto" }}>
-      <button onClick={()=>setSelId(null)} style={{ background:"none", border:"none", color:TH.textMut, fontSize:13, cursor:"pointer", padding:"0 0 8px" }}>â alle Baustellen</button>
+      <button onClick={()=>setSelId(null)} style={{ background:"none", border:"none", color:TH.textMut, fontSize:13, cursor:"pointer", padding:"0 0 8px" }}>← alle Baustellen</button>
       <div style={{ ...karte, borderTop:"8px solid "+col, padding:"12px 14px", marginBottom:12 }}>
         <div style={{ fontWeight:800, fontSize:18, color:TH.text }}>{proj.name}</div>
-        <div style={{ fontSize:12, color:TH.textMut }}>{[proj.ort, proj.kunde].filter(Boolean).join(" Â· ") || "â"}</div>
-        {fo && <div style={{ fontSize:12, color:TH.textMut, marginTop:4 }}>{fmtDate(parseDate(proj.dateStart))} â {fmtDate(parseDate(proj.dateEnd))} Â· {fo.noch ? "noch nicht gestartet" : fo.vorbei ? "Zeitraum vorbei" : `Tag ${fo.tag} von ${fo.gesamt}`}</div>}
+        <div style={{ fontSize:12, color:TH.textMut }}>{[proj.ort, proj.kunde].filter(Boolean).join(" · ") || "–"}</div>
+        {fo && <div style={{ fontSize:12, color:TH.textMut, marginTop:4 }}>{fmtDate(parseDate(proj.dateStart))} – {fmtDate(parseDate(proj.dateEnd))} · {fo.noch ? "noch nicht gestartet" : fo.vorbei ? "Zeitraum vorbei" : `Tag ${fo.tag} von ${fo.gesamt}`}</div>}
       </div>
       <div style={{ display:"flex", gap:6, marginBottom:12 }}>
         {segs.map(([k, l]) => (
@@ -1583,7 +1583,7 @@ function Baustellen({ projekte, mitarbeiter, einsaetze, stunden, berichte, unter
                 </div>
               );
             })}
-            {kannPlanen && <button onClick={()=>setTab("woche")} style={{ ...knopf, marginTop:12 }}>Einplanen â</button>}
+            {kannPlanen && <button onClick={()=>setTab("woche")} style={{ ...knopf, marginTop:12 }}>Einplanen →</button>}
           </div>
         )}
         {seg === "stunden" && (
@@ -1591,12 +1591,12 @@ function Baustellen({ projekte, mitarbeiter, einsaetze, stunden, berichte, unter
             <div style={{ display:"flex", gap:8, flexWrap:"wrap", padding:"10px 0", fontSize:12 }}>
               <span style={{ fontWeight:800, fontSize:15, color:TH.text }}>{std(sumH)} gesamt</span>
               <span style={{ background:"#fef3c7", color:"#92400e", borderRadius:8, padding:"2px 9px", fontWeight:700 }}>{nachStatus("offen")} offen</span>
-              <span style={{ background:"#dcfce7", color:"#166534", borderRadius:8, padding:"2px 9px", fontWeight:700 }}>{nachStatus("bestaetigt")} bestÃ¤tigt</span>
+              <span style={{ background:"#dcfce7", color:"#166534", borderRadius:8, padding:"2px 9px", fontWeight:700 }}>{nachStatus("bestaetigt")} bestätigt</span>
               <span style={{ background:"#fee2e2", color:"#991b1b", borderRadius:8, padding:"2px 9px", fontWeight:700 }}>{nachStatus("gemeldet")} gemeldet</span>
             </div>
             {proPerson.length === 0 && <div style={{ color:TH.textMut, fontSize:13 }}>Noch keine Stunden erfasst.</div>}
             {proPerson.map(([n, h]) => <div key={n} style={zeile}><span>{n}</span><span style={{ marginLeft:"auto", fontWeight:700 }}>{std(h)}</span></div>)}
-            <button onClick={()=>setTab("stundenzettel")} style={{ ...knopf, marginTop:12 }}>Zum Stundenzettel â</button>
+            <button onClick={()=>setTab("stundenzettel")} style={{ ...knopf, marginTop:12 }}>Zum Stundenzettel →</button>
           </div>
         )}
         {seg === "berichte" && (
@@ -1605,25 +1605,25 @@ function Baustellen({ projekte, mitarbeiter, einsaetze, stunden, berichte, unter
             {ber.map(b => (
               <div key={b.id} style={{ padding:"10px 0", borderBottom:"1px solid "+TH.border, fontSize:13, color:TH.text }}>
                 <div style={{ display:"flex", gap:8 }}>
-                  <b>{b.datum ? fmtDate(parseDate(b.datum)) : "â"}</b>
+                  <b>{b.datum ? fmtDate(parseDate(b.datum)) : "–"}</b>
                   <span style={{ color:TH.textMut }}>{b.verfasser || ""}</span>
-                  {b.fotos.length > 0 && <span style={{ marginLeft:"auto", color:TH.textMut }}>ð· {b.fotos.length}</span>}
+                  {b.fotos.length > 0 && <span style={{ marginLeft:"auto", color:TH.textMut }}>📷 {b.fotos.length}</span>}
                 </div>
                 {b.fortschritt && <div style={{ marginTop:3 }}>{b.fortschritt}</div>}
-                {b.probleme && <div style={{ marginTop:3, background:"#fee2e2", color:"#991b1b", borderRadius:6, padding:"4px 8px", fontSize:12 }}>â  {b.probleme}</div>}
+                {b.probleme && <div style={{ marginTop:3, background:"#fee2e2", color:"#991b1b", borderRadius:6, padding:"4px 8px", fontSize:12 }}>⚠ {b.probleme}</div>}
               </div>
             ))}
-            <button onClick={()=>setTab("berichte")} style={{ ...knopf, marginTop:12 }}>Zu den Berichten â</button>
+            <button onClick={()=>setTab("berichte")} style={{ ...knopf, marginTop:12 }}>Zu den Berichten →</button>
           </div>
         )}
         {seg === "infos" && (
           <div style={{ display:"flex", flexDirection:"column", gap:8, paddingTop:10, fontSize:13 }}>
-            <Info label="Kunde" value={proj.kunde || "â"} />
-            <Info label="Ort" value={proj.ort || "â"} />
-            <Info label="Ansprechpartner" value={proj.ansprechpartner || "â"} />
+            <Info label="Kunde" value={proj.kunde || "–"} />
+            <Info label="Ort" value={proj.ort || "–"} />
+            <Info label="Ansprechpartner" value={proj.ansprechpartner || "–"} />
             {proj.apTel && <Info label="Telefon" value={<a href={"tel:"+proj.apTel} style={{ color:"#ea580c" }}>{proj.apTel}</a>} />}
             {proj.apEmail && <Info label="E-Mail" value={<a href={"mailto:"+proj.apEmail} style={{ color:"#ea580c" }}>{proj.apEmail}</a>} />}
-            <Info label="Fahrzeug" value={fzg ? `${fzg.kz} (${fzg.typ})` : "â"} />
+            <Info label="Fahrzeug" value={fzg ? `${fzg.kz} (${fzg.typ})` : "–"} />
             {unt.map(u => <Info key={u.id} label="Unterkunft" value={[u.name, u.adresse].filter(Boolean).join(", ")} />)}
             {proj.bemerkung && <div style={{ padding:"6px 10px", background:"#fef9c3", borderRadius:6, color:"#92400e", fontSize:12 }}>{proj.bemerkung}</div>}
           </div>
@@ -1642,7 +1642,7 @@ function ProjektUebersicht({ projekte, fahrzeuge, mitarbeiter }) {
         return (
           <div key={p.id} style={{ border:"1px solid "+TH.border, boxShadow:"0 2px 10px #00000012", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px #0000000d", boxShadow:"0 1px 4px #0001" }}>
             <div style={{ background:col.bg, color:"#fff", padding:"8px 14px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <span style={{ fontWeight:700, fontSize:14 }}>{p.name}{p.nummer?` Â· ${p.nummer}`:""}</span>
+              <span style={{ fontWeight:700, fontSize:14 }}>{p.name}{p.nummer?` · ${p.nummer}`:""}</span>
               <span style={{ background:sc+"33", color:sc==="#374151"?"#fff":sc, border:`1px solid ${sc}`, borderRadius:99, padding:"1px 10px", fontSize:11, fontWeight:700 }}>{p.status}</span>
             </div>
             <div style={{ padding:"10px 14px", display:"grid", gridTemplateColumns:"1fr 1fr", gap:"6px 20px", fontSize:12 }}>
@@ -1651,13 +1651,13 @@ function ProjektUebersicht({ projekte, fahrzeuge, mitarbeiter }) {
               <Info label="Start" value={fmtDate(parseDate(p.dateStart))} />
               <Info label="Ende" value={fmtDate(parseDate(p.dateEnd))} />
               <Info label="Team" value={p.team} />
-              <Info label="Vorarbeiter" value={p.vorarbeiter||"â"} />
-              {p.projektleiterId && <Info label="Projektleiter" value={maName(p.projektleiterId)||"â"} />}
-              {p.bauleiterId && <Info label="Bauleiter" value={maName(p.bauleiterId)||"â"} />}
-              {p.vertretungId && <Info label="Vertretung" value={<span style={{color:"#ea580c",fontWeight:700}}>{maName(p.vertretungId)||"â"}</span>} />}
-              <Info label="Fahrzeug" value={fzg?`${fzg.kz} (${fzg.typ})`:"â"} />
+              <Info label="Vorarbeiter" value={p.vorarbeiter||"–"} />
+              {p.projektleiterId && <Info label="Projektleiter" value={maName(p.projektleiterId)||"–"} />}
+              {p.bauleiterId && <Info label="Bauleiter" value={maName(p.bauleiterId)||"–"} />}
+              {p.vertretungId && <Info label="Vertretung" value={<span style={{color:"#ea580c",fontWeight:700}}>{maName(p.vertretungId)||"–"}</span>} />}
+              <Info label="Fahrzeug" value={fzg?`${fzg.kz} (${fzg.typ})`:"–"} />
               {p.ansprechpartner && <Info label="Ansprechpartner" value={p.ansprechpartner} />}
-              {p.auftragssumme && <Info label="Auftragssumme" value={Number(p.auftragssumme).toLocaleString("de-DE")+" â¬"} />}
+              {p.auftragssumme && <Info label="Auftragssumme" value={Number(p.auftragssumme).toLocaleString("de-DE")+" €"} />}
               {p.planStunden && <Info label="Geplante Stunden" value={p.planStunden+" h"} />}
               {p.beschreibung && <div style={{ gridColumn:"1/-1", marginTop:2, fontSize:11, color:"#6b7280" }}>{p.beschreibung}</div>}
               {p.bemerkung&&<div style={{ gridColumn:"1/-1", marginTop:4, padding:"6px 10px", background:"#fef9c3", borderRadius:6, color:"#92400e", fontSize:11 }}>{p.bemerkung}</div>}
@@ -1672,23 +1672,23 @@ function MitarbeiterUebersicht({ mitarbeiter, projekte }) {
   return (
     <div style={{ overflowX:"auto" }}>
       <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-        <thead><tr>{["Name","Rolle","Team","Telefon","FS","Stapler","SchweiÃer","Urlaub","Krank","Aktuell"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
+        <thead><tr>{["Name","Rolle","Team","Telefon","FS","Stapler","Schweißer","Urlaub","Krank","Aktuell"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
         <tbody>
           {mitarbeiter.map(ma=>{
             const col=getTeamColor(ma.team);
             const aktProj=projekteFuerMa(projekte, ma.id, new Date())[0];
             return (
               <tr key={ma.id} style={{ borderBottom:"1px solid "+TH.border }}>
-                <td style={{ ...tdS(), fontWeight:ma.rolle==="Vorarbeiter"?700:400, borderLeft:`4px solid ${col.bg}` }}>{ma.rolle==="Vorarbeiter"?"â ":""}{ma.name}</td>
+                <td style={{ ...tdS(), fontWeight:ma.rolle==="Vorarbeiter"?700:400, borderLeft:`4px solid ${col.bg}` }}>{ma.rolle==="Vorarbeiter"?"★ ":""}{ma.name}</td>
                 <td style={tdS()}><Badge color={col.bg}>{ma.rolle}</Badge></td>
                 <td style={tdS()}>{ma.team}</td>
                 <td style={tdS()}>{ma.tel}</td>
-                <td style={{ ...tdS(), textAlign:"center" }}>{ma.fuehrerschein?"â":"â"}</td>
-                <td style={{ ...tdS(), textAlign:"center" }}>{ma.stapler?"â":"â"}</td>
-                <td style={{ ...tdS(), textAlign:"center" }}>{ma.schweisser?"â":"â"}</td>
+                <td style={{ ...tdS(), textAlign:"center" }}>{ma.fuehrerschein?"✅":"❌"}</td>
+                <td style={{ ...tdS(), textAlign:"center" }}>{ma.stapler?"✅":"❌"}</td>
+                <td style={{ ...tdS(), textAlign:"center" }}>{ma.schweisser?"✅":"❌"}</td>
                 <td style={{ ...tdS(), textAlign:"center" }}>{ma.urlaub}d</td>
-                <td style={{ ...tdS(), textAlign:"center", color:ma.krank>3?"#dc2626":"#374151" }}>{ma.krank==null?"â":ma.krank+"d"}</td>
-                <td style={tdS()}>{aktProj?<Badge color={col.bg}>{aktProj.name}</Badge>:<span style={{ color:"#9ca3af" }}>â</span>}</td>
+                <td style={{ ...tdS(), textAlign:"center", color:ma.krank>3?"#dc2626":"#374151" }}>{ma.krank==null?"–":ma.krank+"d"}</td>
+                <td style={tdS()}>{aktProj?<Badge color={col.bg}>{aktProj.name}</Badge>:<span style={{ color:"#9ca3af" }}>–</span>}</td>
               </tr>
             );
           })}
@@ -1709,9 +1709,9 @@ function FahrzeugUebersicht({ fahrzeuge, projekte }) {
             <div style={{ padding:"10px 12px", fontSize:12, display:"flex", flexDirection:"column", gap:5 }}>
               <Info label="Typ" value={f.typ} />
               <Info label="Team" value={f.team} />
-              <Info label="TÃV" value={f.tuev} />
-              <Info label="Einsatz" value={aktProj?aktProj.name:"â"} />
-              <div style={{ marginTop:4 }}><Badge color={!aktProj?"#16a34a":"#dc2626"}>{!aktProj?"â VerfÃ¼gbar":"â Im Einsatz"}</Badge></div>
+              <Info label="TÜV" value={f.tuev} />
+              <Info label="Einsatz" value={aktProj?aktProj.name:"–"} />
+              <div style={{ marginTop:4 }}><Badge color={!aktProj?"#16a34a":"#dc2626"}>{!aktProj?"✓ Verfügbar":"✗ Im Einsatz"}</Badge></div>
             </div>
           </div>
         );
@@ -1719,10 +1719,10 @@ function FahrzeugUebersicht({ fahrzeuge, projekte }) {
     </div>
   );
 }
-// âââ UNTERKÃNFTE-ÃBERSICHT ââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── UNTERKÜNFTE-ÜBERSICHT ────────────────────────────────────────────────────
 function UnterkunftUebersicht({ unterkuenfte, projekte }) {
   if (!unterkuenfte || unterkuenfte.length===0) {
-    return <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine UnterkÃ¼nfte angelegt. Lege welche unter âVerwaltung â UnterkÃ¼nfte" an.</div>;
+    return <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Unterkünfte angelegt. Lege welche unter „Verwaltung → Unterkünfte" an.</div>;
   }
   return (
     <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:14 }}>
@@ -1733,14 +1733,14 @@ function UnterkunftUebersicht({ unterkuenfte, projekte }) {
           <div key={u.id} style={{ border:"1px solid "+TH.border, boxShadow:"0 2px 10px #00000012", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px #0000000d" }}>
             <div style={{ background:col.bg, color:"#fff", padding:"7px 12px", fontWeight:700, fontSize:13 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><BedDouble size={14}/>{u.name||"Unterkunft"}</span></div>
             <div style={{ padding:"10px 12px", fontSize:12, display:"flex", flexDirection:"column", gap:5 }}>
-              <Info label="Adresse" value={u.adresse||"â"} />
-              <Info label="Ansprechpartner" value={u.ansprechpartner||"â"} />
-              <Info label="Telefon" value={u.tel||"â"} />
-              <Info label="Check-in" value={u.checkin?fmtDate(parseDate(u.checkin)):"â"} />
-              <Info label="Check-out" value={u.checkout?fmtDate(parseDate(u.checkout)):"â"} />
-              <Info label="Zimmer" value={u.zimmer||"â"} />
-              <Info label="Projekt" value={proj?proj.name:"â"} />
-              <Info label="Kosten/Nacht" value={u.kostenNacht?u.kostenNacht+" â¬":"â"} />
+              <Info label="Adresse" value={u.adresse||"–"} />
+              <Info label="Ansprechpartner" value={u.ansprechpartner||"–"} />
+              <Info label="Telefon" value={u.tel||"–"} />
+              <Info label="Check-in" value={u.checkin?fmtDate(parseDate(u.checkin)):"–"} />
+              <Info label="Check-out" value={u.checkout?fmtDate(parseDate(u.checkout)):"–"} />
+              <Info label="Zimmer" value={u.zimmer||"–"} />
+              <Info label="Projekt" value={proj?proj.name:"–"} />
+              <Info label="Kosten/Nacht" value={u.kostenNacht?u.kostenNacht+" €":"–"} />
             </div>
           </div>
         );
@@ -1748,7 +1748,7 @@ function UnterkunftUebersicht({ unterkuenfte, projekte }) {
     </div>
   );
 }
-// âââ URLAUBS-/FREI-ANTRÃGE ââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── URLAUBS-/FREI-ANTRÄGE ────────────────────────────────────────────────────
 function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
   const [maId, setMaId] = useState(mitarbeiter[0]?.id || null);
   const [typ, setTyp] = useState("Urlaub");
@@ -1781,7 +1781,7 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
 
   function entscheiden(antrag, neuStatus) {
     setAntraege(prev => prev.map(a => a.id === antrag.id ? { ...a, status: neuStatus } : a));
-    // Bei Genehmigung: als Sondereinsatz Ã¼bernehmen, damit er in allen Ansichten erscheint
+    // Bei Genehmigung: als Sondereinsatz übernehmen, damit er in allen Ansichten erscheint
     if (neuStatus === "genehmigt") {
       setSonder(prev => [...prev, {
         id: "S" + antrag.id, ma: antrag.ma, typ: antrag.typ,
@@ -1801,7 +1801,7 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
       <div style={{ display:"flex", gap:8, marginBottom:18 }}>
         <button onClick={()=>setSeite("antrag")} style={{ padding:"8px 18px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:seite==="antrag"?"#ea580c":TH.panel, color:seite==="antrag"?"#fff":TH.text }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Pencil size={13}/>Antrag stellen</span></button>
         <button onClick={()=>setSeite("freigabe")} style={{ padding:"8px 18px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:seite==="freigabe"?"#ea580c":TH.panel, color:seite==="freigabe"?"#fff":TH.text }}>
-          â Freigabe {offen.length>0 && <span style={{ background:"#dc2626", color:"#fff", borderRadius:99, padding:"0 7px", fontSize:11, marginLeft:4 }}>{offen.length}</span>}
+          ✅ Freigabe {offen.length>0 && <span style={{ background:"#dc2626", color:"#fff", borderRadius:99, padding:"0 7px", fontSize:11, marginLeft:4 }}>{offen.length}</span>}
         </button>
       </div>
 
@@ -1846,13 +1846,13 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
 
             {von && bis && parseDate(bis) >= parseDate(von) && (
               <div style={{ background:col.light, border:`1px solid ${col.bg}33`, borderRadius:8, padding:"8px 12px", marginBottom:14, fontSize:12, color:col.text }}>
-                {fmtDate(parseDate(von))} â {fmtDate(parseDate(bis))} Â· <strong>{tageAnzahl(von,bis)} Tage</strong>
+                {fmtDate(parseDate(von))} – {fmtDate(parseDate(bis))} · <strong>{tageAnzahl(von,bis)} Tage</strong>
               </div>
             )}
 
             <div style={{ marginBottom:16 }}>
               <div style={{ fontSize:10, color:"#9ca3af", fontWeight:600, marginBottom:4, textTransform:"uppercase" }}>Grund (optional)</div>
-              <input type="text" value={grund} onChange={e=>setGrund(e.target.value)} style={inpS()} placeholder="z.B. Familienurlaub, Arztterminâ¦" />
+              <input type="text" value={grund} onChange={e=>setGrund(e.target.value)} style={inpS()} placeholder="z.B. Familienurlaub, Arzttermin…" />
             </div>
 
             <button onClick={einreichen} style={{ width:"100%", padding:"11px", borderRadius:8, background:"#1d4ed8", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:14 }}>
@@ -1865,10 +1865,10 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
       {seite === "freigabe" && (
         <div>
           <div style={{ fontWeight:700, fontSize:13, color:TH.text, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}>
-            Offene AntrÃ¤ge {offen.length>0 && `(${offen.length})`}
+            Offene Anträge {offen.length>0 && `(${offen.length})`}
           </div>
           {offen.length === 0 ? (
-            <div style={{ background:"#f0fdf4", border:"1.5px solid #86efac", borderRadius:12, padding:"14px 16px", color:"#166534", fontSize:13, marginBottom:24 }}>â Keine offenen AntrÃ¤ge</div>
+            <div style={{ background:"#f0fdf4", border:"1.5px solid #86efac", borderRadius:12, padding:"14px 16px", color:"#166534", fontSize:13, marginBottom:24 }}>✅ Keine offenen Anträge</div>
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:28 }}>
               {offen.map(a => {
@@ -1885,13 +1885,13 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
                     </div>
                     <div style={{ padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:12 }}>
                       <div style={{ fontSize:13 }}>
-                        <div style={{ fontWeight:600, color:TH.text }}>{fmtDate(parseDate(a.dateStart))} â {fmtDate(parseDate(a.dateEnd))}</div>
+                        <div style={{ fontWeight:600, color:TH.text }}>{fmtDate(parseDate(a.dateStart))} – {fmtDate(parseDate(a.dateEnd))}</div>
                         {a.grund && <div style={{ fontSize:12, color:"#6b7280", marginTop:3 }}>{a.grund}</div>}
                         <div style={{ fontSize:11, color:"#9ca3af", marginTop:3 }}>Eingereicht: {fmtDate(parseDate(a.eingereicht))}</div>
                       </div>
                       <div style={{ display:"flex", gap:8 }}>
-                        <button onClick={()=>entscheiden(a,"genehmigt")} style={{ padding:"8px 16px", borderRadius:8, background:"#16a34a", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>â Genehmigen</button>
-                        <button onClick={()=>entscheiden(a,"abgelehnt")} style={{ padding:"8px 16px", borderRadius:8, background:TH.panel, color:"#dc2626", border:"1.5px solid #dc2626", cursor:"pointer", fontWeight:700, fontSize:13 }}>â Ablehnen</button>
+                        <button onClick={()=>entscheiden(a,"genehmigt")} style={{ padding:"8px 16px", borderRadius:8, background:"#16a34a", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }}>✓ Genehmigen</button>
+                        <button onClick={()=>entscheiden(a,"abgelehnt")} style={{ padding:"8px 16px", borderRadius:8, background:TH.panel, color:"#dc2626", border:"1.5px solid #dc2626", cursor:"pointer", fontWeight:700, fontSize:13 }}>✕ Ablehnen</button>
                       </div>
                     </div>
                   </div>
@@ -1914,8 +1914,8 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
                           <td style={{ ...tdS(), borderLeft:`4px solid ${c.bg}`, fontWeight:600 }}>{a.maName}</td>
                           <td style={tdS()}>{a.team}</td>
                           <td style={tdS()}><Badge color={EINSATZ_FARBEN[a.typ]?.badge||"#6b7280"}>{a.typ}</Badge></td>
-                          <td style={tdS()}>{fmtDate(parseDate(a.dateStart))} â {fmtDate(parseDate(a.dateEnd))}</td>
-                          <td style={tdS()}>{a.grund||"â"}</td>
+                          <td style={tdS()}>{fmtDate(parseDate(a.dateStart))} – {fmtDate(parseDate(a.dateEnd))}</td>
+                          <td style={tdS()}>{a.grund||"–"}</td>
                           <td style={{ ...tdS(), textAlign:"center" }}><Badge color={statusFarbe[a.status]}>{a.status}</Badge></td>
                         </tr>
                       );
@@ -1931,14 +1931,14 @@ function Antraege({ mitarbeiter, antraege, setAntraege, setSonder }) {
   );
 }
 
-// âââ Modal âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── Modal ─────────────────────────────────────────────────────────────────
 function Modal({ titel, onClose, children, farbe="#ea580c" }) {
   return (
     <div className="modal-hintergrund" onClick={onClose} style={{ position:"fixed", inset:0, background:"#0007", display:"flex", alignItems:"flex-start", justifyContent:"center", padding:"40px 16px", zIndex:100, overflowY:"auto" }}>
       <div className="modal-fenster" onClick={e=>e.stopPropagation()} style={{ background:TH.panel, borderRadius:14, width:"100%", maxWidth:520, boxShadow:"0 10px 40px #0004" }}>
         <div style={{ background:farbe, color:"#fff", padding:"12px 18px", borderRadius:"14px 14px 0 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <span style={{ fontWeight:700, fontSize:15 }}>{titel}</span>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:"#fff", fontSize:22, cursor:"pointer", lineHeight:1 }}>Ã</button>
+          <button onClick={onClose} style={{ background:"none", border:"none", color:"#fff", fontSize:22, cursor:"pointer", lineHeight:1 }}>×</button>
         </div>
         <div style={{ padding:"18px 20px" }}>{children}</div>
       </div>
@@ -1956,10 +1956,10 @@ function Feld({ label, children }) {
 function btnPrimary(farbe="#ea580c") { return { padding:"10px 20px", borderRadius:8, background:farbe, color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:13 }; }
 const btnGhost = () => ({ padding:"10px 16px", borderRadius:8, background:TH.panel2, color:TH.text, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13 });
 
-// Ãffnet eine Druck-/PDF-Seite in neuem Tab â mit einheitlichem ââ SchlieÃen"-Knopf (beim Drucken ausgeblendet)
+// Öffnet eine Druck-/PDF-Seite in neuem Tab – mit einheitlichem „✕ Schließen"-Knopf (beim Drucken ausgeblendet)
 function oeffneDruck(html) {
   const w = window.open("", "_blank");
-  if (!w) { alert("Bitte Pop-ups fÃ¼r diese Seite erlauben, dann Ã¶ffnet sich die Druckansicht (dort âAls PDF speichern\")."); return; }
+  if (!w) { alert("Bitte Pop-ups für diese Seite erlauben, dann öffnet sich die Druckansicht (dort „Als PDF speichern\")."); return; }
   w.document.write(html);
   w.document.close();
   try {
@@ -1968,15 +1968,15 @@ function oeffneDruck(html) {
     w.document.head.appendChild(stil);
     const bar = w.document.createElement("div");
     bar.id = "bf-leiste";
-    bar.innerHTML = '<button id="bf-druck" type="button">Drucken</button><button id="bf-zu" type="button">â SchlieÃen</button>';
+    bar.innerHTML = '<button id="bf-druck" type="button">Drucken</button><button id="bf-zu" type="button">✕ Schließen</button>';
     w.document.body.appendChild(bar);
     w.document.getElementById("bf-druck").onclick = function(){ w.print(); };
     w.document.getElementById("bf-zu").onclick = function(){ w.close(); };
-  } catch (e) { /* Knopf ist optional â Druck funktioniert auch ohne */ }
+  } catch (e) { /* Knopf ist optional – Druck funktioniert auch ohne */ }
 }
 
-// âââ VERWALTUNG (Stammdaten anlegen/bearbeiten/lÃ¶schen) âââââââââââââââââââââââ
-// âââ Firmencode (Verwaltung): Mitarbeiter registrieren sich damit selbst âââââ
+// ─── VERWALTUNG (Stammdaten anlegen/bearbeiten/löschen) ───────────────────────
+// ─── Firmencode (Verwaltung): Mitarbeiter registrieren sich damit selbst ─────
 function FirmencodePanel() {
   const [code, setCode] = useState(null);
   const [laedt, setLaedt] = useState(true);
@@ -1997,7 +1997,7 @@ function FirmencodePanel() {
   }
 
   async function neuErzeugen() {
-    if (!window.confirm("Neuen Code erzeugen? Der alte Code funktioniert danach nicht mehr fÃ¼r neue Registrierungen. Bereits angemeldete Mitarbeiter bleiben in deiner Firma.")) return;
+    if (!window.confirm("Neuen Code erzeugen? Der alte Code funktioniert danach nicht mehr für neue Registrierungen. Bereits angemeldete Mitarbeiter bleiben in deiner Firma.")) return;
     setBusy(true);
     const { data, error } = await supabase.rpc("firmencode_neu");
     setBusy(false);
@@ -2008,17 +2008,17 @@ function FirmencodePanel() {
     <div style={{ maxWidth:560 }}>
       <h3 style={{ margin:"0 0 6px", fontSize:16, color:TH.text }}>Firmencode</h3>
       <p style={{ margin:"0 0 16px", fontSize:13, color:TH.textMut, lineHeight:1.5 }}>
-        Gib diesen Code an deine Mitarbeiter. Sie wÃ¤hlen beim Registrieren âMit Firmencode beitretenâ, geben Namen, E-Mail, Passwort und diesen Code ein und landen automatisch in deiner Firma.
+        Gib diesen Code an deine Mitarbeiter. Sie wählen beim Registrieren „Mit Firmencode beitreten“, geben Namen, E-Mail, Passwort und diesen Code ein und landen automatisch in deiner Firma.
       </p>
       <div style={{ background:TH.panel2, border:"1.5px solid "+TH.border, borderRadius:12, padding:18, display:"flex", flexDirection:"column", gap:14, alignItems:"flex-start" }}>
         {laedt ? (
-          <div style={{ fontSize:13, color:TH.textMut }}>Code wird geladenâ¦</div>
+          <div style={{ fontSize:13, color:TH.textMut }}>Code wird geladen…</div>
         ) : code ? (
           <>
             <div style={{ fontSize:32, fontWeight:800, letterSpacing:4, color:"#ea580c", fontFamily:"monospace" }}>{schoen}</div>
             <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-              <button onClick={kopieren} style={btnPrimary()}>{kopiert ? "Kopiert â" : "Code kopieren"}</button>
-              <button onClick={neuErzeugen} disabled={busy} style={{ ...btnGhost(), opacity:busy?0.6:1 }}>{busy ? "Erzeugeâ¦" : "Neuen Code erzeugen"}</button>
+              <button onClick={kopieren} style={btnPrimary()}>{kopiert ? "Kopiert ✓" : "Code kopieren"}</button>
+              <button onClick={neuErzeugen} disabled={busy} style={{ ...btnGhost(), opacity:busy?0.6:1 }}>{busy ? "Erzeuge…" : "Neuen Code erzeugen"}</button>
             </div>
           </>
         ) : (
@@ -2054,7 +2054,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     supabase.rpc("mein_logo").then(async ({ data, error }) => {
       if (!aktiv || error) return;
       if (data) { setFirmenlogoState(data); return; }
-      // Einmalige Ãbernahme eines bisher nur lokal gespeicherten Logos
+      // Einmalige Übernahme eines bisher nur lokal gespeicherten Logos
       const lokal = store.get("baufox_firmenlogo");
       if (lokal && typeof lokal === "string") {
         const res = await supabase.rpc("logo_setzen", { p_logo: lokal });
@@ -2073,7 +2073,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     const file = e.target.files && e.target.files[0];
     e.target.value = "";
     if (!file) return;
-    if (!file.type.startsWith("image/")) { alert("Bitte ein Bild auswÃ¤hlen (PNG oder JPG)."); return; }
+    if (!file.type.startsWith("image/")) { alert("Bitte ein Bild auswählen (PNG oder JPG)."); return; }
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
@@ -2085,7 +2085,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
         c.width = w; c.height = h;
         c.getContext("2d").drawImage(img, 0, 0, w, h);
         try { setFirmenlogo(c.toDataURL("image/png")); }
-        catch (err) { alert("Das Logo konnte nicht gespeichert werden (evtl. zu groÃ). Bitte ein kleineres Bild verwenden."); }
+        catch (err) { alert("Das Logo konnte nicht gespeichert werden (evtl. zu groß). Bitte ein kleineres Bild verwenden."); }
       };
       img.onerror = () => alert("Das Bild konnte nicht geladen werden.");
       img.src = reader.result;
@@ -2102,7 +2102,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     return prefix+n;
   }
 
-  // ââ Projekt-Formular ââ
+  // ── Projekt-Formular ──
   function ProjektForm({ data }) {
     const [f, setF] = useState(data || { id:"", name:"", nummer:"", kunde:"", auftraggeber:"", ansprechpartner:"", apTel:"", apEmail:"", ort:"", land:"", dateStart:isoDate(new Date()), dateEnd:isoDate(new Date()), team:teamNamen[0], status:"geplant", fzg:"", vorarbeiter:"", auftragssumme:"", planStunden:"", planKosten:"", mindestlohn:"", beschreibung:"", bemerkung:"" });
     const set = (k,v) => setF(p=>({...p,[k]:v}));
@@ -2131,7 +2131,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
           <div style={{ flex:1, minWidth:150 }}><Feld label="Ort"><input style={inpS()} value={f.ort} onChange={e=>set("ort",e.target.value)} /></Feld></div>
           <div style={{ flex:1, minWidth:150 }}><Feld label="Land"><input style={inpS()} value={f.land||""} onChange={e=>set("land",e.target.value)} placeholder="Deutschland" /></Feld></div>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Mindestlohn vor Ort (â¬/h)"><input type="number" style={inpS()} value={f.mindestlohn||""} onChange={e=>set("mindestlohn",e.target.value)} placeholder="z.B. 24" /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Mindestlohn vor Ort (€/h)"><input type="number" style={inpS()} value={f.mindestlohn||""} onChange={e=>set("mindestlohn",e.target.value)} placeholder="z.B. 24" /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
           <div style={{ flex:1, minWidth:150 }}><Feld label="Start"><input type="date" style={inpS()} value={f.dateStart} onChange={e=>set("dateStart",e.target.value)} /></Feld></div>
@@ -2142,18 +2142,18 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           <div style={{ flex:1, minWidth:150 }}><Feld label="Status"><select style={inpS()} value={f.status} onChange={e=>set("status",e.target.value)}>{Object.keys(STATUS_FARBEN).map(s=><option key={s}>{s}</option>)}</select></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Vorarbeiter"><select style={inpS()} value={f.vorarbeiter} onChange={e=>set("vorarbeiter",e.target.value)}><option value="">â</option>{vorarbeiterNamen.map(v=><option key={v}>{v}</option>)}</select></Feld></div>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Fahrzeug"><select style={inpS()} value={f.fzg} onChange={e=>set("fzg",e.target.value)}><option value="">â</option>{fahrzeuge.map(fz=><option key={fz.id} value={fz.id}>{fz.kz}</option>)}</select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Vorarbeiter"><select style={inpS()} value={f.vorarbeiter} onChange={e=>set("vorarbeiter",e.target.value)}><option value="">–</option>{vorarbeiterNamen.map(v=><option key={v}>{v}</option>)}</select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Fahrzeug"><select style={inpS()} value={f.fzg} onChange={e=>set("fzg",e.target.value)}><option value="">–</option>{fahrzeuge.map(fz=><option key={fz.id} value={fz.id}>{fz.kz}</option>)}</select></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Projektleiter"><select style={inpS()} value={f.projektleiterId||""} onChange={e=>set("projektleiterId",e.target.value?Number(e.target.value):"")}><option value="">â</option>{mitarbeiter.filter(m=>m.rolle==="Projektleiter").map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Bauleiter"><select style={inpS()} value={f.bauleiterId||""} onChange={e=>set("bauleiterId",e.target.value?Number(e.target.value):"")}><option value="">â</option>{mitarbeiter.filter(m=>m.rolle==="Bauleiter").map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Vertretung (bei Ausfall)"><select style={inpS()} value={f.vertretungId||""} onChange={e=>set("vertretungId",e.target.value?Number(e.target.value):"")}><option value="">â</option>{mitarbeiter.filter(m=>m.rolle==="Projektleiter"||m.rolle==="Bauleiter").map(m=><option key={m.id} value={m.id}>{m.name} ({m.rolle})</option>)}</select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Projektleiter"><select style={inpS()} value={f.projektleiterId||""} onChange={e=>set("projektleiterId",e.target.value?Number(e.target.value):"")}><option value="">–</option>{mitarbeiter.filter(m=>m.rolle==="Projektleiter").map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Bauleiter"><select style={inpS()} value={f.bauleiterId||""} onChange={e=>set("bauleiterId",e.target.value?Number(e.target.value):"")}><option value="">–</option>{mitarbeiter.filter(m=>m.rolle==="Bauleiter").map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Vertretung (bei Ausfall)"><select style={inpS()} value={f.vertretungId||""} onChange={e=>set("vertretungId",e.target.value?Number(e.target.value):"")}><option value="">–</option>{mitarbeiter.filter(m=>m.rolle==="Projektleiter"||m.rolle==="Bauleiter").map(m=><option key={m.id} value={m.id}>{m.name} ({m.rolle})</option>)}</select></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Auftragssumme (â¬)"><input type="number" style={inpS()} value={f.auftragssumme||""} onChange={e=>set("auftragssumme",e.target.value)} placeholder="0" /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Auftragssumme (€)"><input type="number" style={inpS()} value={f.auftragssumme||""} onChange={e=>set("auftragssumme",e.target.value)} placeholder="0" /></Feld></div>
           <div style={{ flex:1, minWidth:150 }}><Feld label="Geplante Stunden"><input type="number" style={inpS()} value={f.planStunden||""} onChange={e=>set("planStunden",e.target.value)} placeholder="0" /></Feld></div>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Geplante Kosten (â¬)"><input type="number" style={inpS()} value={f.planKosten||""} onChange={e=>set("planKosten",e.target.value)} placeholder="0" /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Geplante Kosten (€)"><input type="number" style={inpS()} value={f.planKosten||""} onChange={e=>set("planKosten",e.target.value)} placeholder="0" /></Feld></div>
         </div>
         <Feld label="Beschreibung der Arbeiten"><input style={inpS()} value={f.beschreibung||""} onChange={e=>set("beschreibung",e.target.value)} placeholder="Kurzbeschreibung" /></Feld>
         <Feld label="Bemerkung"><input style={inpS()} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} placeholder="z.B. Anreise Sonntag, Hotel gebucht" /></Feld>
@@ -2165,7 +2165,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     );
   }
 
-  // ââ Mitarbeiter-Formular ââ
+  // ── Mitarbeiter-Formular ──
   function MitarbeiterForm({ data }) {
     const [f, setF] = useState(data || { id:null, name:"", rolle:"Monteur", team:teamNamen[0], tel:"", email:"", stundensatz:"", fuehrerschein:false, stapler:false, schweisser:false, urlaub:0, krank:0, rechte:null });
     const set = (k,v) => setF(p=>({...p,[k]:v}));
@@ -2184,7 +2184,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     };
     function speichern() {
       if (!f.name) return;
-      if (limitErreicht) { alert(`Das Paket erlaubt nur ${maxAdmins} zusÃ¤tzliche Admins (${belegt} bereits vergeben). Bitte zuerst einen Admin herabstufen oder das Paket upgraden.`); return; }
+      if (limitErreicht) { alert(`Das Paket erlaubt nur ${maxAdmins} zusätzliche Admins (${belegt} bereits vergeben). Bitte zuerst einen Admin herabstufen oder das Paket upgraden.`); return; }
       const rechteWert = wirdAdmin ? aktuelleRechte : null;
       const sauber = { ...f, rechte: rechteWert, email:(f.email||"").trim().toLowerCase(), stundensatz: f.stundensatz!=null && f.stundensatz!=="" ? Number(f.stundensatz) : null, urlaub: Number(f.urlaub)||0, krank: Number(f.krank)||0, fuehrerschein: !!f.fuehrerschein, stapler: !!f.stapler, schweisser: !!f.schweisser };
       if (data) setMitarbeiter(prev => prev.map(m => m.id===data.id ? sauber : m));
@@ -2205,7 +2205,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8, marginBottom:10 }}>
               <span style={{ fontWeight:800, fontSize:13, color:TH.text, display:"inline-flex", alignItems:"center", gap:6 }}><Settings size={14}/>Admin-Rechte</span>
               <span style={{ fontSize:12, fontWeight:700, color:limitErreicht?"#dc2626":TH.textMut }}>
-                {adminInfo ? `${belegt + (wirdAdmin && !warAdmin ? 1 : 0)} von ${maxAdmins} Admins belegt` : "lÃ¤dtâ¦"}
+                {adminInfo ? `${belegt + (wirdAdmin && !warAdmin ? 1 : 0)} von ${maxAdmins} Admins belegt` : "lädt…"}
               </span>
             </div>
             {limitErreicht ? (
@@ -2226,12 +2226,12 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
             </>)}
           </div>
         )}
-        <Feld label="Login-E-Mail (fÃ¼r App-Zugang)"><input style={inpS()} value={f.email||""} onChange={e=>set("email",e.target.value)} placeholder="z.B. max@firma.de â muss zum Supabase-Login passen" /></Feld>
-        <Feld label="Telefon"><input style={inpS()} value={f.tel} onChange={e=>set("tel",e.target.value)} placeholder="0171-â¦" /></Feld>
-        <Feld label="Stundensatz (â¬/h, intern fÃ¼r Kostenrechnung)"><input type="number" style={inpS()} value={f.stundensatz||""} onChange={e=>set("stundensatz",e.target.value)} placeholder="z.B. 45" /></Feld>
+        <Feld label="Login-E-Mail (für App-Zugang)"><input style={inpS()} value={f.email||""} onChange={e=>set("email",e.target.value)} placeholder="z.B. max@firma.de – muss zum Supabase-Login passen" /></Feld>
+        <Feld label="Telefon"><input style={inpS()} value={f.tel} onChange={e=>set("tel",e.target.value)} placeholder="0171-…" /></Feld>
+        <Feld label="Stundensatz (€/h, intern für Kostenrechnung)"><input type="number" style={inpS()} value={f.stundensatz||""} onChange={e=>set("stundensatz",e.target.value)} placeholder="z.B. 45" /></Feld>
         <Feld label="Qualifikationen">
           <div style={{ display:"flex", gap:16, flexWrap:"wrap", marginTop:4 }}>
-            {[["fuehrerschein","FÃ¼hrerschein"],["stapler","Staplerschein"],["schweisser","SchweiÃer"]].map(([k,lbl])=>(
+            {[["fuehrerschein","Führerschein"],["stapler","Staplerschein"],["schweisser","Schweißer"]].map(([k,lbl])=>(
               <label key={k} style={{ display:"flex", alignItems:"center", gap:6, fontSize:13, cursor:"pointer" }}>
                 <input type="checkbox" checked={!!f[k]} onChange={e=>set(k,e.target.checked)} style={{ width:17, height:17 }} />{lbl}
               </label>
@@ -2250,7 +2250,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     );
   }
 
-  // ââ Fahrzeug-Formular ââ
+  // ── Fahrzeug-Formular ──
   function FahrzeugForm({ data }) {
     const [f, setF] = useState(data || { id:"", kz:"", typ:"Sprinter", team:teamNamen[0], tuev:"" });
     const set = (k,v) => setF(p=>({...p,[k]:v}));
@@ -2264,10 +2264,10 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     return (
       <Modal titel={data?"Fahrzeug bearbeiten":"Neues Fahrzeug"} onClose={()=>setModal(null)} farbe={col.bg}>
         <Feld label="Kennzeichen"><input style={inpS()} value={f.kz} onChange={e=>set("kz",e.target.value)} placeholder="MK-XX 000" /></Feld>
-        <Feld label="Fahrzeugtyp"><input style={inpS()} value={f.typ} onChange={e=>set("typ",e.target.value)} placeholder="Sprinter, Pritscheâ¦" /></Feld>
+        <Feld label="Fahrzeugtyp"><input style={inpS()} value={f.typ} onChange={e=>set("typ",e.target.value)} placeholder="Sprinter, Pritsche…" /></Feld>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
           <div style={{ flex:1, minWidth:150 }}><Feld label="Team"><select style={inpS()} value={f.team} onChange={e=>set("team",e.target.value)}>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="TÃV (JJJJ-MM)"><input style={inpS()} value={f.tuev} onChange={e=>set("tuev",e.target.value)} placeholder="2026-08" /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="TÜV (JJJJ-MM)"><input style={inpS()} value={f.tuev} onChange={e=>set("tuev",e.target.value)} placeholder="2026-08" /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:10, marginTop:6 }}>
           <button onClick={speichern} style={btnPrimary(col.bg)}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Save size={14}/>Speichern</span></button>
@@ -2277,7 +2277,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     );
   }
 
-  // ââ Unterkunft-Formular ââ
+  // ── Unterkunft-Formular ──
   function UnterkunftForm({ data }) {
     const [f, setF] = useState(data || { id:"", name:"", adresse:"", ansprechpartner:"", tel:"", email:"", checkin:"", checkout:"", zimmer:"", projektId:"", kostenNacht:"", bemerkung:"" });
     const set = (k,v) => setF(p=>({...p,[k]:v}));
@@ -2291,7 +2291,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     return (
       <Modal titel={data?"Unterkunft bearbeiten":"Neue Unterkunft"} onClose={()=>setModal(null)} farbe={col.bg}>
         <Feld label="Name der Unterkunft"><input style={inpS()} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Hotel Leipzig" /></Feld>
-        <Feld label="Adresse"><input style={inpS()} value={f.adresse} onChange={e=>set("adresse",e.target.value)} placeholder="StraÃe, PLZ, Ort" /></Feld>
+        <Feld label="Adresse"><input style={inpS()} value={f.adresse} onChange={e=>set("adresse",e.target.value)} placeholder="Straße, PLZ, Ort" /></Feld>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
           <div style={{ flex:1, minWidth:150 }}><Feld label="Ansprechpartner"><input style={inpS()} value={f.ansprechpartner} onChange={e=>set("ansprechpartner",e.target.value)} /></Feld></div>
           <div style={{ flex:1, minWidth:150 }}><Feld label="Telefon"><input style={inpS()} value={f.tel} onChange={e=>set("tel",e.target.value)} /></Feld></div>
@@ -2303,9 +2303,9 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
         </div>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
           <div style={{ flex:1, minWidth:150 }}><Feld label="Zimmer"><input type="number" style={inpS()} value={f.zimmer} onChange={e=>set("zimmer",e.target.value)} placeholder="3" /></Feld></div>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Kosten/Nacht (â¬)"><input type="number" style={inpS()} value={f.kostenNacht} onChange={e=>set("kostenNacht",e.target.value)} placeholder="80" /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Kosten/Nacht (€)"><input type="number" style={inpS()} value={f.kostenNacht} onChange={e=>set("kostenNacht",e.target.value)} placeholder="80" /></Feld></div>
         </div>
-        <Feld label="Projekt"><select style={inpS()} value={f.projektId} onChange={e=>set("projektId",e.target.value)}><option value="">â kein Projekt â</option>{projekte.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Feld>
+        <Feld label="Projekt"><select style={inpS()} value={f.projektId} onChange={e=>set("projektId",e.target.value)}><option value="">– kein Projekt –</option>{projekte.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></Feld>
         <Feld label="Bemerkung"><input style={inpS()} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} /></Feld>
         <div style={{ display:"flex", gap:10, marginTop:6 }}>
           <button onClick={speichern} style={btnPrimary(col.bg)}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Save size={14}/>Speichern</span></button>
@@ -2315,7 +2315,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     );
   }
 
-  // ââ Werkzeug-Formular ââ
+  // ── Werkzeug-Formular ──
   function WerkzeugForm({ data }) {
     const [f, setF] = useState(data || { id:"", name:"", typ:"", seriennummer:"", zustand:"gut", zugeordnetMa:"", team:"", pruefDatum:"", bemerkung:"" });
     const set = (k,v) => setF(p=>({...p,[k]:v}));
@@ -2327,18 +2327,18 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     }
     return (
       <Modal titel={data?"Werkzeug bearbeiten":"Neues Werkzeug"} onClose={()=>setModal(null)} farbe="#475569">
-        <Feld label="Bezeichnung"><input style={inpS()} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. SchweiÃgerÃ¤t Fronius" /></Feld>
+        <Feld label="Bezeichnung"><input style={inpS()} value={f.name} onChange={e=>set("name",e.target.value)} placeholder="z.B. Schweißgerät Fronius" /></Feld>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Typ"><input style={inpS()} value={f.typ} onChange={e=>set("typ",e.target.value)} placeholder="SchweiÃgerÃ¤t, Bohrmaschineâ¦" /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Typ"><input style={inpS()} value={f.typ} onChange={e=>set("typ",e.target.value)} placeholder="Schweißgerät, Bohrmaschine…" /></Feld></div>
           <div style={{ flex:1, minWidth:150 }}><Feld label="Seriennummer"><input style={inpS()} value={f.seriennummer} onChange={e=>set("seriennummer",e.target.value)} /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
           <div style={{ flex:1, minWidth:150 }}><Feld label="Zustand"><select style={inpS()} value={f.zustand} onChange={e=>set("zustand",e.target.value)}><option>gut</option><option>gebraucht</option><option>defekt</option><option>in Reparatur</option></select></Feld></div>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="PrÃ¼ftermin (z.B. DGUV)"><input type="date" style={inpS()} value={f.pruefDatum||""} onChange={e=>set("pruefDatum",e.target.value)} /></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Prüftermin (z.B. DGUV)"><input type="date" style={inpS()} value={f.pruefDatum||""} onChange={e=>set("pruefDatum",e.target.value)} /></Feld></div>
         </div>
         <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Zugeordneter Mitarbeiter"><select style={inpS()} value={f.zugeordnetMa||""} onChange={e=>set("zugeordnetMa",e.target.value)}><option value="">â</option>{mitarbeiter.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
-          <div style={{ flex:1, minWidth:150 }}><Feld label="Oder Team"><select style={inpS()} value={f.team||""} onChange={e=>set("team",e.target.value)}><option value="">â</option>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Zugeordneter Mitarbeiter"><select style={inpS()} value={f.zugeordnetMa||""} onChange={e=>set("zugeordnetMa",e.target.value)}><option value="">–</option>{mitarbeiter.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></Feld></div>
+          <div style={{ flex:1, minWidth:150 }}><Feld label="Oder Team"><select style={inpS()} value={f.team||""} onChange={e=>set("team",e.target.value)}><option value="">–</option>{teamNamen.map(t=><option key={t}>{t}</option>)}</select></Feld></div>
         </div>
         <Feld label="Bemerkung"><input style={inpS()} value={f.bemerkung} onChange={e=>set("bemerkung",e.target.value)} /></Feld>
         <div style={{ display:"flex", gap:10, marginTop:6 }}>
@@ -2361,7 +2361,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     { id:"projekte", label:`Projekte (${projekte.length})`, Icon:Building2 },
     { id:"mitarbeiter", label:`Mitarbeiter (${mitarbeiter.length})`, Icon:Users },
     { id:"fahrzeuge", label:`Fahrzeuge (${fahrzeuge.length})`, Icon:Truck },
-    { id:"unterkuenfte", label:`UnterkÃ¼nfte (${(unterkuenfte||[]).length})`, Icon:BedDouble },
+    { id:"unterkuenfte", label:`Unterkünfte (${(unterkuenfte||[]).length})`, Icon:BedDouble },
     { id:"werkzeuge", label:`Werkzeuge (${(werkzeuge||[]).length})`, Icon:Wrench },
     { id:"teams", label:`Teams (${(teams||[]).length})`, Icon:Users },
     { id:"logo", label:"Firmenlogo", Icon:Settings },
@@ -2375,7 +2375,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           <button key={t.id} onClick={()=>setSub(t.id)} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:sub===t.id?"#ea580c":TH.panel, color:sub===t.id?"#fff":TH.text }}><span style={{ display:"inline-flex", alignItems:"center", gap:6 }}>{t.Icon && <t.Icon size={14} />}{t.label}</span></button>
         ))}
         <button onClick={backupHerunterladen} title="Alle Daten als Sicherungsdatei herunterladen" style={{ marginLeft:"auto", padding:"7px 14px", borderRadius:8, border:"none", background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", cursor:"pointer", fontSize:12, fontWeight:700 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Save size={14}/>Backup herunterladen</span></button>
-        {onReset && <button onClick={onReset} style={{ marginLeft:"auto", padding:"7px 14px", borderRadius:8, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer", fontSize:12 }}>âº Demo-Daten zurÃ¼cksetzen</button>}
+        {onReset && <button onClick={onReset} style={{ marginLeft:"auto", padding:"7px 14px", borderRadius:8, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer", fontSize:12 }}>↺ Demo-Daten zurücksetzen</button>}
       </div>
 
       {sub==="firmencode" && <FirmencodePanel />}
@@ -2384,7 +2384,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
         <div style={{ maxWidth:560 }}>
           <h3 style={{ margin:"0 0 6px", fontSize:16, color:TH.text }}>Firmenlogo</h3>
           <p style={{ margin:"0 0 16px", fontSize:13, color:TH.textMut, lineHeight:1.5 }}>
-            Dieses Logo erscheint als blasses Wasserzeichen und in der Kopfzeile der Messprotokoll-PDFs. Lade hier euer eigenes Logo hoch â ein PNG mit transparentem Hintergrund sieht am besten aus. Es wird auf diesem GerÃ¤t gespeichert.
+            Dieses Logo erscheint als blasses Wasserzeichen und in der Kopfzeile der Messprotokoll-PDFs. Lade hier euer eigenes Logo hoch – ein PNG mit transparentem Hintergrund sieht am besten aus. Es wird auf diesem Gerät gespeichert.
           </p>
           <div style={{ background:TH.panel2, border:"1.5px solid "+TH.border, borderRadius:12, padding:18, display:"flex", flexDirection:"column", gap:14, alignItems:"flex-start" }}>
             <div style={{ fontSize:11, color:TH.textMut, fontWeight:600, textTransform:"uppercase", letterSpacing:0.5 }}>Aktuelles Logo{firmenlogo ? " (eigenes)" : " (Standard)"}</div>
@@ -2392,11 +2392,11 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
               <img src={firmenlogo || FIRMENLOGO_STANDARD} alt="Firmenlogo" style={{ maxWidth:"100%", maxHeight:120, objectFit:"contain" }} />
             </div>
             <label style={{ ...btnPrimary(), cursor:"pointer", display:"inline-block" }}>
-              {firmenlogo ? "Anderes Logo wÃ¤hlen" : "Logo hochladen"}
+              {firmenlogo ? "Anderes Logo wählen" : "Logo hochladen"}
               <input type="file" accept="image/*" onChange={logoHochladen} style={{ display:"none" }} />
             </label>
             {firmenlogo && (
-              <button onClick={()=>{ if (window.confirm("Eigenes Logo entfernen und wieder das Standard-Logo verwenden?")) setFirmenlogo(""); }} style={{ ...btnGhost(), fontSize:12, color:"#dc2626" }}>Auf Standard zurÃ¼cksetzen</button>
+              <button onClick={()=>{ if (window.confirm("Eigenes Logo entfernen und wieder das Standard-Logo verwenden?")) setFirmenlogo(""); }} style={{ ...btnGhost(), fontSize:12, color:"#dc2626" }}>Auf Standard zurücksetzen</button>
             )}
           </div>
         </div>
@@ -2416,7 +2416,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
                       <td style={{ ...tdS(), fontWeight:600, borderLeft:`4px solid ${col.bg}` }}>{p.name}</td>
                       <td style={tdS()}>{p.kunde}</td>
                       <td style={tdS()}>{p.ort}</td>
-                      <td style={tdS()}>{fmtDateShort(parseDate(p.dateStart))}â{fmtDateShort(parseDate(p.dateEnd))}</td>
+                      <td style={tdS()}>{fmtDateShort(parseDate(p.dateStart))}–{fmtDateShort(parseDate(p.dateEnd))}</td>
                       <td style={tdS()}><Badge color={col.bg}>{p.team}</Badge></td>
                       <td style={tdS()}><Badge color={STATUS_FARBEN[p.status]}>{p.status}</Badge></td>
                       <td style={{ ...tdS(), whiteSpace:"nowrap" }}>
@@ -2441,13 +2441,13 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
               <tbody>
                 {mitarbeiter.map(m=>{
                   const col=getTeamColor(m.team);
-                  const q=[m.fuehrerschein&&"FS",m.stapler&&"Stapler",m.schweisser&&"Schw."].filter(Boolean).join(", ")||"â";
+                  const q=[m.fuehrerschein&&"FS",m.stapler&&"Stapler",m.schweisser&&"Schw."].filter(Boolean).join(", ")||"–";
                   return (
                     <tr key={m.id} style={{ borderBottom:"1px solid "+TH.border }}>
-                      <td style={{ ...tdS(), fontWeight:m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter"?700:400, borderLeft:`4px solid ${col.bg}` }}>{m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter"?"â ":""}{m.name}</td>
+                      <td style={{ ...tdS(), fontWeight:m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter"?700:400, borderLeft:`4px solid ${col.bg}` }}>{m.rolle==="Vorarbeiter"||m.rolle==="Bauleiter"?"★ ":""}{m.name}</td>
                       <td style={tdS()}><Badge color={col.bg}>{m.rolle}</Badge></td>
                       <td style={tdS()}>{m.team}</td>
-                      <td style={{ ...tdS(), fontSize:11, color:m.email?"#374151":"#d1d5db" }}>{m.email||"â kein Zugang â"}</td>
+                      <td style={{ ...tdS(), fontSize:11, color:m.email?"#374151":"#d1d5db" }}>{m.email||"– kein Zugang –"}</td>
                       <td style={tdS()}>{m.tel}</td>
                       <td style={{ ...tdS(), fontSize:11 }}>{q}</td>
                       <td style={{ ...tdS(), whiteSpace:"nowrap" }}>
@@ -2468,7 +2468,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           <button onClick={()=>setModal({art:"fzg"})} style={{ ...btnPrimary(), marginBottom:14 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Plus size={15}/>Neues Fahrzeug</span></button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-              <thead><tr>{["Kennzeichen","Typ","Team","TÃV","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Kennzeichen","Typ","Team","TÜV","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
               <tbody>
                 {fahrzeuge.map(f=>{
                   const col=getTeamColor(f.team);
@@ -2496,19 +2496,19 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           <button onClick={()=>setModal({art:"unterkunft"})} style={{ ...btnPrimary("#0f766e"), marginBottom:14 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Plus size={15}/>Neue Unterkunft</span></button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-              <thead><tr>{["Name","Adresse","Check-in","Check-out","Zimmer","Projekt","â¬/Nacht","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Name","Adresse","Check-in","Check-out","Zimmer","Projekt","€/Nacht","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
               <tbody>
                 {(unterkuenfte||[]).map(u=>{
                   const proj=projekte.find(p=>p.id===u.projektId);
                   return (
                     <tr key={u.id} style={{ borderBottom:"1px solid "+TH.border }}>
                       <td style={{ ...tdS(), fontWeight:600, borderLeft:"4px solid #0f766e" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><BedDouble size={13}/>{u.name}</span></td>
-                      <td style={tdS()}>{u.adresse||"â"}</td>
-                      <td style={tdS()}>{u.checkin?fmtDateShort(parseDate(u.checkin)):"â"}</td>
-                      <td style={tdS()}>{u.checkout?fmtDateShort(parseDate(u.checkout)):"â"}</td>
-                      <td style={{ ...tdS(), textAlign:"center" }}>{u.zimmer||"â"}</td>
-                      <td style={tdS()}>{proj?proj.name:"â"}</td>
-                      <td style={{ ...tdS(), textAlign:"center" }}>{u.kostenNacht?u.kostenNacht+" â¬":"â"}</td>
+                      <td style={tdS()}>{u.adresse||"–"}</td>
+                      <td style={tdS()}>{u.checkin?fmtDateShort(parseDate(u.checkin)):"–"}</td>
+                      <td style={tdS()}>{u.checkout?fmtDateShort(parseDate(u.checkout)):"–"}</td>
+                      <td style={{ ...tdS(), textAlign:"center" }}>{u.zimmer||"–"}</td>
+                      <td style={tdS()}>{proj?proj.name:"–"}</td>
+                      <td style={{ ...tdS(), textAlign:"center" }}>{u.kostenNacht?u.kostenNacht+" €":"–"}</td>
                       <td style={{ ...tdS(), whiteSpace:"nowrap" }}>
                         <button onClick={()=>setModal({art:"unterkunft",data:u})} style={{ ...btnGhost(), padding:"4px 10px", marginRight:5 }}><Pencil size={13} /></button>
                         <button onClick={()=>loeschen("unterkunft",u.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer" }}><Trash2 size={13} /></button>
@@ -2527,18 +2527,18 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
           <button onClick={()=>setModal({art:"werkzeug"})} style={{ ...btnPrimary("#475569"), marginBottom:14 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Plus size={15}/>Neues Werkzeug</span></button>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
-              <thead><tr>{["Bezeichnung","Typ","Seriennr.","Zustand","Zugeordnet","PrÃ¼ftermin","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
+              <thead><tr>{["Bezeichnung","Typ","Seriennr.","Zustand","Zugeordnet","Prüftermin","Aktion"].map(h=><th key={h} style={thS()}>{h}</th>)}</tr></thead>
               <tbody>
                 {(werkzeuge||[]).map(w=>{
                   const ma=mitarbeiter.find(m=>m.id===w.zugeordnetMa);
                   return (
                     <tr key={w.id} style={{ borderBottom:"1px solid "+TH.border }}>
                       <td style={{ ...tdS(), fontWeight:600, borderLeft:"4px solid #475569" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Wrench size={13}/>{w.name}</span></td>
-                      <td style={tdS()}>{w.typ||"â"}</td>
-                      <td style={tdS()}>{w.seriennummer||"â"}</td>
-                      <td style={tdS()}>{w.zustand||"â"}</td>
-                      <td style={tdS()}>{ma?ma.name:(w.team||"â")}</td>
-                      <td style={tdS()}>{w.pruefDatum?fmtDateShort(parseDate(w.pruefDatum)):"â"}</td>
+                      <td style={tdS()}>{w.typ||"–"}</td>
+                      <td style={tdS()}>{w.seriennummer||"–"}</td>
+                      <td style={tdS()}>{w.zustand||"–"}</td>
+                      <td style={tdS()}>{ma?ma.name:(w.team||"–")}</td>
+                      <td style={tdS()}>{w.pruefDatum?fmtDateShort(parseDate(w.pruefDatum)):"–"}</td>
                       <td style={{ ...tdS(), whiteSpace:"nowrap" }}>
                         <button onClick={()=>setModal({art:"werkzeug",data:w})} style={{ ...btnGhost(), padding:"4px 10px", marginRight:5 }}><Pencil size={13} /></button>
                         <button onClick={()=>loeschen("werkzeug",w.id)} style={{ padding:"4px 10px", borderRadius:6, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer" }}><Trash2 size={13} /></button>
@@ -2566,11 +2566,11 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
 }
 
 function WarnPanel({ warnungen }) {
-  if (!warnungen.length) return <div style={{ background:"#f0fdf4", border:"1.5px solid #86efac", borderRadius:12, padding:"12px 16px", color:"#166534", fontSize:13 }}>â Keine Konflikte gefunden</div>;
-  return <div style={{ display:"flex", flexDirection:"column", gap:8 }}>{warnungen.map((w,i)=><div key={i} style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:8, padding:"10px 14px", color:"#92400e", display:"flex", gap:10, fontSize:13 }}><span style={{ fontSize:18 }}>â ï¸</span><div><strong style={{ marginRight:6 }}>{w.typ}:</strong>{w.msg}</div></div>)}</div>;
+  if (!warnungen.length) return <div style={{ background:"#f0fdf4", border:"1.5px solid #86efac", borderRadius:12, padding:"12px 16px", color:"#166534", fontSize:13 }}>✅ Keine Konflikte gefunden</div>;
+  return <div style={{ display:"flex", flexDirection:"column", gap:8 }}>{warnungen.map((w,i)=><div key={i} style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:8, padding:"10px 14px", color:"#92400e", display:"flex", gap:10, fontSize:13 }}><span style={{ fontSize:18 }}>⚠️</span><div><strong style={{ marginRight:6 }}>{w.typ}:</strong>{w.msg}</div></div>)}</div>;
 }
 
-// âââ ADMIN-DASHBOARD (Kontrollzentrum) ââââââââââââââââââââââââââââââââââââââââ
+// ─── ADMIN-DASHBOARD (Kontrollzentrum) ────────────────────────────────────────
 function KennzahlKarte({ wert, label, farbe, icon, onClick }) {
   return (
     <div onClick={onClick} style={{ background:TH.panel, border:`1.5px solid ${farbe}33`, borderRadius:12, padding:"14px 16px", cursor:onClick?"pointer":"default", boxShadow:"0 1px 3px #0001", transition:"all .15s" }}>
@@ -2583,26 +2583,26 @@ function KennzahlKarte({ wert, label, farbe, icon, onClick }) {
   );
 }
 
-// âââ WERKZEUG-ÃBERSICHT âââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── WERKZEUG-ÜBERSICHT ───────────────────────────────────────────────────────
 function WerkzeugUebersicht({ werkzeuge, mitarbeiter }) {
   const heute = new Date(); heute.setHours(0,0,0,0);
   function pruefStatus(w) {
-    if (!w.pruefDatum) return { farbe:"#9ca3af", text:"kein PrÃ¼ftermin" };
+    if (!w.pruefDatum) return { farbe:"#9ca3af", text:"kein Prüftermin" };
     const d = parseDate(w.pruefDatum);
     const tage = Math.round((d-heute)/86400000);
-    if (tage < 0)  return { farbe:"#dc2626", text:`PrÃ¼fung Ã¼berfÃ¤llig (${fmtDate(d)})` };
-    if (tage <= 30) return { farbe:"#d97706", text:`PrÃ¼fung fÃ¤llig in ${tage} Tagen` };
-    return { farbe:"#16a34a", text:`geprÃ¼ft bis ${fmtDate(d)}` };
+    if (tage < 0)  return { farbe:"#dc2626", text:`Prüfung überfällig (${fmtDate(d)})` };
+    if (tage <= 30) return { farbe:"#d97706", text:`Prüfung fällig in ${tage} Tagen` };
+    return { farbe:"#16a34a", text:`geprüft bis ${fmtDate(d)}` };
   }
   const faellig = (werkzeuge||[]).filter(w=>{ const s=pruefStatus(w); return s.farbe!=="#16a34a" && s.farbe!=="#9ca3af"; });
   if (!werkzeuge || werkzeuge.length===0) {
-    return <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Werkzeuge angelegt. Lege welche unter âVerwaltung â Werkzeuge" an.</div>;
+    return <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", padding:24, textAlign:"center", color:"#9ca3af" }}>Noch keine Werkzeuge angelegt. Lege welche unter „Verwaltung → Werkzeuge" an.</div>;
   }
   return (
     <div>
       {faellig.length>0 && (
         <div style={{ background:"#fef2f2", border:"1.5px solid #fca5a5", borderRadius:8, padding:"8px 14px", marginBottom:14, fontSize:12, color:"#991b1b" }}>
-          â ï¸ <b>{faellig.length} Werkzeug(e) mit fÃ¤lliger/Ã¼berfÃ¤lliger PrÃ¼fung:</b> {faellig.map(w=>w.name).join(", ")}
+          ⚠️ <b>{faellig.length} Werkzeug(e) mit fälliger/überfälliger Prüfung:</b> {faellig.map(w=>w.name).join(", ")}
         </div>
       )}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(250px,1fr))", gap:14 }}>
@@ -2614,10 +2614,10 @@ function WerkzeugUebersicht({ werkzeuge, mitarbeiter }) {
             <div key={w.id} style={{ border:"1px solid "+TH.border, boxShadow:"0 2px 10px #00000012", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px #0000000d", background:TH.panel }}>
               <div style={{ background:col.bg, color:"#fff", padding:"7px 12px", fontWeight:700, fontSize:13 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Wrench size={13}/>{w.name}</span></div>
               <div style={{ padding:"10px 12px", fontSize:12, display:"flex", flexDirection:"column", gap:5 }}>
-                <Info label="Typ" value={w.typ||"â"} />
-                <Info label="Seriennummer" value={w.seriennummer||"â"} />
-                <Info label="Zustand" value={w.zustand||"â"} />
-                <Info label="Zugeordnet" value={ma?ma.name:(w.team||"â")} />
+                <Info label="Typ" value={w.typ||"–"} />
+                <Info label="Seriennummer" value={w.seriennummer||"–"} />
+                <Info label="Zustand" value={w.zustand||"–"} />
+                <Info label="Zugeordnet" value={ma?ma.name:(w.team||"–")} />
                 {w.bemerkung && <Info label="Bemerkung" value={w.bemerkung} />}
                 <div style={{ marginTop:4 }}><Badge color={st.farbe}>{st.text}</Badge></div>
               </div>
@@ -2629,8 +2629,8 @@ function WerkzeugUebersicht({ werkzeuge, mitarbeiter }) {
   );
 }
 
-// âââ TAGESBERICHTE (Wetter automatisch, Fotos mit Zeitstempel) ââââââââââââââââ
-const WETTER_CODES = { 0:"Klar âï¸",1:"Ãberwiegend klar ð¤",2:"Teilweise bewÃ¶lkt â",3:"BewÃ¶lkt âï¸",45:"Nebel ð«",48:"Nebel (Reif) ð«",51:"Leichter Niesel ð¦",53:"Niesel ð¦",55:"Starker Niesel ð§",61:"Leichter Regen ð¦",63:"Regen ð§",65:"Starker Regen ð§",71:"Leichter Schnee ð¨",73:"Schnee ð¨",75:"Starker Schnee âï¸",80:"Regenschauer ð¦",81:"Schauer ð§",82:"Starke Schauer â",95:"Gewitter â",96:"Gewitter mit Hagel â",99:"Schweres Gewitter â" };
+// ─── TAGESBERICHTE (Wetter automatisch, Fotos mit Zeitstempel) ────────────────
+const WETTER_CODES = { 0:"Klar ☀️",1:"Überwiegend klar 🌤",2:"Teilweise bewölkt ⛅",3:"Bewölkt ☁️",45:"Nebel 🌫",48:"Nebel (Reif) 🌫",51:"Leichter Niesel 🌦",53:"Niesel 🌦",55:"Starker Niesel 🌧",61:"Leichter Regen 🌦",63:"Regen 🌧",65:"Starker Regen 🌧",71:"Leichter Schnee 🌨",73:"Schnee 🌨",75:"Starker Schnee ❄️",80:"Regenschauer 🌦",81:"Schauer 🌧",82:"Starke Schauer ⛈",95:"Gewitter ⛈",96:"Gewitter mit Hagel ⛈",99:"Schweres Gewitter ⛈" };
 
 async function holeWetter(ort) {
   try {
@@ -2641,7 +2641,7 @@ async function holeWetter(ort) {
     const c = w?.current;
     if (!c) return null;
     const text = WETTER_CODES[c.weather_code] || "";
-    return `${text}, ${Math.round(c.temperature_2m)}Â°C, Wind ${Math.round(c.wind_speed_10m)} km/h (${loc.name})`;
+    return `${text}, ${Math.round(c.temperature_2m)}°C, Wind ${Math.round(c.wind_speed_10m)} km/h (${loc.name})`;
   } catch(e) { return null; }
 }
 
@@ -2655,7 +2655,7 @@ async function stempleFoto(file) {
   const ctx = canvas.getContext("2d");
   ctx.drawImage(img, 0, 0, cw, ch);
   const ts = new Date(file.lastModified || Date.now());
-  const text = `ð· ${String(ts.getDate()).padStart(2,"0")}.${String(ts.getMonth()+1).padStart(2,"0")}.${ts.getFullYear()}  ${String(ts.getHours()).padStart(2,"0")}:${String(ts.getMinutes()).padStart(2,"0")} Uhr`;
+  const text = `📷 ${String(ts.getDate()).padStart(2,"0")}.${String(ts.getMonth()+1).padStart(2,"0")}.${ts.getFullYear()}  ${String(ts.getHours()).padStart(2,"0")}:${String(ts.getMinutes()).padStart(2,"0")} Uhr`;
   const fs = Math.max(16, Math.round(cw/45));
   ctx.font = `bold ${fs}px Arial`;
   const tw2 = ctx.measureText(text).width;
@@ -2667,14 +2667,14 @@ async function stempleFoto(file) {
   return { blob, zeit: ts.toISOString() };
 }
 
-// âââ DIKTIER-KNOPF (Spracherkennung â Text ins Feld) ââââââââââââââââââ
+// ─── DIKTIER-KNOPF (Spracherkennung → Text ins Feld) ──────────────────
 function DiktierKnopf({ wert, onText }) {
   const [hoert, setHoert] = useState(false);
   const recRef = useRef(null);
   const SR = typeof window !== "undefined" ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
   useEffect(()=>()=>{ try { recRef.current?.stop(); } catch(e){} }, []);
   function umschalten() {
-    if (!SR) { alert("Dein Browser unterstÃ¼tzt die Spracherkennung leider nicht. Tipp: Nutze am Handy die Mikrofon-Taste der Tastatur, oder Ã¶ffne Baufox in Google Chrome."); return; }
+    if (!SR) { alert("Dein Browser unterstützt die Spracherkennung leider nicht. Tipp: Nutze am Handy die Mikrofon-Taste der Tastatur, oder öffne Baufox in Google Chrome."); return; }
     if (hoert) { try { recRef.current?.stop(); } catch(e){} return; }
     const rec = new SR();
     rec.lang = "de-DE"; rec.continuous = true; rec.interimResults = false;
@@ -2685,14 +2685,14 @@ function DiktierKnopf({ wert, onText }) {
       if (neu) { basis += neu; onText(basis.trim()); }
     };
     rec.onend = () => setHoert(false);
-    rec.onerror = (e) => { setHoert(false); if (e.error === "not-allowed" || e.error === "service-not-allowed") alert("Bitte den Mikrofon-Zugriff fÃ¼r diese Seite erlauben (Schloss-Symbol neben der Adresse)."); };
+    rec.onerror = (e) => { setHoert(false); if (e.error === "not-allowed" || e.error === "service-not-allowed") alert("Bitte den Mikrofon-Zugriff für diese Seite erlauben (Schloss-Symbol neben der Adresse)."); };
     recRef.current = rec;
     try { rec.start(); setHoert(true); } catch(e){}
   }
   return (
-    <button type="button" onClick={umschalten} title={hoert ? "Aufnahme stoppen" : "Diktieren â einfach sprechen"}
+    <button type="button" onClick={umschalten} title={hoert ? "Aufnahme stoppen" : "Diktieren – einfach sprechen"}
       style={{ display:"inline-flex", alignItems:"center", gap:5, padding:"5px 11px", borderRadius:8, border:"1.5px solid "+(hoert ? "#dc2626" : "#ea580c"), background: hoert ? "#dc2626" : "transparent", color: hoert ? "#fff" : "#ea580c", cursor:"pointer", fontSize:12, fontWeight:700 }}>
-      <Mic size={13} className={hoert ? "mic-puls" : ""} /> {hoert ? "Stopp (hÃ¶rt zuâ¦)" : "Diktieren"}
+      <Mic size={13} className={hoert ? "mic-puls" : ""} /> {hoert ? "Stopp (hört zu…)" : "Diktieren"}
     </button>
   );
 }
@@ -2771,7 +2771,7 @@ function AufgabenBereich({ aufgaben, setAufgaben, projekte, mitarbeiter, rolle, 
       <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
         <span style={{ fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:6, color:"#fff", background:(a.typ==="mangel")?"#dc2626":"#2563eb" }}>{a.typ==="mangel"?"Mangel":"Aufgabe"}</span>
         <span style={{ fontWeight:700, color:TH.text, fontSize:15 }}>{a.titel}</span>
-        <span style={{ fontSize:11, fontWeight:700, color:prioFarbe[a.prioritaet]||"#64748b" }}>● {a.prioritaet||"mittel"}</span>
+        <span style={{ fontSize:11, fontWeight:700, color:prioFarbe[a.prioritaet]||"#64748b" }}>{"● "}{a.prioritaet||"mittel"}</span>
       </div>
       {a.beschreibung && <div style={{ fontSize:13, color:TH.textMut, marginTop:4, whiteSpace:"pre-wrap" }}>{a.beschreibung}</div>}
       <div style={{ fontSize:12, color:TH.textMut, marginTop:6, display:"flex", gap:12, flexWrap:"wrap" }}>
@@ -2785,8 +2785,8 @@ function AufgabenBereich({ aufgaben, setAufgaben, projekte, mitarbeiter, rolle, 
         </div>
       )}
       <div style={{ display:"flex", gap:6, marginTop:10, flexWrap:"wrap" }}>
-        <button onClick={()=>statusWeiter(a)} style={{ fontSize:12, padding:"5px 10px", borderRadius:6, border:"1px solid "+TH.border, background:(a.status==="erledigt")?"#16a34a":(a.status==="in_arbeit"?"#d97706":"#64748b"), color:"#fff", cursor:"pointer" }}>{statusLabel[a.status||"offen"]} ▸</button>
-        {istLeitung && <button onClick={()=>bearbeiten(a)} style={{ fontSize:12, padding:"5px 10px", borderRadius:6, border:"1px solid "+TH.border, background:TH.card, color:TH.text, cursor:"pointer" }}><Pencil size={12}/> Ändern</button>}
+        <button onClick={()=>statusWeiter(a)} style={{ fontSize:12, padding:"5px 10px", borderRadius:6, border:"1px solid "+TH.border, background:(a.status==="erledigt")?"#16a34a":(a.status==="in_arbeit"?"#d97706":"#64748b"), color:"#fff", cursor:"pointer" }}>{statusLabel[a.status||"offen"]}{" ▸"}</button>
+        {istLeitung && <button onClick={()=>bearbeiten(a)} style={{ fontSize:12, padding:"5px 10px", borderRadius:6, border:"1px solid "+TH.border, background:TH.card, color:TH.text, cursor:"pointer" }}><Pencil size={12}/>{" Ändern"}</button>}
         {istLeitung && <button onClick={()=>loeschen(a)} style={{ fontSize:12, padding:"5px 10px", borderRadius:6, border:"1px solid "+TH.border, background:TH.card, color:"#dc2626", cursor:"pointer" }}><Trash2 size={12}/></button>}
       </div>
     </div>
@@ -2795,16 +2795,16 @@ function AufgabenBereich({ aufgaben, setAufgaben, projekte, mitarbeiter, rolle, 
   return (
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8, marginBottom:12 }}>
-        <h2 style={{ margin:0, fontSize:20, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><ClipboardList size={20}/> Aufgaben & Mängel</h2>
-        {istLeitung && !zeigeForm && <button onClick={neuAnlegen} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:8, border:"none", background:"#2563eb", color:"#fff", fontWeight:600, cursor:"pointer" }}><Plus size={16}/> Neu</button>}
+        <h2 style={{ margin:0, fontSize:20, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><ClipboardList size={20}/>{" Aufgaben & Mängel"}</h2>
+        {istLeitung && !zeigeForm && <button onClick={neuAnlegen} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:8, border:"none", background:"#2563eb", color:"#fff", fontWeight:600, cursor:"pointer" }}><Plus size={16}/>{" Neu"}</button>}
       </div>
 
       <div style={{ display:"flex", gap:8, marginBottom:12, flexWrap:"wrap" }}>
         <select value={filterTyp} onChange={ev=>setFilterTyp(ev.target.value)} style={{ padding:"6px 10px", borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text }}>
-          <option value="">Alle Typen</option><option value="aufgabe">Aufgaben</option><option value="mangel">Mängel</option>
+          <option value="">{"Alle Typen"}</option><option value="aufgabe">{"Aufgaben"}</option><option value="mangel">{"Mängel"}</option>
         </select>
         <select value={filterProj} onChange={ev=>setFilterProj(ev.target.value)} style={{ padding:"6px 10px", borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text }}>
-          <option value="">Alle Baustellen</option>
+          <option value="">{"Alle Baustellen"}</option>
           {(projekte||[]).map(p=>(<option key={p.id} value={p.id}>{p.name}</option>))}
         </select>
       </div>
@@ -2813,33 +2813,33 @@ function AufgabenBereich({ aufgaben, setAufgaben, projekte, mitarbeiter, rolle, 
         <div style={{ border:"1px solid "+TH.border, borderRadius:10, padding:14, marginBottom:16, background:TH.card }}>
           <div style={{ display:"grid", gap:10 }}>
             <div style={{ display:"flex", gap:8 }}>
-              <label style={{ flex:1 }}><span style={{ fontSize:12, color:TH.textMut }}>Typ</span>
+              <label style={{ flex:1 }}><span style={{ fontSize:12, color:TH.textMut }}>{"Typ"}</span>
                 <select value={f.typ} onChange={ev=>setF({ ...f, typ:ev.target.value })} style={{ width:"100%", padding:8, borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text }}>
-                  <option value="aufgabe">Aufgabe</option><option value="mangel">Mangel</option>
+                  <option value="aufgabe">{"Aufgabe"}</option><option value="mangel">{"Mangel"}</option>
                 </select></label>
-              <label style={{ flex:1 }}><span style={{ fontSize:12, color:TH.textMut }}>Priorität</span>
+              <label style={{ flex:1 }}><span style={{ fontSize:12, color:TH.textMut }}>{"Priorität"}</span>
                 <select value={f.prioritaet} onChange={ev=>setF({ ...f, prioritaet:ev.target.value })} style={{ width:"100%", padding:8, borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text }}>
-                  <option value="niedrig">Niedrig</option><option value="mittel">Mittel</option><option value="hoch">Hoch</option>
+                  <option value="niedrig">{"Niedrig"}</option><option value="mittel">{"Mittel"}</option><option value="hoch">{"Hoch"}</option>
                 </select></label>
             </div>
-            <label><span style={{ fontSize:12, color:TH.textMut }}>Titel *</span>
-              <input value={f.titel} onChange={ev=>setF({ ...f, titel:ev.target.value })} placeholder="Kurz: was ist zu tun?" style={{ width:"100%", padding:8, borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text }}/></label>
-            <label><span style={{ fontSize:12, color:TH.textMut }}>Beschreibung</span>
+            <label><span style={{ fontSize:12, color:TH.textMut }}>{"Titel *"}</span>
+              <input value={f.titel} onChange={ev=>setF({ ...f, titel:ev.target.value })} placeholder={"Kurz: was ist zu tun?"} style={{ width:"100%", padding:8, borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text }}/></label>
+            <label><span style={{ fontSize:12, color:TH.textMut }}>{"Beschreibung"}</span>
               <textarea value={f.beschreibung} onChange={ev=>setF({ ...f, beschreibung:ev.target.value })} rows={3} style={{ width:"100%", padding:8, borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text, resize:"vertical" }}/></label>
             <div style={{ display:"flex", gap:8 }}>
-              <label style={{ flex:1 }}><span style={{ fontSize:12, color:TH.textMut }}>Baustelle</span>
+              <label style={{ flex:1 }}><span style={{ fontSize:12, color:TH.textMut }}>{"Baustelle"}</span>
                 <select value={f.projektId} onChange={ev=>setF({ ...f, projektId:ev.target.value })} style={{ width:"100%", padding:8, borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text }}>
-                  <option value="">—</option>{(projekte||[]).map(p=>(<option key={p.id} value={p.id}>{p.name}</option>))}
+                  <option value="">{"—"}</option>{(projekte||[]).map(p=>(<option key={p.id} value={p.id}>{p.name}</option>))}
                 </select></label>
-              <label style={{ flex:1 }}><span style={{ fontSize:12, color:TH.textMut }}>Zuständig</span>
+              <label style={{ flex:1 }}><span style={{ fontSize:12, color:TH.textMut }}>{"Zuständig"}</span>
                 <select value={f.zustaendigMa} onChange={ev=>setF({ ...f, zustaendigMa:ev.target.value })} style={{ width:"100%", padding:8, borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text }}>
-                  <option value="">—</option>{(mitarbeiter||[]).map(m=>(<option key={m.id} value={m.id}>{m.name}</option>))}
+                  <option value="">{"—"}</option>{(mitarbeiter||[]).map(m=>(<option key={m.id} value={m.id}>{m.name}</option>))}
                 </select></label>
             </div>
-            <label><span style={{ fontSize:12, color:TH.textMut }}>Fällig bis</span>
+            <label><span style={{ fontSize:12, color:TH.textMut }}>{"Fällig bis"}</span>
               <input type="date" value={f.faellig} onChange={ev=>setF({ ...f, faellig:ev.target.value })} style={{ width:"100%", padding:8, borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text }}/></label>
             <div>
-              <span style={{ fontSize:12, color:TH.textMut }}>Fotos</span>
+              <span style={{ fontSize:12, color:TH.textMut }}>{"Fotos"}</span>
               <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap", marginTop:4 }}>
                 <label style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"8px 12px", borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text, cursor:"pointer" }}>
                   <Camera size={16}/> {laedt?"Lädt…":"Foto"}
@@ -2849,17 +2849,17 @@ function AufgabenBereich({ aufgaben, setAufgaben, projekte, mitarbeiter, rolle, 
               </div>
             </div>
             <div style={{ display:"flex", gap:8, marginTop:4 }}>
-              <button onClick={speichern} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:8, border:"none", background:"#16a34a", color:"#fff", fontWeight:600, cursor:"pointer" }}><Save size={16}/> Speichern</button>
-              <button onClick={()=>{ setZeigeForm(false); setF(leer); setBearbeiteId(null); }} style={{ padding:"8px 16px", borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text, cursor:"pointer" }}>Abbrechen</button>
+              <button onClick={speichern} style={{ display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:8, border:"none", background:"#16a34a", color:"#fff", fontWeight:600, cursor:"pointer" }}><Save size={16}/>{" Speichern"}</button>
+              <button onClick={()=>{ setZeigeForm(false); setF(leer); setBearbeiteId(null); }} style={{ padding:"8px 16px", borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text, cursor:"pointer" }}>{"Abbrechen"}</button>
             </div>
           </div>
         </div>
       )}
 
-      {offeneListe.length===0 && erledigtListe.length===0 && <div style={{ color:TH.textMut, fontSize:14, padding:20, textAlign:"center" }}>Noch keine Aufgaben oder Mängel.</div>}
-      {offeneListe.length>0 && <div style={{ fontSize:13, fontWeight:700, color:TH.textMut, margin:"4px 0 8px" }}>Offen ({offeneListe.length})</div>}
+      {offeneListe.length===0 && erledigtListe.length===0 && <div style={{ color:TH.textMut, fontSize:14, padding:20, textAlign:"center" }}>{"Noch keine Aufgaben oder Mängel."}</div>}
+      {offeneListe.length>0 && <div style={{ fontSize:13, fontWeight:700, color:TH.textMut, margin:"4px 0 8px" }}>{"Offen ("}{offeneListe.length}{")"}</div>}
       {offeneListe.map(card)}
-      {erledigtListe.length>0 && <div style={{ fontSize:13, fontWeight:700, color:TH.textMut, margin:"16px 0 8px" }}>Erledigt ({erledigtListe.length})</div>}
+      {erledigtListe.length>0 && <div style={{ fontSize:13, fontWeight:700, color:TH.textMut, margin:"16px 0 8px" }}>{"Erledigt ("}{erledigtListe.length}{")"}</div>}
       {erledigtListe.map(card)}
     </div>
   );
@@ -2905,7 +2905,7 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
   }
 
   function speichern() {
-    if (!f.projektId || !f.fortschritt) { alert("Bitte mindestens Projekt und Arbeitsfortschritt ausfÃ¼llen."); return; }
+    if (!f.projektId || !f.fortschritt) { alert("Bitte mindestens Projekt und Arbeitsfortschritt ausfüllen."); return; }
     const proj = projekte.find(p=>p.id===f.projektId);
     const b = { ...f, id:"B"+Date.now(), team:proj?.team||"", verfasser: meinMA?.name || userEmail || "Unbekannt",
       maAnzahl: f.anwesende ? f.anwesende.split(",").filter(x=>x.trim()).length : null };
@@ -2927,11 +2927,11 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
       const proj = projekte.find(p=>p.id===b.projektId);
       const fotos = (b.fotos||[]).map(f=>`<img src="${f.url}" />`).join("");
       return `<div class="bericht">
-        <div class="bkopf"><span>${esc(fmtDate(parseDate(b.datum)))} Â· ${esc(proj?.name||"Projekt")}</span><span>${esc(b.verfasser||"")}${b.leistung?` Â· Leistungsstand ${esc(b.leistung)} %`:""}</span></div>
+        <div class="bkopf"><span>${esc(fmtDate(parseDate(b.datum)))} · ${esc(proj?.name||"Projekt")}</span><span>${esc(b.verfasser||"")}${b.leistung?` · Leistungsstand ${esc(b.leistung)} %`:""}</span></div>
         <table class="binfo">
           ${b.wetter?`<tr><td>Wetter</td><td>${esc(b.wetter)}</td></tr>`:""}
           ${b.anwesende?`<tr><td>Anwesend</td><td>${esc(b.anwesende)}${b.maAnzahl?` (${b.maAnzahl} Personen)`:""}</td></tr>`:""}
-          <tr><td>AusgefÃ¼hrte Arbeiten</td><td>${esc(b.fortschritt||"â")}</td></tr>
+          <tr><td>Ausgeführte Arbeiten</td><td>${esc(b.fortschritt||"–")}</td></tr>
           ${b.probleme?`<tr class="rot"><td>Besonderheiten / Behinderungen</td><td>${esc(b.probleme)}</td></tr>`:""}
           ${b.material?`<tr><td>Materialbedarf</td><td>${esc(b.material)}</td></tr>`:""}
         </table>
@@ -2939,7 +2939,7 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
       </div>`;
     }).join("");
     const heute = new Date();
-    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Baufox â Bautagebuch</title>
+    const html = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Baufox – Bautagebuch</title>
     <style>
       body{font-family:Arial,Helvetica,sans-serif;margin:26px;color:#1e293b;}
       .kopf{display:flex;align-items:center;gap:12px;border-bottom:3px solid #ea580c;padding-bottom:12px;}
@@ -2958,8 +2958,8 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
       .linie{border-top:1px solid #94a3b8;padding-top:4px;width:220px;}
       @media print{ body{margin:10mm;} .fotos img{width:160px;height:115px;} }
     </style></head><body>
-      <div class="kopf"><img src="/icon-192.png" width="44" height="44" style="border-radius:10px"/><div><h1>Baufox â Bautagebuch</h1><p class="unter">Montage-Steuerung</p></div></div>
-      <div class="meta">Erstellt am ${esc(fmtDate(heute))} Â· ${chron.length} Bericht(e)</div>
+      <div class="kopf"><img src="/icon-192.png" width="44" height="44" style="border-radius:10px"/><div><h1>Baufox – Bautagebuch</h1><p class="unter">Montage-Steuerung</p></div></div>
+      <div class="meta">Erstellt am ${esc(fmtDate(heute))} · ${chron.length} Bericht(e)</div>
       ${bloecke}
       <div class="fuss"><div class="linie">Datum, Unterschrift Auftragnehmer</div><div class="linie">Datum, Unterschrift Auftraggeber</div></div>
       <script>window.onload=function(){window.print();};<\/script>
@@ -2978,27 +2978,27 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
           <div style={{ fontWeight:700, fontSize:14, marginBottom:12, color:"#ea580c" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileText size={14}/>Neuer Tagesbericht</span></div>
           <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
             <div style={{ minWidth:150 }}><Feld label="Datum"><input type="date" style={inpS()} value={f.datum} onChange={e=>set("datum",e.target.value)} /></Feld></div>
-            <div style={{ flex:1, minWidth:200 }}><Feld label="Projekt"><select style={inpS()} value={f.projektId} onChange={e=>projektWaehlen(e.target.value)}><option value="">â wÃ¤hlen â</option>{projekte.map(p=><option key={p.id} value={p.id}>{p.name} ({p.ort})</option>)}</select></Feld></div>
+            <div style={{ flex:1, minWidth:200 }}><Feld label="Projekt"><select style={inpS()} value={f.projektId} onChange={e=>projektWaehlen(e.target.value)}><option value="">– wählen –</option>{projekte.map(p=><option key={p.id} value={p.id}>{p.name} ({p.ort})</option>)}</select></Feld></div>
             <div style={{ minWidth:110 }}><Feld label="Leistung (%)"><input type="number" min={0} max={100} style={inpS()} value={f.leistung} onChange={e=>set("leistung",e.target.value)} placeholder="z.B. 60" /></Feld></div>
           </div>
-          <Feld label={"Wetter "+(wetterLaedt?"(wird geholtâ¦)":"(automatisch beim Projekt-WÃ¤hlen)")}>
-            <input style={inpS()} value={f.wetter} onChange={e=>set("wetter",e.target.value)} placeholder="wird automatisch ausgefÃ¼lltâ¦" />
+          <Feld label={"Wetter "+(wetterLaedt?"(wird geholt…)":"(automatisch beim Projekt-Wählen)")}>
+            <input style={inpS()} value={f.wetter} onChange={e=>set("wetter",e.target.value)} placeholder="wird automatisch ausgefüllt…" />
           </Feld>
           <Feld label="Anwesende (automatisch aus Team, anpassbar)"><input style={inpS()} value={f.anwesende} onChange={e=>set("anwesende",e.target.value)} /></Feld>
-          <Feld label={<span style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>Arbeitsfortschritt â was wurde gemacht?<DiktierKnopf wert={f.fortschritt} onText={t=>set("fortschritt",t)} /></span>}><textarea style={{ ...inpS(), minHeight:70, resize:"vertical" }} value={f.fortschritt} onChange={e=>set("fortschritt",e.target.value)} placeholder="z.B. SchienenstÃ¶Ãe 12â18 verschweiÃt, Vermessung Achse B abgeschlossen â oder auf âDiktierenâ tippen und sprechen" /></Feld>
+          <Feld label={<span style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>Arbeitsfortschritt – was wurde gemacht?<DiktierKnopf wert={f.fortschritt} onText={t=>set("fortschritt",t)} /></span>}><textarea style={{ ...inpS(), minHeight:70, resize:"vertical" }} value={f.fortschritt} onChange={e=>set("fortschritt",e.target.value)} placeholder="z.B. Schienenstöße 12–18 verschweißt, Vermessung Achse B abgeschlossen – oder auf „Diktieren“ tippen und sprechen" /></Feld>
           <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
-            <div style={{ flex:1, minWidth:220 }}><Feld label={<span style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>Probleme / Behinderungen<DiktierKnopf wert={f.probleme} onText={t=>set("probleme",t)} /></span>}><textarea style={{ ...inpS(), minHeight:50, resize:"vertical" }} value={f.probleme} onChange={e=>set("probleme",e.target.value)} placeholder="z.B. Kran erst ab 10 Uhr verfÃ¼gbar" /></Feld></div>
-            <div style={{ flex:1, minWidth:220 }}><Feld label={<span style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>Materialbedarf<DiktierKnopf wert={f.material} onText={t=>set("material",t)} /></span>}><textarea style={{ ...inpS(), minHeight:50, resize:"vertical" }} value={f.material} onChange={e=>set("material",e.target.value)} placeholder="z.B. 20Ã Klemmplatten, SchweiÃdraht" /></Feld></div>
+            <div style={{ flex:1, minWidth:220 }}><Feld label={<span style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>Probleme / Behinderungen<DiktierKnopf wert={f.probleme} onText={t=>set("probleme",t)} /></span>}><textarea style={{ ...inpS(), minHeight:50, resize:"vertical" }} value={f.probleme} onChange={e=>set("probleme",e.target.value)} placeholder="z.B. Kran erst ab 10 Uhr verfügbar" /></Feld></div>
+            <div style={{ flex:1, minWidth:220 }}><Feld label={<span style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>Materialbedarf<DiktierKnopf wert={f.material} onText={t=>set("material",t)} /></span>}><textarea style={{ ...inpS(), minHeight:50, resize:"vertical" }} value={f.material} onChange={e=>set("material",e.target.value)} placeholder="z.B. 20× Klemmplatten, Schweißdraht" /></Feld></div>
           </div>
           <Feld label="Fotos (Zeitstempel wird automatisch eingebrannt)">
             <input type="file" accept="image/*" multiple onChange={e=>fotosHochladen(e.target.files)} style={{ fontSize:13 }} />
-            {laedt && <div style={{ fontSize:12, color:"#ea580c", marginTop:6 }}>â³ Fotos werden gestempelt und hochgeladenâ¦</div>}
+            {laedt && <div style={{ fontSize:12, color:"#ea580c", marginTop:6 }}>⏳ Fotos werden gestempelt und hochgeladen…</div>}
             {f.fotos?.length>0 && (
               <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:8 }}>
                 {f.fotos.map((fo,i)=>(
                   <div key={i} style={{ position:"relative" }}>
                     <img src={fo.url} alt="" style={{ width:110, height:80, objectFit:"cover", borderRadius:8, border:"1.5px solid "+TH.border }} />
-                    <button onClick={()=>set("fotos", f.fotos.filter((_,j)=>j!==i))} style={{ position:"absolute", top:-6, right:-6, width:22, height:22, borderRadius:99, border:"none", background:"#dc2626", color:"#fff", cursor:"pointer", fontSize:11, fontWeight:700 }}>â</button>
+                    <button onClick={()=>set("fotos", f.fotos.filter((_,j)=>j!==i))} style={{ position:"absolute", top:-6, right:-6, width:22, height:22, borderRadius:99, border:"none", background:"#dc2626", color:"#fff", cursor:"pointer", fontSize:11, fontWeight:700 }}>✕</button>
                   </div>
                 ))}
               </div>
@@ -3014,7 +3014,7 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
       {sortiert.length>0 && (
         <div style={{ display:"flex", gap:8, justifyContent:"flex-end", alignItems:"center", marginBottom:12, flexWrap:"wrap" }}>
           <button onClick={()=>setAuswahl(alleAusgewaehlt?[]:sortiert.map(b=>b.id))} style={{ padding:"8px 14px", borderRadius:8, border:"1.5px solid "+TH.border, background:TH.panel, color:TH.text, cursor:"pointer", fontSize:12, fontWeight:600 }}>
-            {alleAusgewaehlt?"Alle abwÃ¤hlen":"Alle auswÃ¤hlen"}
+            {alleAusgewaehlt?"Alle abwählen":"Alle auswählen"}
           </button>
           <button onClick={pdfBerichte} style={{ padding:"8px 16px", borderRadius:8, background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", border:"none", cursor:"pointer", fontWeight:700, fontSize:12 }}>
             <span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileDown size={14}/>{auswahl.length?`${auswahl.length} Bericht(e) als PDF`:"Alle als PDF"}</span>
@@ -3033,15 +3033,15 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
                 <div style={{ background:col.bg, color:"#fff", padding:"8px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:6 }}>
                   <span style={{ fontWeight:700, fontSize:13, display:"inline-flex", alignItems:"center", gap:8 }}>
                     <input type="checkbox" checked={auswahl.includes(b.id)} onChange={()=>toggleAuswahl(b.id)} style={{ width:16, height:16, accentColor:"#ea580c", cursor:"pointer" }} />
-                    <span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileText size={13}/>{fmtDate(parseDate(b.datum))}</span> Â· {proj?.name||"Projekt gelÃ¶scht"}</span>
-                  <span style={{ fontSize:11, opacity:0.85 }}>von {b.verfasser}{b.leistung?` Â· Leistung ${b.leistung}%`:""}</span>
+                    <span style={{display:"inline-flex",alignItems:"center",gap:6}}><FileText size={13}/>{fmtDate(parseDate(b.datum))}</span> · {proj?.name||"Projekt gelöscht"}</span>
+                  <span style={{ fontSize:11, opacity:0.85 }}>von {b.verfasser}{b.leistung?` · Leistung ${b.leistung}%`:""}</span>
                 </div>
                 <div style={{ padding:"10px 14px", fontSize:12, display:"flex", flexDirection:"column", gap:6 }}>
                   {b.wetter && <Info label="Wetter" value={b.wetter} />}
                   {b.anwesende && <Info label="Anwesend" value={b.anwesende+(b.maAnzahl?` (${b.maAnzahl})`:"")} />}
-                  <Info label="Fortschritt" value={b.fortschritt||"â"} />
-                  {b.probleme && <div style={{ padding:"6px 10px", background:"#fef2f2", border:"1px solid #fecaca", borderRadius:6, color:"#991b1b" }}>â ï¸ <b>Probleme:</b> {b.probleme}</div>}
-                  {b.material && <div style={{ padding:"6px 10px", background:"#eff6ff", border:"1px solid #bfdbfe", borderRadius:6, color:"#1e40af" }}>ð¦ <b>Material:</b> {b.material}</div>}
+                  <Info label="Fortschritt" value={b.fortschritt||"–"} />
+                  {b.probleme && <div style={{ padding:"6px 10px", background:"#fef2f2", border:"1px solid #fecaca", borderRadius:6, color:"#991b1b" }}>⚠️ <b>Probleme:</b> {b.probleme}</div>}
+                  {b.material && <div style={{ padding:"6px 10px", background:"#eff6ff", border:"1px solid #bfdbfe", borderRadius:6, color:"#1e40af" }}>📦 <b>Material:</b> {b.material}</div>}
                   {b.fotos?.length>0 && (
                     <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginTop:4 }}>
                       {b.fotos.map((fo,i)=>(
@@ -3052,7 +3052,7 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
                     </div>
                   )}
                   {istLeitung && (
-                    <div><button onClick={()=>{ if(window.confirm("Diesen Bericht wirklich lÃ¶schen?")) setBerichte(prev=>prev.filter(x=>x.id!==b.id)); }} style={{ padding:"4px 12px", borderRadius:6, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer", fontSize:11 }}>ð LÃ¶schen</button></div>
+                    <div><button onClick={()=>{ if(window.confirm("Diesen Bericht wirklich löschen?")) setBerichte(prev=>prev.filter(x=>x.id!==b.id)); }} style={{ padding:"4px 12px", borderRadius:6, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer", fontSize:11 }}>🗑 Löschen</button></div>
                   )}
                 </div>
               </div>
@@ -3064,10 +3064,10 @@ function Tagesberichte({ projekte, mitarbeiter, berichte, setBerichte, rolle, me
   );
 }
 
-// âââ ð¤ SMARTER ASSISTENT (Prognosen & VorschlÃ¤ge, regelbasiert) ââââââââââââââ
+// ─── 🤖 SMARTER ASSISTENT (Prognosen & Vorschläge, regelbasiert) ──────────────
 function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeuge, berichte, T }) {
   const tw = (T && T.text) || "#1e3a5f";
-  const fmtEuro = n => (Number(n)||0).toLocaleString("de-DE",{maximumFractionDigits:0})+" â¬";
+  const fmtEuro = n => (Number(n)||0).toLocaleString("de-DE",{maximumFractionDigits:0})+" €";
   const heute = new Date(); heute.setHours(0,0,0,0);
 
   // Ist-Kosten je Projekt (wie im Kosten-Tab)
@@ -3084,7 +3084,7 @@ function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeug
     return { ist: lohn+spesen+unterkunft, anzahl: eintraege.length };
   }
 
-  // 1. Kostenprognosen (Ist hochgerechnet Ã¼ber Leistungsstand aus Tagesberichten)
+  // 1. Kostenprognosen (Ist hochgerechnet über Leistungsstand aus Tagesberichten)
   const prognosen = projekte.filter(p=>p.status!=="abgeschlossen").map(p=>{
     const { ist, anzahl } = istKosten(p);
     const leistungen = (berichte||[]).filter(b=>b.projektId===p.id && b.leistung).map(b=>Number(b.leistung));
@@ -3098,7 +3098,7 @@ function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeug
     return { p, ist, anzahl, leistung, planK, prognose, delta };
   }).filter(x=>x.prognose!=null);
 
-  // 2. Team-VerfÃ¼gbarkeit
+  // 2. Team-Verfügbarkeit
   const teams = TEAM_NAMEN_AKTUELL.map(team=>{
     const aktiv = projekte.filter(p=>p.team===team && p.status!=="abgeschlossen" && p.dateEnd && parseDate(p.dateEnd)>=heute);
     if (!aktiv.length) return { team, freiAb:"sofort", projekt:null };
@@ -3112,13 +3112,13 @@ function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeug
   (werkzeuge||[]).forEach(w=>{
     if (!w.pruefDatum) return;
     const tage = Math.round((parseDate(w.pruefDatum)-heute)/86400000);
-    if (tage<0) hinweise.push({ art:"rot", text:`PrÃ¼fung Ã¼berfÃ¤llig: ${w.name} (seit ${fmtDate(parseDate(w.pruefDatum))})` });
-    else if (tage<=30) hinweise.push({ art:"gelb", text:`PrÃ¼fung fÃ¤llig in ${tage} Tagen: ${w.name}` });
+    if (tage<0) hinweise.push({ art:"rot", text:`Prüfung überfällig: ${w.name} (seit ${fmtDate(parseDate(w.pruefDatum))})` });
+    else if (tage<=30) hinweise.push({ art:"gelb", text:`Prüfung fällig in ${tage} Tagen: ${w.name}` });
   });
   projekte.filter(p=>p.status==="aktiv").forEach(p=>{
     const { anzahl } = istKosten(p);
     if (anzahl===0) hinweise.push({ art:"gelb", text:`Aktives Projekt ohne erfasste Stunden: ${p.name}` });
-    if (!(Number(p.planKosten)>0)) hinweise.push({ art:"grau", text:`Keine Plankosten hinterlegt: ${p.name} (fÃ¼r Prognose nÃ¶tig)` });
+    if (!(Number(p.planKosten)>0)) hinweise.push({ art:"grau", text:`Keine Plankosten hinterlegt: ${p.name} (für Prognose nötig)` });
   });
   mitarbeiter.filter(m=>!m.stundensatz).slice(0,5).forEach(m=>{
     hinweise.push({ art:"grau", text:`Stundensatz fehlt: ${m.name}` });
@@ -3129,12 +3129,12 @@ function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeug
   return (
     <div>
       <div style={{ fontWeight:700, fontSize:14, color:tw, marginBottom:4, textTransform:"uppercase", letterSpacing:0.5 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Sparkles size={15}/>Assistent</span></div>
-      <div style={{ fontSize:12, color:"#6b7280", marginBottom:16 }}>Automatische Prognosen und Hinweise â berechnet aus deinen Stunden, Berichten (Leistungsstand!) und Planwerten.</div>
+      <div style={{ fontSize:12, color:"#6b7280", marginBottom:16 }}>Automatische Prognosen und Hinweise – berechnet aus deinen Stunden, Berichten (Leistungsstand!) und Planwerten.</div>
 
       <div style={{ fontWeight:700, fontSize:13, color:tw, marginBottom:8 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><TrendingUp size={14}/>Kostenprognosen</span></div>
       {!prognosen.length ? (
         <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", padding:16, fontSize:12, color:TH.textMut, marginBottom:18 }}>
-          Noch keine Prognose mÃ¶glich. DafÃ¼r braucht ein Projekt: erfasste Stunden + einen Tagesbericht mit Leistungsstand (%) + Plankosten.
+          Noch keine Prognose möglich. Dafür braucht ein Projekt: erfasste Stunden + einen Tagesbericht mit Leistungsstand (%) + Plankosten.
         </div>
       ) : (
         <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:18 }}>
@@ -3143,22 +3143,22 @@ function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeug
             return (
               <div key={p.id} style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderLeft:"5px solid "+farbe, borderRadius:12, padding:"10px 14px", fontSize:12 }}>
                 <div style={{ fontWeight:700, fontSize:13, marginBottom:4 }}>{p.name}</div>
-                Stand: <b>{leistung}%</b> fertig Â· bisher <b>{fmtEuro(ist)}</b> â hochgerechnet <b style={{color:farbe}}>{fmtEuro(prognose)}</b>
-                {planK>0 && <> (Plan {fmtEuro(planK)}{delta!=null && <b style={{color:farbe}}> Â· {delta>0?"+":""}{delta.toFixed(0)} %</b>})</>}
+                Stand: <b>{leistung}%</b> fertig · bisher <b>{fmtEuro(ist)}</b> → hochgerechnet <b style={{color:farbe}}>{fmtEuro(prognose)}</b>
+                {planK>0 && <> (Plan {fmtEuro(planK)}{delta!=null && <b style={{color:farbe}}> · {delta>0?"+":""}{delta.toFixed(0)} %</b>})</>}
               </div>
             );
           })}
         </div>
       )}
 
-      <div style={{ fontWeight:700, fontSize:13, color:tw, marginBottom:8 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Users size={14}/>Team-VerfÃ¼gbarkeit</span></div>
+      <div style={{ fontWeight:700, fontSize:13, color:tw, marginBottom:8 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Users size={14}/>Team-Verfügbarkeit</span></div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:10, marginBottom:18 }}>
         {teams.map(t=>{
           const col=getTeamColor(t.team);
           return (
             <div key={t.team} style={{ background:TH.panel, border:"1px solid "+TH.border, boxShadow:"0 2px 10px #00000012", borderRadius:12, padding:"10px 14px", fontSize:12 }}>
               <div style={{ fontWeight:700, color:col.bg, marginBottom:3 }}>{t.team}</div>
-              {t.freiAb==="sofort" ? <span style={{ color:"#16a34a", fontWeight:700 }}>â sofort verfÃ¼gbar</span> : <>frei ab <b>{t.freiAb}</b><div style={{ color:TH.textMut, fontSize:11 }}>bis dahin: {t.projekt}</div></>}
+              {t.freiAb==="sofort" ? <span style={{ color:"#16a34a", fontWeight:700 }}>✓ sofort verfügbar</span> : <>frei ab <b>{t.freiAb}</b><div style={{ color:TH.textMut, fontSize:11 }}>bis dahin: {t.projekt}</div></>}
             </div>
           );
         })}
@@ -3166,7 +3166,7 @@ function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeug
 
       <div style={{ fontWeight:700, fontSize:13, color:tw, marginBottom:8 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Lightbulb size={14}/>Hinweise</span></div>
       {!hinweise.length ? (
-        <div style={{ background:"#f0fdf4", border:"1.5px solid #86efac", borderRadius:12, padding:14, fontSize:12, color:"#166534" }}>â Alles im grÃ¼nen Bereich â keine offenen Hinweise!</div>
+        <div style={{ background:"#f0fdf4", border:"1.5px solid #86efac", borderRadius:12, padding:14, fontSize:12, color:"#166534" }}>✓ Alles im grünen Bereich – keine offenen Hinweise!</div>
       ) : (
         <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
           {hinweise.map((h,i)=>{
@@ -3179,7 +3179,7 @@ function SmartAssistent({ projekte, stunden, mitarbeiter, unterkuenfte, werkzeug
   );
 }
 
-// âââ MEIN POSTFACH (persÃ¶nliche StundenÃ¼bersicht fÃ¼r jeden) âââââââââââââââââââ
+// ─── MEIN POSTFACH (persönliche Stundenübersicht für jeden) ───────────────────
 function MeinPostfach({ meinMA, meineRolle, userEmail, stunden, projekte }) {
   const [zeitraum, setZeitraum] = useState("monat"); // woche | monat | alle
 
@@ -3188,7 +3188,7 @@ function MeinPostfach({ meinMA, meineRolle, userEmail, stunden, projekte }) {
       <div>
         <h2 style={{ margin:"0 0 12px", fontSize:18, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><Inbox size={18}/> Mein Postfach</h2>
         <div style={{ background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", padding:24, textAlign:"center", color:TH.textMut, fontSize:13 }}>
-          Dein Login ist noch keinem Mitarbeiter zugeordnet. Sobald der Administrator deine E-Mail (<strong>{userEmail}</strong>) eintrÃ¤gt, erscheinen hier deine Arbeitsstunden.
+          Dein Login ist noch keinem Mitarbeiter zugeordnet. Sobald der Administrator deine E-Mail (<strong>{userEmail}</strong>) einträgt, erscheinen hier deine Arbeitsstunden.
         </div>
       </div>
     );
@@ -3221,7 +3221,7 @@ function MeinPostfach({ meinMA, meineRolle, userEmail, stunden, projekte }) {
   return (
     <div>
       <h2 style={{ margin:"0 0 4px", fontSize:18, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><Inbox size={18}/> Mein Postfach</h2>
-      <div style={{ fontSize:12.5, color:TH.textMut, marginBottom:14 }}>{meinMA.name} Â· {meinMA.team} Â· {meineRolle}</div>
+      <div style={{ fontSize:12.5, color:TH.textMut, marginBottom:14 }}>{meinMA.name} · {meinMA.team} · {meineRolle}</div>
 
       <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
         {[["woche","Diese Woche"],["monat","Dieser Monat"],["alle","Alles"]].map(([id,label])=>(
@@ -3231,7 +3231,7 @@ function MeinPostfach({ meinMA, meineRolle, userEmail, stunden, projekte }) {
 
       <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginBottom:16 }}>
         <Karte label="Arbeitsstunden" wert={sumStd.toFixed(2).replace(".",",")+" h"} farbe="#ea580c" />
-        <Karte label="davon Ãberstunden" wert={sumUe.toFixed(2).replace(".",",")+" h"} farbe="#dc2626" />
+        <Karte label="davon Überstunden" wert={sumUe.toFixed(2).replace(".",",")+" h"} farbe="#dc2626" />
         <Karte label="Arbeitstage" wert={tage} farbe="#059669" />
       </div>
 
@@ -3243,9 +3243,9 @@ function MeinPostfach({ meinMA, meineRolle, userEmail, stunden, projekte }) {
                 <th style={{ padding:"9px 12px" }}>Datum</th>
                 <th style={{ padding:"9px 12px" }}>Tag</th>
                 <th style={{ padding:"9px 12px" }}>Projekt</th>
-                <th style={{ padding:"9px 12px" }}>VonâBis</th>
+                <th style={{ padding:"9px 12px" }}>Von–Bis</th>
                 <th style={{ padding:"9px 12px", textAlign:"right" }}>Stunden</th>
-                <th style={{ padding:"9px 12px", textAlign:"right" }}>Ãberstd.</th>
+                <th style={{ padding:"9px 12px", textAlign:"right" }}>Überstd.</th>
               </tr>
             </thead>
             <tbody>
@@ -3255,10 +3255,10 @@ function MeinPostfach({ meinMA, meineRolle, userEmail, stunden, projekte }) {
                   <tr key={e.id} style={{ borderTop:"1px solid "+TH.border, color:TH.text }}>
                     <td style={{ padding:"9px 12px" }}>{fmtDate(parseDate(e.datum))}</td>
                     <td style={{ padding:"9px 12px" }}>{(e.wochentag||"").slice(0,2)}</td>
-                    <td style={{ padding:"9px 12px" }}>{e.projekt||"â"}</td>
-                    <td style={{ padding:"9px 12px" }}>{e.start||"â"}{e.end?"â"+e.end:""}</td>
+                    <td style={{ padding:"9px 12px" }}>{e.projekt||"–"}</td>
+                    <td style={{ padding:"9px 12px" }}>{e.start||"–"}{e.end?"–"+e.end:""}</td>
                     <td style={{ padding:"9px 12px", textAlign:"right", fontWeight:700 }}>{Number(e.arbeitsstunden||0).toFixed(2).replace(".",",")}</td>
-                    <td style={{ padding:"9px 12px", textAlign:"right", color:ue>0?"#dc2626":TH.textMut, fontWeight:ue>0?700:400 }}>{ue>0?ue.toFixed(2).replace(".",","):"â"}</td>
+                    <td style={{ padding:"9px 12px", textAlign:"right", color:ue>0?"#dc2626":TH.textMut, fontWeight:ue>0?700:400 }}>{ue>0?ue.toFixed(2).replace(".",","):"–"}</td>
                   </tr>
                 );
               })}
@@ -3272,7 +3272,7 @@ function MeinPostfach({ meinMA, meineRolle, userEmail, stunden, projekte }) {
   );
 }
 
-// âââ TEAM-CHAT (Alle + Team-KanÃ¤le) âââââââââââââââââââââââââââââââââââââââââââ
+// ─── TEAM-CHAT (Alle + Team-Kanäle) ───────────────────────────────────────────
 function TeamChat({ meinMA, meineRolle, userEmail }) {
   const istLeitung = ["Admin","Projektleiter","Bauleiter"].includes(meineRolle);
   const darfSchreiben = ["Admin","Projektleiter","Bauleiter","Vorarbeiter"].includes(meineRolle);
@@ -3323,8 +3323,8 @@ function TeamChat({ meinMA, meineRolle, userEmail }) {
       </div>
       <div style={{ background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", display:"flex", flexDirection:"column", height:"min(62vh, 560px)" }}>
         <div style={{ flex:1, overflowY:"auto", padding:14, display:"flex", flexDirection:"column", gap:8 }}>
-          {laedt && <div style={{ color:TH.textMut, fontSize:12.5, textAlign:"center", padding:20 }}>Nachrichten werden geladenâ¦</div>}
-          {!laedt && !nachrichten.length && <div style={{ color:TH.textMut, fontSize:12.5, textAlign:"center", padding:20 }}>Noch keine Nachrichten in â{kanal}" â schreib die erste! ð¬</div>}
+          {laedt && <div style={{ color:TH.textMut, fontSize:12.5, textAlign:"center", padding:20 }}>Nachrichten werden geladen…</div>}
+          {!laedt && !nachrichten.length && <div style={{ color:TH.textMut, fontSize:12.5, textAlign:"center", padding:20 }}>Noch keine Nachrichten in „{kanal}" – schreib die erste! 💬</div>}
           {nachrichten.map(n=>{
             const meins = n.absender_email && n.absender_email===userEmail;
             return (
@@ -3341,12 +3341,12 @@ function TeamChat({ meinMA, meineRolle, userEmail }) {
         </div>
         {darfSchreiben ? (
           <div style={{ display:"flex", gap:8, padding:10, borderTop:"1px solid "+TH.border }}>
-            <input style={{ ...inpS(), flex:1 }} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&senden()} placeholder={`Nachricht an â${kanal}"â¦`} />
+            <input style={{ ...inpS(), flex:1 }} value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>e.key==="Enter"&&senden()} placeholder={`Nachricht an „${kanal}"…`} />
             <button onClick={senden} style={{ ...btnPrimary("#ea580c"), display:"inline-flex", alignItems:"center", gap:6 }}><Send size={14}/> Senden</button>
           </div>
         ) : (
           <div style={{ padding:"10px 14px", borderTop:"1px solid "+TH.border, fontSize:12, color:TH.textMut, textAlign:"center" }}>
-            Du liest hier mit â schreiben kÃ¶nnen Vorarbeiter, Bauleiter und Projektleiter.
+            Du liest hier mit – schreiben können Vorarbeiter, Bauleiter und Projektleiter.
           </div>
         )}
       </div>
@@ -3355,7 +3355,7 @@ function TeamChat({ meinMA, meineRolle, userEmail }) {
   );
 }
 
-// âââ TEAM-VERWALTUNG (eigene Namen, beliebig viele) âââââââââââââââââââââââââââ
+// ─── TEAM-VERWALTUNG (eigene Namen, beliebig viele) ───────────────────────────
 function TeamVerwaltung({ teams, setTeams, mitarbeiter, projekte, fahrzeuge }) {
   const [neuName, setNeuName] = useState("");
 
@@ -3377,8 +3377,8 @@ function TeamVerwaltung({ teams, setTeams, mitarbeiter, projekte, fahrzeuge }) {
 
   function loeschen(team) {
     const n = verwendung(team.name);
-    if (n>0) { alert(`â${team.name}" wird noch ${n}Ã verwendet (Mitarbeiter/Projekte/Fahrzeuge). Bitte zuerst alle umziehen, dann lÃ¶schen.`); return; }
-    if (!window.confirm(`Team â${team.name}" wirklich lÃ¶schen?`)) return;
+    if (n>0) { alert(`„${team.name}" wird noch ${n}× verwendet (Mitarbeiter/Projekte/Fahrzeuge). Bitte zuerst alle umziehen, dann löschen.`); return; }
+    if (!window.confirm(`Team „${team.name}" wirklich löschen?`)) return;
     setTeams(prev => prev.filter(t=>t.id!==team.id));
   }
 
@@ -3396,23 +3396,23 @@ function TeamVerwaltung({ teams, setTeams, mitarbeiter, projekte, fahrzeuge }) {
             <div key={t.id} style={{ background:TH.panel, border:"1px solid "+TH.border, borderLeft:"5px solid "+col.bg, borderRadius:12, boxShadow:"0 1px 4px #0000000d", padding:"12px 14px", display:"flex", alignItems:"center", gap:10 }}>
               <div style={{ flex:1 }}>
                 <div style={{ fontWeight:700, fontSize:13, color:col.bg }}>{t.name}</div>
-                <div style={{ fontSize:11, color:TH.textMut }}>{n>0?`${n}Ã in Verwendung`:"nicht in Verwendung"}</div>
+                <div style={{ fontSize:11, color:TH.textMut }}>{n>0?`${n}× in Verwendung`:"nicht in Verwendung"}</div>
               </div>
-              <button onClick={()=>loeschen(t)} title="Team lÃ¶schen" style={{ padding:"6px 9px", borderRadius:6, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer" }}><Trash2 size={13} /></button>
+              <button onClick={()=>loeschen(t)} title="Team löschen" style={{ padding:"6px 9px", borderRadius:6, border:"1.5px solid #fca5a5", background:TH.panel, color:"#dc2626", cursor:"pointer" }}><Trash2 size={13} /></button>
             </div>
           );
         })}
-        {!(teams||[]).length && <div style={{ color:TH.textMut, fontSize:13 }}>Noch keine Teams â leg oben das erste an.</div>}
+        {!(teams||[]).length && <div style={{ color:TH.textMut, fontSize:13 }}>Noch keine Teams – leg oben das erste an.</div>}
       </div>
-      <div style={{ marginTop:14, fontSize:11, color:TH.textMut }}>Tipp: Auch kleine Trupps (â2 Mann Reparatur Hamburg") einfach als Team anlegen â nach dem Einsatz wieder lÃ¶schen oder behalten.</div>
+      <div style={{ marginTop:14, fontSize:11, color:TH.textMut }}>Tipp: Auch kleine Trupps („2 Mann Reparatur Hamburg") einfach als Team anlegen – nach dem Einsatz wieder löschen oder behalten.</div>
     </div>
   );
 }
 
-// âââ KOSTEN-CONTROLLING (Plan vs. Ist mit Ampel) ââââââââââââââââââââââââââââââ
+// ─── KOSTEN-CONTROLLING (Plan vs. Ist mit Ampel) ──────────────────────────────
 function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) {
   const tw = (T && T.text) || "#1e3a5f";
-  const fmtEuro = n => (Number(n)||0).toLocaleString("de-DE",{minimumFractionDigits:0,maximumFractionDigits:0})+" â¬";
+  const fmtEuro = n => (Number(n)||0).toLocaleString("de-DE",{minimumFractionDigits:0,maximumFractionDigits:0})+" €";
 
   const auswertung = useMemo(()=>projekte.map(p=>{
     const eintraege = (stunden||[]).filter(e=>e.projekt===p.name);
@@ -3440,7 +3440,7 @@ function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) 
     if (ratio!=null) {
       if (ratio<=0.8) { ampel="#16a34a"; ampelText="im Plan"; }
       else if (ratio<=1.0) { ampel="#d97706"; ampelText="wird knapp"; }
-      else { ampel="#dc2626"; ampelText="Ã¼ber Plan!"; }
+      else { ampel="#dc2626"; ampelText="über Plan!"; }
     }
     return { p, istStunden, lohn, spesen, unterkunft, ist, planK, planStd, summe, ratio, stdRatio, db, ampel, ampelText, anzahl:eintraege.length };
   }),[projekte, stunden, mitarbeiter, unterkuenfte]);
@@ -3450,10 +3450,10 @@ function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) 
   return (
     <div>
       <div style={{ fontWeight:700, fontSize:14, color:tw, marginBottom:4, textTransform:"uppercase", letterSpacing:0.5 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Euro size={15}/>Kosten-Controlling</span></div>
-      <div style={{ fontSize:12, color:"#6b7280", marginBottom:14 }}>Ist-Kosten = erfasste Stunden Ã Stundensatz + Spesen + Unterkunft (NÃ¤chte Ã â¬/Nacht Ã Zimmer)</div>
+      <div style={{ fontSize:12, color:"#6b7280", marginBottom:14 }}>Ist-Kosten = erfasste Stunden × Stundensatz + Spesen + Unterkunft (Nächte × €/Nacht × Zimmer)</div>
       {ohneSatz.length>0 && (
         <div style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:8, padding:"8px 14px", marginBottom:14, fontSize:12, color:"#92400e" }}>
-          â ï¸ Ohne Stundensatz (zÃ¤hlen mit 0 â¬ in die Lohnkosten): {ohneSatz.map(m=>m.name).join(", ")} â in Verwaltung â Mitarbeiter nachtragen.
+          ⚠️ Ohne Stundensatz (zählen mit 0 € in die Lohnkosten): {ohneSatz.map(m=>m.name).join(", ")} → in Verwaltung → Mitarbeiter nachtragen.
         </div>
       )}
       <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
@@ -3462,8 +3462,8 @@ function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) 
           return (
             <div key={p.id} style={{ border:"1px solid "+TH.border, boxShadow:"0 2px 10px #00000012", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px #0000000d", background:TH.panel }}>
               <div style={{ background:col.bg, color:"#fff", padding:"8px 14px", display:"flex", justifyContent:"space-between", alignItems:"center", flexWrap:"wrap", gap:8 }}>
-                <span style={{ fontWeight:700, fontSize:14 }}>{p.name}{p.nummer?` Â· ${p.nummer}`:""}</span>
-                <span style={{ background:TH.panel, color:ampel, borderRadius:99, padding:"2px 12px", fontSize:11, fontWeight:800 }}>â {ampelText}</span>
+                <span style={{ fontWeight:700, fontSize:14 }}>{p.name}{p.nummer?` · ${p.nummer}`:""}</span>
+                <span style={{ background:TH.panel, color:ampel, borderRadius:99, padding:"2px 12px", fontSize:11, fontWeight:800 }}>● {ampelText}</span>
               </div>
               <div style={{ padding:"12px 14px" }}>
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))", gap:"8px 18px", fontSize:12, marginBottom:10 }}>
@@ -3472,7 +3472,7 @@ function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) 
                   <Info label="Spesen" value={fmtEuro(spesen)} />
                   <Info label="Unterkunft" value={fmtEuro(unterkunft)} />
                   <Info label="Kosten Ist / Plan" value={<b style={{color:ampel}}>{fmtEuro(ist)}{planK?` / ${fmtEuro(planK)}`:""}</b>} />
-                  {Number(p.mindestlohn)>0 && <Info label="Mindestlohn" value={<span style={{color:"#ea580c",fontWeight:700}}>{p.mindestlohn} â¬/h{p.land?` (${p.land})`:""}</span>} />}
+                  {Number(p.mindestlohn)>0 && <Info label="Mindestlohn" value={<span style={{color:"#ea580c",fontWeight:700}}>{p.mindestlohn} €/h{p.land?` (${p.land})`:""}</span>} />}
                   {summe>0 && <Info label="Auftragssumme" value={fmtEuro(summe)} />}
                   {db!=null && <Info label="Deckungsbeitrag" value={<b style={{color:db>=0?"#16a34a":"#dc2626"}}>{fmtEuro(db)}</b>} />}
                 </div>
@@ -3481,7 +3481,7 @@ function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) 
                     <div style={{ width:Math.min(100,ratio*100)+"%", height:"100%", background:ampel, transition:"width 0.3s" }} />
                   </div>
                 )}
-                {anzahl===0 && <div style={{ fontSize:11, color:"#9ca3af", marginTop:6 }}>Noch keine Stunden fÃ¼r dieses Projekt erfasst (Projektname im Stundenzettel muss Ã¼bereinstimmen).</div>}
+                {anzahl===0 && <div style={{ fontSize:11, color:"#9ca3af", marginTop:6 }}>Noch keine Stunden für dieses Projekt erfasst (Projektname im Stundenzettel muss übereinstimmen).</div>}
               </div>
             </div>
           );
@@ -3525,7 +3525,7 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
   return (
     <div>
       <div style={{ fontSize:13, color:"#6b7280", marginBottom:14 }}>
-        {WOCHENTAGE_LANG[heute.getDay()]}, {fmtDate(heute)} Â· KW {getKW(heute)} â Ãberblick fÃ¼r heute
+        {WOCHENTAGE_LANG[heute.getDay()]}, {fmtDate(heute)} · KW {getKW(heute)} — Überblick für heute
       </div>
 
       {/* Kennzahlen */}
@@ -3542,25 +3542,25 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
       <div style={{ fontWeight:700, fontSize:14, color:tw, marginBottom:10, textTransform:"uppercase", letterSpacing:0.5 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Zap size={15}/>Handlungsbedarf</span></div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:12, marginBottom:24 }}>
 
-        {/* Offene AntrÃ¤ge */}
+        {/* Offene Anträge */}
         <div style={{ background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", overflow:"hidden", boxShadow:"0 1px 4px #0000000d" }}>
           <div style={{ background: offeneAntraege.length?"#fef3c7":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: offeneAntraege.length?"#92400e":"#166534", display:"flex", justifyContent:"space-between", cursor:"pointer" }} onClick={()=>setTab("antraege")}>
-            <span>ð´ Offene UrlaubsantrÃ¤ge</span><span>{offeneAntraege.length}</span>
+            <span>🌴 Offene Urlaubsanträge</span><span>{offeneAntraege.length}</span>
           </div>
           <div style={{ padding:"8px 14px", fontSize:12, color:TH.text }}>
-            {offeneAntraege.length===0 ? <span style={{ color:"#9ca3af" }}>Keine offenen AntrÃ¤ge</span> :
-              offeneAntraege.slice(0,4).map(a=><div key={a.id} style={{ padding:"3px 0" }}>{a.maName} Â· {a.typ} Â· {fmtDateShort(parseDate(a.dateStart))}â{fmtDateShort(parseDate(a.dateEnd))}</div>)}
+            {offeneAntraege.length===0 ? <span style={{ color:"#9ca3af" }}>Keine offenen Anträge</span> :
+              offeneAntraege.slice(0,4).map(a=><div key={a.id} style={{ padding:"3px 0" }}>{a.maName} · {a.typ} · {fmtDateShort(parseDate(a.dateStart))}–{fmtDateShort(parseDate(a.dateEnd))}</div>)}
           </div>
         </div>
 
         {/* Projekte ohne Vorarbeiter */}
         <div style={{ background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", overflow:"hidden", boxShadow:"0 1px 4px #0000000d" }}>
           <div style={{ background: projOhneVA.length?"#fee2e2":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: projOhneVA.length?"#991b1b":"#166534", display:"flex", justifyContent:"space-between" }}>
-            <span>â ï¸ Projekte ohne Vorarbeiter</span><span>{projOhneVA.length}</span>
+            <span>⚠️ Projekte ohne Vorarbeiter</span><span>{projOhneVA.length}</span>
           </div>
           <div style={{ padding:"8px 14px", fontSize:12, color:TH.text }}>
             {projOhneVA.length===0 ? <span style={{ color:"#9ca3af" }}>Alle Projekte haben einen Vorarbeiter</span> :
-              projOhneVA.map(p=><div key={p.id} style={{ padding:"3px 0" }}>{p.name} Â· {p.team}</div>)}
+              projOhneVA.map(p=><div key={p.id} style={{ padding:"3px 0" }}>{p.name} · {p.team}</div>)}
           </div>
         </div>
 
@@ -3571,7 +3571,7 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
           </div>
           <div style={{ padding:"8px 14px", fontSize:12, color:TH.text }}>
             {projOhneFzg.length===0 ? <span style={{ color:"#9ca3af" }}>Alle aktiven Projekte haben ein Fahrzeug</span> :
-              projOhneFzg.map(p=><div key={p.id} style={{ padding:"3px 0" }}>{p.name} Â· {p.team}</div>)}
+              projOhneFzg.map(p=><div key={p.id} style={{ padding:"3px 0" }}>{p.name} · {p.team}</div>)}
           </div>
         </div>
 
@@ -3582,14 +3582,14 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
           </div>
           <div style={{ padding:"8px 14px", fontSize:12, color:TH.text }}>
             {projOhneUnterkunft.length===0 ? <span style={{ color:"#9ca3af" }}>Alle aktiven Projekte haben eine Unterkunft</span> :
-              projOhneUnterkunft.map(p=><div key={p.id} style={{ padding:"3px 0" }}>{p.name} Â· {p.ort}</div>)}
+              projOhneUnterkunft.map(p=><div key={p.id} style={{ padding:"3px 0" }}>{p.name} · {p.ort}</div>)}
           </div>
         </div>
 
         {/* Konflikte */}
         <div style={{ background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 1px 4px #0000000d", overflow:"hidden", boxShadow:"0 1px 4px #0000000d" }}>
           <div style={{ background: warnungen.length?"#fff7ed":"#f0fdf4", padding:"8px 14px", fontWeight:700, fontSize:13, color: warnungen.length?"#92400e":"#166534", display:"flex", justifyContent:"space-between", cursor:"pointer" }} onClick={()=>setTab("warnungen")}>
-            <span>ð Konflikt-Warnungen</span><span>{warnungen.length}</span>
+            <span>🔎 Konflikt-Warnungen</span><span>{warnungen.length}</span>
           </div>
           <div style={{ padding:"8px 14px", fontSize:12, color:TH.text }}>
             {warnungen.length===0 ? <span style={{ color:"#9ca3af" }}>Keine Konflikte gefunden</span> :
@@ -3615,8 +3615,8 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
                 </div>
                 <div style={{ padding:"8px 12px", fontSize:12 }}>
                   <Info label="Ort" value={p.ort} />
-                  <Info label="Vorarbeiter" value={p.vorarbeiter||"â fehlt â"} />
-                  <Info label="Fahrzeug" value={fzg?fzg.kz:"â fehlt â"} />
+                  <Info label="Vorarbeiter" value={p.vorarbeiter||"– fehlt –"} />
+                  <Info label="Fahrzeug" value={fzg?fzg.kz:"– fehlt –"} />
                   <Info label="Mitarbeiter heute" value={team.length} />
                 </div>
               </div>
@@ -3628,7 +3628,7 @@ function Dashboard({ mitarbeiter, projekte, sonder, fahrzeuge, antraege, warnung
   );
 }
 
-// âââ Rollen & Rechte ââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
+// ─── Rollen & Rechte ──────────────────────────────────────────────────────────
 const ADMIN_EMAILS = ["emircan.g@cc-schienentechnik.de"];
 
 function ermittleRolle(userEmail, mitarbeiter, dbRolle) {
@@ -3641,7 +3641,7 @@ function ermittleRolle(userEmail, mitarbeiter, dbRolle) {
 }
 
 // Welche Tabs darf welche Rolle sehen?
-// âââ MESSPROTOKOLLE (HÃ¶he & Flucht, bis 300 Punkte, PDF mit Firmenlogo) ââââââ
+// ─── MESSPROTOKOLLE (Höhe & Flucht, bis 300 Punkte, PDF mit Firmenlogo) ──────
 const MP_BLAU = "#2e3192";
 const FIRMENLOGO_STANDARD = "/icon-192.png"; // Standard = Baufox-Logo; eigenes Logo wird in den Einstellungen hochgeladen
 let FIRMENLOGO = FIRMENLOGO_STANDARD; // aktives Logo: eigenes (aus der Datenbank) oder Standard
@@ -3658,12 +3658,12 @@ function mpRot(abw, tol) {
   if (isNaN(t)) return false;
   return Math.abs(abw) > t;
 }
-// "rot" = auÃerhalb Toleranz, "gruen" = in Toleranz, "" = noch kein Wert
+// "rot" = außerhalb Toleranz, "gruen" = in Toleranz, "" = noch kein Wert
 function mpStatus(abw, tol) {
   if (abw == null) return "";
   return mpRot(abw, tol) ? "rot" : "gruen";
 }
-// Position automatisch aus Startwert + Abstand je Punkt (z. B. 0 / 0,5 / 1,0 â¦)
+// Position automatisch aus Startwert + Abstand je Punkt (z. B. 0 / 0,5 / 1,0 …)
 function mpPos(start, schritt, i) {
   const d = parseFloat(String(schritt).replace(",", "."));
   if (isNaN(d)) return "";
@@ -3685,12 +3685,12 @@ const MesspunktRow = memo(function MesspunktRow({ idx, punkt, posText, hoeheSoll
   return (
     <tr>
       <td style={{ ...tdS, color:TH.textMut }}>{idx+1}</td>
-      <td style={{ ...tdS, color:TH.textMut, whiteSpace:"nowrap" }}>{posText||"â"}</td>
+      <td style={{ ...tdS, color:TH.textMut, whiteSpace:"nowrap" }}>{posText||"–"}</td>
       <td style={tdS}><input value={punkt.hoehe} onChange={e=>onChange(idx,"hoehe",e.target.value)} inputMode="decimal" style={istInp(sH)} /></td>
-      <td style={{ ...tdS, color:dCol(sH), fontWeight: sH?700:400 }}>{aH==null?"â":(aH>0?"+":"")+aH}</td>
+      <td style={{ ...tdS, color:dCol(sH), fontWeight: sH?700:400 }}>{aH==null?"–":(aH>0?"+":"")+aH}</td>
       <td style={tdS}><input value={punkt.flucht} onChange={e=>onChange(idx,"flucht",e.target.value)} inputMode="decimal" style={istInp(sF)} /></td>
-      <td style={{ ...tdS, color:dCol(sF), fontWeight: sF?700:400 }}>{aF==null?"â":(aF>0?"+":"")+aF}</td>
-      <td style={tdS}><button onClick={()=>onDelete(idx)} title="Punkt lÃ¶schen" style={{ background:"none", border:"none", color:"#dc2626", cursor:"pointer", fontSize:15, lineHeight:1 }}>Ã</button></td>
+      <td style={{ ...tdS, color:dCol(sF), fontWeight: sF?700:400 }}>{aF==null?"–":(aF>0?"+":"")+aF}</td>
+      <td style={tdS}><button onClick={()=>onDelete(idx)} title="Punkt löschen" style={{ background:"none", border:"none", color:"#dc2626", cursor:"pointer", fontSize:15, lineHeight:1 }}>×</button></td>
     </tr>
   );
 });
@@ -3706,14 +3706,14 @@ function messprotokollPDF(p) {
     const pos = mpPos(p.startPos, p.schritt, i);
     return `<tr>
       <td class="c">${i+1}</td>
-      <td class="c">${pos===""?"â":esc(pos)}</td>
-      <td class="c ${sH}">${pt.hoehe===""||pt.hoehe==null?"â":esc(pt.hoehe)}</td>
-      <td class="c ${sH}">${aH==null?"â":(aH>0?"+":"")+aH}</td>
-      <td class="c ${sF}">${pt.flucht===""||pt.flucht==null?"â":esc(pt.flucht)}</td>
-      <td class="c ${sF}">${aF==null?"â":(aF>0?"+":"")+aF}</td>
+      <td class="c">${pos===""?"–":esc(pos)}</td>
+      <td class="c ${sH}">${pt.hoehe===""||pt.hoehe==null?"–":esc(pt.hoehe)}</td>
+      <td class="c ${sH}">${aH==null?"–":(aH>0?"+":"")+aH}</td>
+      <td class="c ${sF}">${pt.flucht===""||pt.flucht==null?"–":esc(pt.flucht)}</td>
+      <td class="c ${sF}">${aF==null?"–":(aF>0?"+":"")+aF}</td>
     </tr>`;
   }).join("");
-  const html = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Messprotokoll â ${esc(p.bezeichnung||"")}</title>
+  const html = `<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Messprotokoll – ${esc(p.bezeichnung||"")}</title>
   <style>
     body{font-family:Arial,Helvetica,sans-serif;margin:24px;color:#1e293b;position:relative;}
     .wm{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:0;}
@@ -3747,27 +3747,27 @@ function messprotokollPDF(p) {
     <div class="inhalt">
       <div class="kopf">
         <img src="${FIRMENLOGO}" onerror="this.style.display='none'"/>
-        <div><h1>Messprotokoll</h1><p class="unter">HÃ¶he &amp; Flucht Â· Schienenmontage</p></div>
+        <div><h1>Messprotokoll</h1><p class="unter">Höhe &amp; Flucht · Schienenmontage</p></div>
       </div>
       <div class="meta">
-        <div>Projekt: <b>${esc(p.projektName||"â")}</b></div>
-        <div>Datum: <b>${esc(p.datum||"â")}</b></div>
-        <div>Bezeichnung: <b>${esc(p.bezeichnung||"â")}</b></div>
-        <div>Erstellt von: <b>${esc(p.ersteller||"â")}</b></div>
+        <div>Projekt: <b>${esc(p.projektName||"–")}</b></div>
+        <div>Datum: <b>${esc(p.datum||"–")}</b></div>
+        <div>Bezeichnung: <b>${esc(p.bezeichnung||"–")}</b></div>
+        <div>Erstellt von: <b>${esc(p.ersteller||"–")}</b></div>
       </div>
       <div class="soll">
-        <div>HÃ¶he Soll: <b>${esc(p.hoeheSoll||"â")} mm</b> &nbsp;(Toleranz Â±${esc(p.hoeheTol||"â")} mm)</div>
-        <div>Flucht Soll: <b>${esc(p.fluchtSoll||"â")} mm</b> &nbsp;(Toleranz Â±${esc(p.fluchtTol||"â")} mm)</div>
+        <div>Höhe Soll: <b>${esc(p.hoeheSoll||"–")} mm</b> &nbsp;(Toleranz ±${esc(p.hoeheTol||"–")} mm)</div>
+        <div>Flucht Soll: <b>${esc(p.fluchtSoll||"–")} mm</b> &nbsp;(Toleranz ±${esc(p.fluchtTol||"–")} mm)</div>
       </div>
       <table>
-        <thead><tr><th>Pkt</th><th>Pos. [m]</th><th>HÃ¶he Ist [mm]</th><th>HÃ¶he &#916;</th><th>Flucht Ist [mm]</th><th>Flucht &#916;</th></tr></thead>
+        <thead><tr><th>Pkt</th><th>Pos. [m]</th><th>Höhe Ist [mm]</th><th>Höhe &#916;</th><th>Flucht Ist [mm]</th><th>Flucht &#916;</th></tr></thead>
         <tbody>${rows||`<tr><td colspan="6" class="c">Keine Messpunkte erfasst</td></tr>`}</tbody>
       </table>
       <div class="summe">
         <div>Messpunkte: <b>${(p.punkte||[]).length}</b></div>
-        <div>AuÃerhalb Toleranz HÃ¶he: <b style="color:${ausH?'#dc2626':'#16a34a'}">${ausH}</b></div>
-        <div>AuÃerhalb Toleranz Flucht: <b style="color:${ausF?'#dc2626':'#16a34a'}">${ausF}</b></div>
-        <div>Max. Abweichung: <b>HÃ¶he ${maxH} mm Â· Flucht ${maxF} mm</b></div>
+        <div>Außerhalb Toleranz Höhe: <b style="color:${ausH?'#dc2626':'#16a34a'}">${ausH}</b></div>
+        <div>Außerhalb Toleranz Flucht: <b style="color:${ausF?'#dc2626':'#16a34a'}">${ausF}</b></div>
+        <div>Max. Abweichung: <b>Höhe ${maxH} mm · Flucht ${maxF} mm</b></div>
       </div>
       <div class="fuss"><div class="linie">Datum, Unterschrift Monteur</div><div class="linie">Datum, Unterschrift Auftraggeber</div></div>
       <div class="baufox"><img src="/icon-192.png" onerror="this.style.display='none'"/> Erstellt mit Baufox</div>
@@ -3792,7 +3792,7 @@ function MessprotokollEditor({ start, projekte, onSave, onSaveStay, onCancel, on
 
   const mitName = () => ({ ...f, projektName:(projekte.find(p=>p.id===f.projektId)?.name)||f.projektName||"" });
   const speichern = () => {
-    if (!String(f.bezeichnung||"").trim()) { alert("Bitte eine Bezeichnung eingeben (z. B. âRBG Achse 1 â Schiene links\")."); return; }
+    if (!String(f.bezeichnung||"").trim()) { alert("Bitte eine Bezeichnung eingeben (z. B. „RBG Achse 1 – Schiene links\")."); return; }
     onSave(mitName());
   };
 
@@ -3803,14 +3803,14 @@ function MessprotokollEditor({ start, projekte, onSave, onSaveStay, onCancel, on
     <div>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14, gap:10, flexWrap:"wrap" }}>
         <h2 style={{ margin:0, fontSize:18, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><Ruler size={18}/> {String(start.bezeichnung||"").trim() ? "Protokoll bearbeiten" : "Neues Messprotokoll"}</h2>
-        <button onClick={onCancel} style={{ ...btnGhost(), padding:"6px 12px", fontSize:12 }}>â ZurÃ¼ck zur Liste</button>
+        <button onClick={onCancel} style={{ ...btnGhost(), padding:"6px 12px", fontSize:12 }}>← Zurück zur Liste</button>
       </div>
 
       <div style={{ background:TH.panel, border:"1.5px solid "+TH.border, borderRadius:12, padding:"14px 16px", marginBottom:14 }}>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:12 }}>
           <div><div style={lab}>Projekt</div>
             <select value={f.projektId} onChange={e=>set("projektId",e.target.value)} style={inpS()}>
-              <option value="">â kein Projekt â</option>
+              <option value="">– kein Projekt –</option>
               {projekte.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
             </select></div>
           <div><div style={lab}>Bezeichnung (Schiene/Achse)</div><input value={f.bezeichnung} onChange={e=>set("bezeichnung",e.target.value)} placeholder="z. B. RBG Achse 1 links" style={inpS()}/></div>
@@ -3818,15 +3818,15 @@ function MessprotokollEditor({ start, projekte, onSave, onSaveStay, onCancel, on
           <div><div style={lab}>Erstellt von</div><input value={f.ersteller} onChange={e=>set("ersteller",e.target.value)} style={inpS()}/></div>
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:12, marginTop:12 }}>
-          <div><div style={lab}>HÃ¶he Soll [mm]</div><input value={f.hoeheSoll} onChange={e=>set("hoeheSoll",e.target.value)} inputMode="decimal" style={inpS()}/></div>
-          <div><div style={lab}>HÃ¶he Toleranz Â± [mm]</div><input value={f.hoeheTol} onChange={e=>set("hoeheTol",e.target.value)} inputMode="decimal" style={inpS()}/></div>
+          <div><div style={lab}>Höhe Soll [mm]</div><input value={f.hoeheSoll} onChange={e=>set("hoeheSoll",e.target.value)} inputMode="decimal" style={inpS()}/></div>
+          <div><div style={lab}>Höhe Toleranz ± [mm]</div><input value={f.hoeheTol} onChange={e=>set("hoeheTol",e.target.value)} inputMode="decimal" style={inpS()}/></div>
           <div><div style={lab}>Flucht Soll [mm]</div><input value={f.fluchtSoll} onChange={e=>set("fluchtSoll",e.target.value)} inputMode="decimal" style={inpS()}/></div>
-          <div><div style={lab}>Flucht Toleranz Â± [mm]</div><input value={f.fluchtTol} onChange={e=>set("fluchtTol",e.target.value)} inputMode="decimal" style={inpS()}/></div>
+          <div><div style={lab}>Flucht Toleranz ± [mm]</div><input value={f.fluchtTol} onChange={e=>set("fluchtTol",e.target.value)} inputMode="decimal" style={inpS()}/></div>
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:12, marginTop:12 }}>
           <div><div style={lab}>Startposition [m]</div><input value={f.startPos} onChange={e=>set("startPos",e.target.value)} inputMode="decimal" placeholder="0" style={inpS()}/></div>
           <div><div style={lab}>Abstand je Punkt [m]</div><input value={f.schritt} onChange={e=>set("schritt",e.target.value)} inputMode="decimal" placeholder="z. B. 0,5" style={inpS()}/></div>
-          <div style={{ gridColumn:"1 / -1", fontSize:11, color:TH.textMut, marginTop:-2 }}>Die Position jedes Punktes wird automatisch berechnet (Start + Abstand). Beispiel: Start 0, Abstand 0,5 â 0 Â· 0,5 Â· 1,0 Â· 1,5 â¦</div>
+          <div style={{ gridColumn:"1 / -1", fontSize:11, color:TH.textMut, marginTop:-2 }}>Die Position jedes Punktes wird automatisch berechnet (Start + Abstand). Beispiel: Start 0, Abstand 0,5 → 0 · 0,5 · 1,0 · 1,5 …</div>
         </div>
       </div>
 
@@ -3841,41 +3841,41 @@ function MessprotokollEditor({ start, projekte, onSave, onSaveStay, onCancel, on
         <table style={{ borderCollapse:"collapse", width:"100%", minWidth:520 }}>
           <thead><tr>
             <th style={thS}>#</th><th style={thS}>Pos. [m]</th>
-            <th style={thS}>HÃ¶he Ist</th><th style={thS}>HÃ¶he Î</th>
-            <th style={thS}>Flucht Ist</th><th style={thS}>Flucht Î</th><th style={thS}></th>
+            <th style={thS}>Höhe Ist</th><th style={thS}>Höhe Δ</th>
+            <th style={thS}>Flucht Ist</th><th style={thS}>Flucht Δ</th><th style={thS}></th>
           </tr></thead>
           <tbody>
             {punkte.map((pt,i)=>(
               <MesspunktRow key={i} idx={i} punkt={pt} posText={mpPos(f.startPos, f.schritt, i)} hoeheSoll={f.hoeheSoll} hoeheTol={f.hoeheTol} fluchtSoll={f.fluchtSoll} fluchtTol={f.fluchtTol} onChange={setPunkt} onDelete={delPunkt} />
             ))}
-            {punkte.length===0 && <tr><td colSpan={7} style={{ textAlign:"center", padding:16, color:TH.textMut, fontSize:12 }}>Noch keine Punkte â oben mit â+10" hinzufÃ¼gen.</td></tr>}
+            {punkte.length===0 && <tr><td colSpan={7} style={{ textAlign:"center", padding:16, color:TH.textMut, fontSize:12 }}>Noch keine Punkte – oben mit „+10" hinzufügen.</td></tr>}
           </tbody>
         </table>
       </div>
 
       <div style={{ display:"flex", gap:24, flexWrap:"wrap", margin:"12px 2px", fontSize:12.5, color:TH.text }}>
-        <span>AuÃerhalb Toleranz: <b style={{ color:(ausH+ausF)?"#dc2626":"#16a34a" }}>HÃ¶he {ausH} Â· Flucht {ausF}</b></span>
-        <span>Max. Abweichung: <b>HÃ¶he {maxH} mm Â· Flucht {maxF} mm</b></span>
+        <span>Außerhalb Toleranz: <b style={{ color:(ausH+ausF)?"#dc2626":"#16a34a" }}>Höhe {ausH} · Flucht {ausF}</b></span>
+        <span>Max. Abweichung: <b>Höhe {maxH} mm · Flucht {maxF} mm</b></span>
       </div>
 
       <div style={{ display:"flex", gap:10, flexWrap:"wrap", marginTop:6 }}>
         <button onClick={speichern} style={btnPrimary(MP_BLAU)}>Speichern</button>
         <button onClick={()=>{ const m=mitName(); onSaveStay&&onSaveStay(m); messprotokollPDF(m); }} style={{ ...btnGhost(), display:"flex", alignItems:"center", gap:6 }}><FileDown size={15}/> PDF / Druck</button>
         <button onClick={onCancel} style={btnGhost()}>Abbrechen</button>
-        {onDelete && <button onClick={onDelete} style={{ ...btnGhost(), color:"#dc2626", marginLeft:"auto" }}>LÃ¶schen</button>}
+        {onDelete && <button onClick={onDelete} style={{ ...btnGhost(), color:"#dc2626", marginLeft:"auto" }}>Löschen</button>}
       </div>
     </div>
   );
 }
 
-// âââ Firmenlogo laden (damit auch Nicht-Admins es in PDFs haben) âââââââââââââââââ
+// ─── Firmenlogo laden (damit auch Nicht-Admins es in PDFs haben) ─────────────────
 function useFirmenlogoLaden() {
   useEffect(() => {
     supabase.rpc("mein_logo").then(({ data, error }) => { if (!error && data) FIRMENLOGO = data; });
   }, []);
 }
 
-// âââ Messprotokolle in der Datenbank (pro Firma) statt nur im Browser ââââââââââââ
+// ─── Messprotokolle in der Datenbank (pro Firma) statt nur im Browser ────────────
 function useMessprotokolle() {
   const [liste, setListe] = useState([]);
   const ref = useRef([]);
@@ -3893,15 +3893,15 @@ function useMessprotokolle() {
     (async () => {
       const l = await laden();
       if (l === null) return;
-      // Einmalige Ãbernahme der bisher nur lokal gespeicherten Protokolle (nach Nachfrage)
+      // Einmalige Übernahme der bisher nur lokal gespeicherten Protokolle (nach Nachfrage)
       const lokal = store.get("baufox_messprotokolle");
       if (Array.isArray(lokal) && lokal.length && !store.get("baufox_messprotokolle_uebernommen")) {
         const vorhanden = new Set(l.map(x => x.id));
         const fehlend = lokal.filter(x => x && x.id && !vorhanden.has(x.id));
         if (fehlend.length) {
-          if (window.confirm("Auf diesem GerÃ¤t liegen " + fehlend.length + " Messprotokoll(e), die noch nicht in der Datenbank sind. Jetzt in deine Firma Ã¼bernehmen?")) {
+          if (window.confirm("Auf diesem Gerät liegen " + fehlend.length + " Messprotokoll(e), die noch nicht in der Datenbank sind. Jetzt in deine Firma übernehmen?")) {
             const res = await supabase.from("messprotokolle").upsert(fehlend.map(p => ({ id: p.id, daten: p })));
-            if (res.error) { alert("Ãbernahme fehlgeschlagen: " + res.error.message); return; }
+            if (res.error) { alert("Übernahme fehlgeschlagen: " + res.error.message); return; }
             await laden();
           }
         }
@@ -3970,7 +3970,7 @@ function Messprotokolle({ projekte, meinMA, userEmail, messprotokolle, setMesspr
     });
   };
   const loeschen = (id) => {
-    if (!window.confirm("Dieses Messprotokoll wirklich lÃ¶schen?")) return;
+    if (!window.confirm("Dieses Messprotokoll wirklich löschen?")) return;
     setMessprotokolle(prev => (prev||[]).filter(x=>x.id!==id));
     setEditId(null);
   };
@@ -3997,16 +3997,16 @@ function Messprotokolle({ projekte, meinMA, userEmail, messprotokolle, setMesspr
           <div>
             <span style={{ display:"inline-block", fontSize:11, fontWeight:700, padding:"2px 9px", borderRadius:20, background:"#eef2ff", color:MP_BLAU, marginBottom:5 }}>{p.projektName||"Ohne Projekt"}</span>
             <div style={{ fontWeight:700, color:TH.text, fontSize:14 }}>{p.bezeichnung||"(ohne Bezeichnung)"}</div>
-            <div style={{ fontSize:12, color:TH.textMut, marginTop:2 }}>{p.datum} Â· {(p.punkte||[]).length} Punkte Â· {p.ersteller}</div>
+            <div style={{ fontSize:12, color:TH.textMut, marginTop:2 }}>{p.datum} · {(p.punkte||[]).length} Punkte · {p.ersteller}</div>
           </div>
           <span style={{ fontSize:11, fontWeight:700, padding:"3px 9px", borderRadius:20, whiteSpace:"nowrap", background: n? "#fee2e2":"#dcfce7", color: n? "#991b1b":"#166534" }}>
-            {n? `${n} auÃerhalb Toleranz` : "alle in Toleranz"}
+            {n? `${n} außerhalb Toleranz` : "alle in Toleranz"}
           </span>
         </div>
         <div style={{ display:"flex", gap:8, marginTop:10, flexWrap:"wrap" }}>
-          <button onClick={()=>setEditId(p.id)} style={{ ...btnGhost(), padding:"6px 12px", fontSize:12 }}>Ãffnen</button>
+          <button onClick={()=>setEditId(p.id)} style={{ ...btnGhost(), padding:"6px 12px", fontSize:12 }}>Öffnen</button>
           <button onClick={()=>messprotokollPDF(p)} style={{ ...btnGhost(), padding:"6px 12px", fontSize:12, display:"flex", alignItems:"center", gap:5 }}><FileDown size={14}/> PDF</button>
-          <button onClick={()=>loeschen(p.id)} style={{ ...btnGhost(), padding:"6px 12px", fontSize:12, color:"#dc2626" }}>LÃ¶schen</button>
+          <button onClick={()=>loeschen(p.id)} style={{ ...btnGhost(), padding:"6px 12px", fontSize:12, color:"#dc2626" }}>Löschen</button>
         </div>
       </div>
     );
@@ -4029,7 +4029,7 @@ function Messprotokolle({ projekte, meinMA, userEmail, messprotokolle, setMesspr
       )}
       {liste.length===0 ? (
         <div style={{ background:TH.panel, border:"1.5px dashed "+TH.border, borderRadius:12, padding:"34px 20px", textAlign:"center", color:TH.textMut, fontSize:13 }}>
-          Noch keine Messprotokolle vorhanden.<br/>Lege mit â+ Neues Protokoll" das erste an.
+          Noch keine Messprotokolle vorhanden.<br/>Lege mit „+ Neues Protokoll" das erste an.
         </div>
       ) : (
         <div style={{ display:"grid", gap:18 }}>
@@ -4038,13 +4038,13 @@ function Messprotokolle({ projekte, meinMA, userEmail, messprotokolle, setMesspr
               <div style={{ display:"flex", alignItems:"center", gap:8, margin:"0 2px 8px", paddingBottom:6, borderBottom:"2px solid "+MP_BLAU }}>
                 <Building2 size={15} color={MP_BLAU}/>
                 <span style={{ fontWeight:700, color:TH.text, fontSize:14 }}>{g.name}</span>
-                <span style={{ fontSize:11, color:TH.textMut }}>Â· {g.items.length} Protokoll(e)</span>
+                <span style={{ fontSize:11, color:TH.textMut }}>· {g.items.length} Protokoll(e)</span>
               </div>
               <div style={{ display:"grid", gap:10 }}>{g.items.map(p=>karte(p))}</div>
             </div>
           ))}
           {sichtbar.length===0 && (
-            <div style={{ color:TH.textMut, fontSize:13, padding:"10px 2px" }}>FÃ¼r dieses Projekt gibt es noch keine Protokolle.</div>
+            <div style={{ color:TH.textMut, fontSize:13, padding:"10px 2px" }}>Für dieses Projekt gibt es noch keine Protokolle.</div>
           )}
         </div>
       )}
@@ -4053,8 +4053,8 @@ function Messprotokolle({ projekte, meinMA, userEmail, messprotokolle, setMesspr
 }
 
 
-// âââ ABO & PAKETE (Paket-Auswahl, nur Admin) ââââââââââââââââââââââââââââââââââ 
-function AboPakete({ abo }) {   const [pakete, setPakete] = useState([]);   const [laedt, setLaedt] = useState(true);    useEffect(() => {     let aktiv = true;     supabase.from("pakete").select("*").eq("aktiv", true).order("sortierung", { ascending:true })       .then(({ data }) => { if (aktiv) { setPakete(data || []); setLaedt(false); } });     return () => { aktiv = false; };   }, []);    const fmtPreis = n => (Number(n)||0).toLocaleString("de-DE") + " â¬";   const aktuellesPaket = abo?.paket || null;    return (     <div>       <h2 style={{ margin:"0 0 4px", fontSize:20, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><Euro size={20}/> Abo & Pakete</h2>       <div style={{ fontSize:13, color:TH.textMut, marginBottom:6 }}>         WÃ¤hle das Paket, das zu eurer FirmengrÃ¶Ãe passt. Alle Preise netto pro Monat.       </div>        {abo?.status === "trial" && (         <div style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#92400e" }}>           â³ Ihr seid aktuell in der <strong>Testphase</strong>{abo.tage_uebrig != null ? ` (noch ${abo.tage_uebrig} Tage)` : ""}. Nach Ablauf wÃ¤hlt ihr hier euer Paket.         </div>       )}        {laedt ? (         <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:TH.textMut }}>Pakete werden geladenâ¦</div>       ) : (         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))", gap:14 }}>           {pakete.map(p => {             const aktiv = aktuellesPaket === p.id;             return (               <div key={p.id} style={{ border: aktiv ? "2px solid #ea580c" : "1.5px solid "+TH.border, borderRadius:14, overflow:"hidden", background:TH.panel, boxShadow:"0 1px 4px #0000000d", display:"flex", flexDirection:"column" }}>                 <div style={{ background: aktiv ? "linear-gradient(135deg,#ea580c 0%,#f97316 100%)" : TH.panel2, color: aktiv ? "#fff" : TH.text, padding:"12px 16px", fontWeight:800, fontSize:16 }}>                   {p.name}                   {aktiv && <span style={{ display:"block", fontSize:11, fontWeight:600, opacity:0.9, marginTop:2 }}>â Euer aktuelles Paket</span>}                 </div>                 <div style={{ padding:"16px", display:"flex", flexDirection:"column", gap:10, flex:1 }}>                   <div>                     <span style={{ fontSize:28, fontWeight:800, color:TH.text }}>{fmtPreis(p.preis_monat_netto)}</span>                     <span style={{ fontSize:13, color:TH.textMut }}> / Monat</span>                   </div>                   <div style={{ fontSize:13, color:TH.textMut }}>bis zu <strong style={{ color:TH.text }}>{p.max_mitarbeiter}</strong> Mitarbeiter</div>                   <button                     onClick={() => alert("Die Online-Bezahlung wird gerade eingerichtet. FÃ¼r einen Paket-Wechsel meldet euch bitte direkt bei uns.")}                     style={{ marginTop:"auto", padding:"10px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:700, fontSize:13,                       background: aktiv ? TH.panel2 : "linear-gradient(135deg,#ea580c 0%,#f97316 100%)",                       color: aktiv ? TH.textMut : "#fff" }}                     disabled={aktiv}                   >                     {aktiv ? "Aktiv" : "Dieses Paket wÃ¤hlen"}                   </button>                 </div>               </div>             );           })}           {!pakete.length && <div style={{ gridColumn:"1/-1", background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:TH.textMut }}>Noch keine Pakete hinterlegt.</div>}         </div>       )}        <div style={{ marginTop:18, fontSize:11.5, color:TH.textMut }}>         Mitarbeitergrenzen sind als Orientierung gedacht â ihr werdet nicht hart gesperrt. Bei Bedarf einfach ins nÃ¤chstgrÃ¶Ãere Paket wechseln.       </div>     </div>   ); }  /*DUPLIKAT  // âââ ABO & PAKETE (Paket-Auswahl, nur Admin) ââââââââââââââââââââââââââââââââââ function AboPakete({ abo }) {   const [pakete, setPakete] = useState([]);   const [laedt, setLaedt] = useState(true);    useEffect(() => {     let aktiv = true;     supabase.from("pakete").select("*").eq("aktiv", true).order("sortierung", { ascending:true })       .then(({ data }) => { if (aktiv) { setPakete(data || []); setLaedt(false); } });     return () => { aktiv = false; };   }, []);    const fmtPreis = n => (Number(n)||0).toLocaleString("de-DE") + " â¬";   const aktuellesPaket = abo?.paket || null;    return (     <div>       <h2 style={{ margin:"0 0 4px", fontSize:20, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><Euro size={20}/> Abo & Pakete</h2>       <div style={{ fontSize:13, color:TH.textMut, marginBottom:6 }}>         WÃ¤hle das Paket, das zu eurer FirmengrÃ¶Ãe passt. Alle Preise netto pro Monat.       </div>        {abo?.status === "trial" && (         <div style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#92400e" }}>           â³ Ihr seid aktuell in der <strong>Testphase</strong>{abo.tage_uebrig != null ? ` (noch ${abo.tage_uebrig} Tage)` : ""}. Nach Ablauf wÃ¤hlt ihr hier euer Paket.         </div>       )}        {laedt ? (         <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:TH.textMut }}>Pakete werden geladenâ¦</div>       ) : (         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))", gap:14 }}>           {pakete.map(p => {             const aktiv = aktuellesPaket === p.id;             return (               <div key={p.id} style={{ border: aktiv ? "2px solid #ea580c" : "1.5px solid "+TH.border, borderRadius:14, overflow:"hidden", background:TH.panel, boxShadow:"0 1px 4px #0000000d", display:"flex", flexDirection:"column" }}>                 <div style={{ background: aktiv ? "linear-gradient(135deg,#ea580c 0%,#f97316 100%)" : TH.panel2, color: aktiv ? "#fff" : TH.text, padding:"12px 16px", fontWeight:800, fontSize:16 }}>                   {p.name}                   {aktiv && <span style={{ display:"block", fontSize:11, fontWeight:600, opacity:0.9, marginTop:2 }}>â Euer aktuelles Paket</span>}                 </div>                 <div style={{ padding:"16px", display:"flex", flexDirection:"column", gap:10, flex:1 }}>                   <div>                     <span style={{ fontSize:28, fontWeight:800, color:TH.text }}>{fmtPreis(p.preis_monat_netto)}</span>                     <span style={{ fontSize:13, color:TH.textMut }}> / Monat</span>                   </div>                   <div style={{ fontSize:13, color:TH.textMut }}>bis zu <strong style={{ color:TH.text }}>{p.max_mitarbeiter}</strong> Mitarbeiter</div>                   <button                     onClick={() => alert("Die Online-Bezahlung wird gerade eingerichtet. FÃ¼r einen Paket-Wechsel meldet euch bitte direkt bei uns.")}                     style={{ marginTop:"auto", padding:"10px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:700, fontSize:13,                       background: aktiv ? TH.panel2 : "linear-gradient(135deg,#ea580c 0%,#f97316 100%)",                       color: aktiv ? TH.textMut : "#fff" }}                     disabled={aktiv}                   >                     {aktiv ? "Aktiv" : "Dieses Paket wÃ¤hlen"}                   </button>                 </div>               </div>             );           })}           {!pakete.length && <div style={{ gridColumn:"1/-1", background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:TH.textMut }}>Noch keine Pakete hinterlegt.</div>}         </div>       )}        <div style={{ marginTop:18, fontSize:11.5, color:TH.textMut }}>         Mitarbeitergrenzen sind als Orientierung gedacht â ihr werdet nicht hart gesperrt. Bei Bedarf einfach ins nÃ¤chstgrÃ¶Ãere Paket wechseln.       </div>     </div>   ); }  */ 
+// ─── ABO & PAKETE (Paket-Auswahl, nur Admin) ────────────────────────────────── 
+function AboPakete({ abo }) {   const [pakete, setPakete] = useState([]);   const [laedt, setLaedt] = useState(true);    useEffect(() => {     let aktiv = true;     supabase.from("pakete").select("*").eq("aktiv", true).order("sortierung", { ascending:true })       .then(({ data }) => { if (aktiv) { setPakete(data || []); setLaedt(false); } });     return () => { aktiv = false; };   }, []);    const fmtPreis = n => (Number(n)||0).toLocaleString("de-DE") + " €";   const aktuellesPaket = abo?.paket || null;    return (     <div>       <h2 style={{ margin:"0 0 4px", fontSize:20, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><Euro size={20}/> Abo & Pakete</h2>       <div style={{ fontSize:13, color:TH.textMut, marginBottom:6 }}>         Wähle das Paket, das zu eurer Firmengröße passt. Alle Preise netto pro Monat.       </div>        {abo?.status === "trial" && (         <div style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#92400e" }}>           ⏳ Ihr seid aktuell in der <strong>Testphase</strong>{abo.tage_uebrig != null ? ` (noch ${abo.tage_uebrig} Tage)` : ""}. Nach Ablauf wählt ihr hier euer Paket.         </div>       )}        {laedt ? (         <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:TH.textMut }}>Pakete werden geladen…</div>       ) : (         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))", gap:14 }}>           {pakete.map(p => {             const aktiv = aktuellesPaket === p.id;             return (               <div key={p.id} style={{ border: aktiv ? "2px solid #ea580c" : "1.5px solid "+TH.border, borderRadius:14, overflow:"hidden", background:TH.panel, boxShadow:"0 1px 4px #0000000d", display:"flex", flexDirection:"column" }}>                 <div style={{ background: aktiv ? "linear-gradient(135deg,#ea580c 0%,#f97316 100%)" : TH.panel2, color: aktiv ? "#fff" : TH.text, padding:"12px 16px", fontWeight:800, fontSize:16 }}>                   {p.name}                   {aktiv && <span style={{ display:"block", fontSize:11, fontWeight:600, opacity:0.9, marginTop:2 }}>✓ Euer aktuelles Paket</span>}                 </div>                 <div style={{ padding:"16px", display:"flex", flexDirection:"column", gap:10, flex:1 }}>                   <div>                     <span style={{ fontSize:28, fontWeight:800, color:TH.text }}>{fmtPreis(p.preis_monat_netto)}</span>                     <span style={{ fontSize:13, color:TH.textMut }}> / Monat</span>                   </div>                   <div style={{ fontSize:13, color:TH.textMut }}>bis zu <strong style={{ color:TH.text }}>{p.max_mitarbeiter}</strong> Mitarbeiter</div>                   <button                     onClick={() => alert("Die Online-Bezahlung wird gerade eingerichtet. Für einen Paket-Wechsel meldet euch bitte direkt bei uns.")}                     style={{ marginTop:"auto", padding:"10px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:700, fontSize:13,                       background: aktiv ? TH.panel2 : "linear-gradient(135deg,#ea580c 0%,#f97316 100%)",                       color: aktiv ? TH.textMut : "#fff" }}                     disabled={aktiv}                   >                     {aktiv ? "Aktiv" : "Dieses Paket wählen"}                   </button>                 </div>               </div>             );           })}           {!pakete.length && <div style={{ gridColumn:"1/-1", background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:TH.textMut }}>Noch keine Pakete hinterlegt.</div>}         </div>       )}        <div style={{ marginTop:18, fontSize:11.5, color:TH.textMut }}>         Mitarbeitergrenzen sind als Orientierung gedacht – ihr werdet nicht hart gesperrt. Bei Bedarf einfach ins nächstgrößere Paket wechseln.       </div>     </div>   ); }  /*DUPLIKAT  // ─── ABO & PAKETE (Paket-Auswahl, nur Admin) ────────────────────────────────── function AboPakete({ abo }) {   const [pakete, setPakete] = useState([]);   const [laedt, setLaedt] = useState(true);    useEffect(() => {     let aktiv = true;     supabase.from("pakete").select("*").eq("aktiv", true).order("sortierung", { ascending:true })       .then(({ data }) => { if (aktiv) { setPakete(data || []); setLaedt(false); } });     return () => { aktiv = false; };   }, []);    const fmtPreis = n => (Number(n)||0).toLocaleString("de-DE") + " €";   const aktuellesPaket = abo?.paket || null;    return (     <div>       <h2 style={{ margin:"0 0 4px", fontSize:20, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><Euro size={20}/> Abo & Pakete</h2>       <div style={{ fontSize:13, color:TH.textMut, marginBottom:6 }}>         Wähle das Paket, das zu eurer Firmengröße passt. Alle Preise netto pro Monat.       </div>        {abo?.status === "trial" && (         <div style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:10, padding:"10px 14px", marginBottom:16, fontSize:13, color:"#92400e" }}>           ⏳ Ihr seid aktuell in der <strong>Testphase</strong>{abo.tage_uebrig != null ? ` (noch ${abo.tage_uebrig} Tage)` : ""}. Nach Ablauf wählt ihr hier euer Paket.         </div>       )}        {laedt ? (         <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:TH.textMut }}>Pakete werden geladen…</div>       ) : (         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))", gap:14 }}>           {pakete.map(p => {             const aktiv = aktuellesPaket === p.id;             return (               <div key={p.id} style={{ border: aktiv ? "2px solid #ea580c" : "1.5px solid "+TH.border, borderRadius:14, overflow:"hidden", background:TH.panel, boxShadow:"0 1px 4px #0000000d", display:"flex", flexDirection:"column" }}>                 <div style={{ background: aktiv ? "linear-gradient(135deg,#ea580c 0%,#f97316 100%)" : TH.panel2, color: aktiv ? "#fff" : TH.text, padding:"12px 16px", fontWeight:800, fontSize:16 }}>                   {p.name}                   {aktiv && <span style={{ display:"block", fontSize:11, fontWeight:600, opacity:0.9, marginTop:2 }}>✓ Euer aktuelles Paket</span>}                 </div>                 <div style={{ padding:"16px", display:"flex", flexDirection:"column", gap:10, flex:1 }}>                   <div>                     <span style={{ fontSize:28, fontWeight:800, color:TH.text }}>{fmtPreis(p.preis_monat_netto)}</span>                     <span style={{ fontSize:13, color:TH.textMut }}> / Monat</span>                   </div>                   <div style={{ fontSize:13, color:TH.textMut }}>bis zu <strong style={{ color:TH.text }}>{p.max_mitarbeiter}</strong> Mitarbeiter</div>                   <button                     onClick={() => alert("Die Online-Bezahlung wird gerade eingerichtet. Für einen Paket-Wechsel meldet euch bitte direkt bei uns.")}                     style={{ marginTop:"auto", padding:"10px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:700, fontSize:13,                       background: aktiv ? TH.panel2 : "linear-gradient(135deg,#ea580c 0%,#f97316 100%)",                       color: aktiv ? TH.textMut : "#fff" }}                     disabled={aktiv}                   >                     {aktiv ? "Aktiv" : "Dieses Paket wählen"}                   </button>                 </div>               </div>             );           })}           {!pakete.length && <div style={{ gridColumn:"1/-1", background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:24, textAlign:"center", color:TH.textMut }}>Noch keine Pakete hinterlegt.</div>}         </div>       )}        <div style={{ marginTop:18, fontSize:11.5, color:TH.textMut }}>         Mitarbeitergrenzen sind als Orientierung gedacht – ihr werdet nicht hart gesperrt. Bei Bedarf einfach ins nächstgrößere Paket wechseln.       </div>     </div>   ); }  */ 
 const ADMIN_BEREICHE = [
   { id:"dashboard", label:"Dashboard" },
   { id:"kosten", label:"Kosten" },
@@ -4070,11 +4070,11 @@ const ADMIN_BEREICHE = [
   { id:"aufgaben", label:"Aufgaben & Mängel" },
   { id:"messprotokolle", label:"Messprotokolle" },
   { id:"chat", label:"Chat" },
-  { id:"antraege", label:"AntrÃ¤ge" },
+  { id:"antraege", label:"Anträge" },
   { id:"projekte", label:"Projekte" },
   { id:"mitarbeiter", label:"Mitarbeiter" },
   { id:"fahrzeuge", label:"Fahrzeuge" },
-  { id:"unterkuenfte", label:"UnterkÃ¼nfte" },
+  { id:"unterkuenfte", label:"Unterkünfte" },
   { id:"werkzeuge", label:"Werkzeuge" },
   { id:"warnungen", label:"Warnungen" },
   { id:"verwaltung", label:"Verwaltung (Admin-Bereich)" },
@@ -4097,11 +4097,11 @@ function darfTab(rolle, tabId, rechte) {
   return (standard[rolle]||standard["Unbekannt"]).includes(tabId);
 }
 
-// âââ APP âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
-// ââ Schutz gegen ZurÃ¼cksetzen offener Formulare ââââââââââââââââââââââââââââââ
+// ─── APP ─────────────────────────────────────────────────────────────────────
+// ── Schutz gegen Zurücksetzen offener Formulare ──────────────────────────────
 // Verhindert, dass die Verwaltungs-Seite (und damit ein offenes Formular wie
 // "Neuer Mitarbeiter") beim 10-Sekunden-Hintergrundladen neu aufgebaut wird.
-// Es wird nur dann neu aufgebaut, wenn sich echte Daten oder das Design Ã¤ndern.
+// Es wird nur dann neu aufgebaut, wenn sich echte Daten oder das Design ändern.
 const verwaltungGleich = (a, b) =>
   a.projekte === b.projekte &&
   a.mitarbeiter === b.mitarbeiter &&
@@ -4134,7 +4134,7 @@ export default function EinsatzplanungInner({
     return () => { aktiv = false; };
   }, [userEmail]);
 
-  // ââ Abo-/Testphase-Info der eigenen Firma laden ââ
+  // ── Abo-/Testphase-Info der eigenen Firma laden ──
   const [abo, setAbo] = useState(null);
   useEffect(() => {
     let aktiv = true;
@@ -4146,8 +4146,8 @@ export default function EinsatzplanungInner({
   const meineRechte = (meineRolle==="Admin" && meinMA && Array.isArray(meinMA.rechte)) ? meinMA.rechte : null;
   const darf = (tabId) => darfTab(meineRolle, tabId, meineRechte);
 
-  // ââ Rang-System: Jeder sieht nur das Relevante ââ
-  // Admin: alles Â· Projektleiter/Bauleiter: zugeteilte Projekte (+Vertretung) Â· Vorarbeiter/Monteur: eigenes Team
+  // ── Rang-System: Jeder sieht nur das Relevante ──
+  // Admin: alles · Projektleiter/Bauleiter: zugeteilte Projekte (+Vertretung) · Vorarbeiter/Monteur: eigenes Team
   const teamFilter = (meineRolle==="Vorarbeiter" || meineRolle==="Monteur") && meinMA ? meinMA.team : null;
   const projektFilter = (meineRolle==="Projektleiter" || meineRolle==="Bauleiter") && meinMA
     ? projekte.filter(p => p.projektleiterId===meinMA.id || p.bauleiterId===meinMA.id || p.vertretungId===meinMA.id)
@@ -4156,7 +4156,7 @@ export default function EinsatzplanungInner({
   const meineProjektIds = projektFilter ? projektFilter.map(p=>p.id) : null;
   const meineProjektNamen = projektFilter ? projektFilter.map(p=>p.name) : null;
 
-  // EinsÃ¤tze: wer mit mir (bzw. auf meinen Projekten) eingeplant ist, gehÃ¶rt auch zu meiner Sicht
+  // Einsätze: wer mit mir (bzw. auf meinen Projekten) eingeplant ist, gehört auch zu meiner Sicht
   const eigeneProjIds = teamFilter && meinMA ? new Set((einsaetze||[]).filter(e=>e.ma===meinMA.id).map(e=>e.projektId)) : new Set();
   const projektIdsFuerKollegen = projektFilter ? new Set(projektFilter.map(p=>p.id)) : eigeneProjIds;
   const kollegenIds = new Set((einsaetze||[]).filter(e=>projektIdsFuerKollegen.has(e.projektId)).map(e=>e.ma));
@@ -4185,7 +4185,7 @@ export default function EinsatzplanungInner({
   useEffect(()=>{ window.scrollTo({ top:0, behavior:"smooth" }); }, [tab]);
   const [breit, setBreit] = useState(()=>typeof window!=="undefined" && window.innerWidth>=1100);
 
-  // ââ Mitteilungen ââ
+  // ── Mitteilungen ──
   const [mittOffen, setMittOffen] = useState(false);
   const gelesenKey = "bfx_gelesen_" + (userEmail||"gast");
   const [gelesenAb, setGelesenAb] = useState(()=>Number(localStorage.getItem(gelesenKey)||0));
@@ -4225,20 +4225,20 @@ export default function EinsatzplanungInner({
   }
 
   async function benachAktivieren() {
-    if (typeof Notification==="undefined") { alert("Dein Browser unterstÃ¼tzt keine Benachrichtigungen."); return; }
+    if (typeof Notification==="undefined") { alert("Dein Browser unterstützt keine Benachrichtigungen."); return; }
     const erlaubnis = await Notification.requestPermission();
     if (erlaubnis==="granted") {
       localStorage.setItem("bfx_benach","1");
       setBenachAn(true);
       piep();
       const ok = await pushAbonnieren();
-      if (ok) console.log("Push-Benachrichtigungen aktiv â auch bei geschlossener App.");
+      if (ok) console.log("Push-Benachrichtigungen aktiv – auch bei geschlossener App.");
     } else {
       alert("Benachrichtigungen wurden im Browser blockiert. Du kannst sie in den Seiten-Einstellungen (Schloss-Symbol neben der Adresse) wieder erlauben.");
     }
   }
 
-  // Automatisch als Push-EmpfÃ¤nger registrieren, sobald Benachrichtigungen aktiv sind
+  // Automatisch als Push-Empfänger registrieren, sobald Benachrichtigungen aktiv sind
   useEffect(()=>{
     if (benachAn && typeof Notification!=="undefined" && Notification.permission==="granted") {
       pushAbonnieren();
@@ -4271,15 +4271,15 @@ export default function EinsatzplanungInner({
   const tsAusId = id => { const m = String(id||"").match(/(\d{13})/); return m ? Number(m[1]) : 0; };
   const heuteM = new Date(); heuteM.setHours(0,0,0,0);
   const mitteilungen = [];
-  // Offene AntrÃ¤ge (fÃ¼r Leitung)
+  // Offene Anträge (für Leitung)
   if (istLeitungM) (vAntraege||[]).filter(a=>a.status==="offen").forEach(a=>{
-    mitteilungen.push({ id:"an-"+a.id, ts:tsAusId(a.id), text:`Neuer Antrag: ${a.name} â ${a.typ} ${fmtDate(parseDate(a.von))}â${fmtDate(parseDate(a.bis))}`, tab:"antraege", farbe:"#d97706" });
+    mitteilungen.push({ id:"an-"+a.id, ts:tsAusId(a.id), text:`Neuer Antrag: ${a.name} – ${a.typ} ${fmtDate(parseDate(a.von))}–${fmtDate(parseDate(a.bis))}`, tab:"antraege", farbe:"#d97706" });
   });
-  // Entschiedene eigene AntrÃ¤ge (fÃ¼r Mitarbeiter)
+  // Entschiedene eigene Anträge (für Mitarbeiter)
   if (meinMA) (antraege||[]).filter(a=>a.name===meinMA.name && (a.status==="genehmigt"||a.status==="abgelehnt")).forEach(a=>{
-    mitteilungen.push({ id:"ae-"+a.id+a.status, ts:tsAusId(a.id), text:`Dein ${a.typ}-Antrag (${fmtDate(parseDate(a.von))}â${fmtDate(parseDate(a.bis))}) wurde ${a.status}`, tab:"antraege", farbe:a.status==="genehmigt"?"#059669":"#dc2626" });
+    mitteilungen.push({ id:"ae-"+a.id+a.status, ts:tsAusId(a.id), text:`Dein ${a.typ}-Antrag (${fmtDate(parseDate(a.von))}–${fmtDate(parseDate(a.bis))}) wurde ${a.status}`, tab:"antraege", farbe:a.status==="genehmigt"?"#059669":"#dc2626" });
   });
-  // Neue Tagesberichte der letzten 5 Tage (fÃ¼r Leitung)
+  // Neue Tagesberichte der letzten 5 Tage (für Leitung)
   if (istLeitungM) (vBerichte||[]).forEach(b=>{
     const d = parseDate(b.datum);
     if ((heuteM-d)/86400000 <= 5) {
@@ -4287,20 +4287,20 @@ export default function EinsatzplanungInner({
       mitteilungen.push({ id:"tb-"+b.id, ts:tsAusId(b.id)||d.getTime(), text:`Neuer Tagesbericht: ${pn} (${fmtDate(d)}) von ${b.verfasser||"?"}`, tab:"berichte", farbe:"#0891b2" });
     }
   });
-  // Werkzeug-PrÃ¼fungen (fÃ¼r Leitung)
+  // Werkzeug-Prüfungen (für Leitung)
   if (istLeitungM) (werkzeuge||[]).forEach(w=>{
     if (!w.pruefDatum) return;
     const tage = Math.round((parseDate(w.pruefDatum)-heuteM)/86400000);
-    if (tage<0) mitteilungen.push({ id:"wz-"+w.id, ts:parseDate(w.pruefDatum).getTime(), text:`PrÃ¼fung Ã¼berfÃ¤llig: ${w.name} (seit ${fmtDate(parseDate(w.pruefDatum))})`, tab:"verwaltung", farbe:"#dc2626" });
-    else if (tage<=30) mitteilungen.push({ id:"wz-"+w.id, ts:parseDate(w.pruefDatum).getTime()-2592000000, text:`PrÃ¼fung fÃ¤llig in ${tage} Tagen: ${w.name}`, tab:"verwaltung", farbe:"#d97706" });
+    if (tage<0) mitteilungen.push({ id:"wz-"+w.id, ts:parseDate(w.pruefDatum).getTime(), text:`Prüfung überfällig: ${w.name} (seit ${fmtDate(parseDate(w.pruefDatum))})`, tab:"verwaltung", farbe:"#dc2626" });
+    else if (tage<=30) mitteilungen.push({ id:"wz-"+w.id, ts:parseDate(w.pruefDatum).getTime()-2592000000, text:`Prüfung fällig in ${tage} Tagen: ${w.name}`, tab:"verwaltung", farbe:"#d97706" });
   });
-  // Projekte, die in den nÃ¤chsten 3 Tagen starten
+  // Projekte, die in den nächsten 3 Tagen starten
   (vProjekte||[]).forEach(p=>{
     if (!p.dateStart || p.status==="abgeschlossen") return;
     const tage = Math.round((parseDate(p.dateStart)-heuteM)/86400000);
     if (tage>=0 && tage<=3) mitteilungen.push({ id:"ps-"+p.id, ts:parseDate(p.dateStart).getTime()-259200000, text:tage===0?`Projekt startet heute: ${p.name}`:`Projekt startet in ${tage} Tag(en): ${p.name}`, tab:"projekte", farbe:"#ea580c" });
   });
-  // Kosten-Ampel rot (fÃ¼r Admin/PL/BL)
+  // Kosten-Ampel rot (für Admin/PL/BL)
   if (["Admin","Projektleiter","Bauleiter"].includes(meineRolle)) (vProjekte||[]).forEach(p=>{
     const planK = Number(p.planKosten)||0;
     if (!planK) return;
@@ -4309,9 +4309,9 @@ export default function EinsatzplanungInner({
       const ma = mitarbeiter.find(m=>m.id===e.maId);
       return su + (Number(e.arbeitsstunden)||0)*Math.max(Number(ma?.stundensatz)||0,minL) + (Number(e.spesen)||0);
     },0);
-    if (ist>planK) mitteilungen.push({ id:"ko-"+p.id, ts:Date.now()-86400000, text:`Kosten Ã¼ber Plan: ${p.name} (${fmtEuro(ist)} von ${fmtEuro(planK)})`, tab:"kosten", farbe:"#dc2626" });
+    if (ist>planK) mitteilungen.push({ id:"ko-"+p.id, ts:Date.now()-86400000, text:`Kosten über Plan: ${p.name} (${fmtEuro(ist)} von ${fmtEuro(planK)})`, tab:"kosten", farbe:"#dc2626" });
   });
-  // Neue Chat-Nachrichten (nicht eigene, nur sichtbare KanÃ¤le, max. 2 Tage alt)
+  // Neue Chat-Nachrichten (nicht eigene, nur sichtbare Kanäle, max. 2 Tage alt)
   {
     const sichtbareKanaele = ["Alle", ...(istLeitungM ? TEAM_NAMEN_AKTUELL : (meinMA ? [meinMA.team] : []))];
     chatNeu.forEach(n=>{
@@ -4319,8 +4319,8 @@ export default function EinsatzplanungInner({
       if (n.absender_email && n.absender_email===userEmail) return;
       const ts = new Date(n.created_at).getTime();
       if (Date.now()-ts > 2*86400000) return;
-      const kurz = String(n.text||"").slice(0,60) + (String(n.text||"").length>60?"â¦":"");
-      mitteilungen.push({ id:"ch-"+n.id, ts, text:`Chat â${n.kanal}" â ${n.absender}: ${kurz}`, tab:"chat", farbe:"#0891b2" });
+      const kurz = String(n.text||"").slice(0,60) + (String(n.text||"").length>60?"…":"");
+      mitteilungen.push({ id:"ch-"+n.id, ts, text:`Chat „${n.kanal}" – ${n.absender}: ${kurz}`, tab:"chat", farbe:"#0891b2" });
     });
   }
   mitteilungen.sort((a,b)=>b.ts-a.ts);
@@ -4382,27 +4382,27 @@ export default function EinsatzplanungInner({
     { id:"aufgaben",     label:"Aufgaben", Icon:ClipboardList },
     { id:"messprotokolle", label:"Messprotokolle", Icon:Ruler },
     { id:"chat",         label:"Chat", Icon:MessageCircle },
-    { id:"antraege",     Icon:TreePalm, label:`AntrÃ¤ge${antraege.filter(a=>a.status==="offen").length>0?` (${antraege.filter(a=>a.status==="offen").length})`:""}` },
+    { id:"antraege",     Icon:TreePalm, label:`Anträge${antraege.filter(a=>a.status==="offen").length>0?` (${antraege.filter(a=>a.status==="offen").length})`:""}` },
     { id:"projekte",     label:"Projekte", Icon:Building2 },
     { id:"mitarbeiter",  label:"Mitarbeiter", Icon:Users },
     { id:"fahrzeuge",    label:"Fahrzeuge", Icon:Truck },
-    { id:"unterkuenfte", label:"UnterkÃ¼nfte", Icon:BedDouble },
+    { id:"unterkuenfte", label:"Unterkünfte", Icon:BedDouble },
     { id:"werkzeuge",    label:"Werkzeuge", Icon:Wrench },
     { id:"verwaltung",   label:"Verwaltung", Icon:Settings },     { id:"abo",          label:"Abo & Pakete", Icon:Euro },
-    { id:"warnungen",    label:`â ï¸${warnungen.length>0?` (${warnungen.length})`:""}`},
+    { id:"warnungen",    label:`⚠️${warnungen.length>0?` (${warnungen.length})`:""}`},
   ];
-  // Verwaltung nur fÃ¼r Admin
+  // Verwaltung nur für Admin
   const tabs = alleTabs.filter(t => {
     if (t.id==="verwaltung") return istAdmin;     if (t.id==="abo") return istAdmin;
     return darf(t.id);
   });
-  // Falls aktueller Tab nicht erlaubt: zurÃ¼ck auf "heute"
+  // Falls aktueller Tab nicht erlaubt: zurück auf "heute"
   useEffect(()=>{ if(!tabs.some(t=>t.id===tab)) setTab("heute"); }, [meineRolle]); // eslint-disable-line
 
   return (
     <div style={{ fontFamily:"'Inter', system-ui, sans-serif", minHeight:"100vh", background:T.bg, color:T.text, transition:"background 0.2s" }}>
       <div style={{ position:"sticky", top:0, zIndex:50, background:"linear-gradient(135deg, #1e293b 0%, #334155 100%)", padding:"12px 16px", color:"#fff", display:"flex", alignItems:"center", gap:12, boxShadow:"0 2px 8px #0003" }}>
-        {!breit && <button onClick={()=>setMenueOffen(true)} title="MenÃ¼ Ã¶ffnen" style={{ background:"#fff2", border:"1px solid #fff4", borderRadius:8, padding:"7px 11px", fontSize:18, color:"#fff", cursor:"pointer", lineHeight:1, display:"flex", alignItems:"center" }}><Menu size={20} /></button>}
+        {!breit && <button onClick={()=>setMenueOffen(true)} title="Menü öffnen" style={{ background:"#fff2", border:"1px solid #fff4", borderRadius:8, padding:"7px 11px", fontSize:18, color:"#fff", cursor:"pointer", lineHeight:1, display:"flex", alignItems:"center" }}><Menu size={20} /></button>}
         <img src="/icon-192.png" alt="Baufox" style={{ width:38, height:38, borderRadius:10, boxShadow:"0 2px 8px #ea580c55" }} />
         <div>
           <div style={{ fontWeight:800, fontSize:18, letterSpacing:-0.5 }}>Baufox</div>
@@ -4429,8 +4429,8 @@ export default function EinsatzplanungInner({
           boxShadow:"0 2px 6px #ea580c44", flexWrap:"wrap", textAlign:"center"
         }}>
           <span>
-            â³ Testphase â {abo.tage_uebrig != null ? `noch ${abo.tage_uebrig} Tag${abo.tage_uebrig === 1 ? "" : "e"}` : "lÃ¤uft"}.
-            {istAdmin ? " WÃ¤hle ein Paket, um Baufox dauerhaft zu nutzen." : " Frag deinen Admin wegen der Paketwahl."}
+            ⏳ Testphase – {abo.tage_uebrig != null ? `noch ${abo.tage_uebrig} Tag${abo.tage_uebrig === 1 ? "" : "e"}` : "läuft"}.
+            {istAdmin ? " Wähle ein Paket, um Baufox dauerhaft zu nutzen." : " Frag deinen Admin wegen der Paketwahl."}
           </span>
         </div>
       )}
@@ -4441,10 +4441,10 @@ export default function EinsatzplanungInner({
           <div className="mitt-panel" style={{ position:"fixed", top:60, right:10, width:340, maxWidth:"calc(100vw - 20px)", maxHeight:"70vh", overflowY:"auto", background:TH.panel, border:"1px solid "+TH.border, borderRadius:12, boxShadow:"0 12px 40px #00000033", zIndex:81 }}>
             <div style={{ padding:"11px 14px", borderBottom:"1px solid "+TH.border, fontWeight:800, fontSize:13, color:TH.text, display:"flex", alignItems:"center", gap:7 }}>
               <Bell size={14}/> Mitteilungen
-              {!benachAn && <button onClick={benachAktivieren} style={{ marginLeft:"auto", padding:"5px 10px", borderRadius:99, border:"none", background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", fontSize:10.5, fontWeight:700, cursor:"pointer" }}>ð Ton & Banner aktivieren</button>}
-              {benachAn && <span style={{ marginLeft:"auto", fontSize:10, color:"#059669", fontWeight:700 }}>ð aktiv</span>}
+              {!benachAn && <button onClick={benachAktivieren} style={{ marginLeft:"auto", padding:"5px 10px", borderRadius:99, border:"none", background:"linear-gradient(135deg,#ea580c 0%,#f97316 100%)", color:"#fff", fontSize:10.5, fontWeight:700, cursor:"pointer" }}>🔊 Ton & Banner aktivieren</button>}
+              {benachAn && <span style={{ marginLeft:"auto", fontSize:10, color:"#059669", fontWeight:700 }}>🔊 aktiv</span>}
             </div>
-            {!mitteilungen.length && <div style={{ padding:"22px 14px", fontSize:12.5, color:TH.textMut, textAlign:"center" }}>Alles erledigt â keine Mitteilungen. ð¦</div>}
+            {!mitteilungen.length && <div style={{ padding:"22px 14px", fontSize:12.5, color:TH.textMut, textAlign:"center" }}>Alles erledigt – keine Mitteilungen. 🦊</div>}
             {mitteilungen.map(m=>(
               <div key={m.id} onClick={()=>{ if(darf(m.tab)){ setTab(m.tab); } setMittOffen(false); }}
                    style={{ padding:"10px 14px", borderBottom:"1px solid "+TH.border, fontSize:12.5, color:TH.text, cursor:"pointer", display:"flex", gap:9, alignItems:"flex-start" }}>
@@ -4520,12 +4520,12 @@ export default function EinsatzplanungInner({
       <div key={tab} className="inhalt" style={{ padding: breit ? "18px 14px" : "18px 14px 96px", maxWidth:1400, margin:"0 auto", marginLeft: breit ? 264 : "auto" }}>
         {meinMA && !istAdmin && (
           <div style={{ background:"#eff6ff", border:"1.5px solid #bfdbfe", borderRadius:8, padding:"8px 14px", marginBottom:14, fontSize:12, color:"#1e40af" }}>
-            ð Angemeldet als <strong>{meinMA.name}</strong> Â· {meinMA.team} Â· Rolle: <strong>{meineRolle}</strong>
+            👋 Angemeldet als <strong>{meinMA.name}</strong> · {meinMA.team} · Rolle: <strong>{meineRolle}</strong>
           </div>
         )}
         {meineRolle==="Unbekannt" && (
           <div style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:8, padding:"10px 14px", marginBottom:14, fontSize:13, color:"#92400e" }}>
-            â ï¸ Dein Login ist noch keinem Mitarbeiter zugeordnet. Bitte den Administrator, deine E-Mail (<strong>{userEmail}</strong>) in der Mitarbeiter-Verwaltung einzutragen. Bis dahin siehst du nur die Ãbersichten.
+            ⚠️ Dein Login ist noch keinem Mitarbeiter zugeordnet. Bitte den Administrator, deine E-Mail (<strong>{userEmail}</strong>) in der Mitarbeiter-Verwaltung einzutragen. Bis dahin siehst du nur die Übersichten.
           </div>
         )}
         {tab==="dashboard"    && darf("dashboard")    && <Dashboard mitarbeiter={vMitarbeiter} projekte={vProjekte} sonder={vSonder} fahrzeuge={fahrzeuge} antraege={vAntraege} warnungen={warnungen} unterkuenfte={vUnterkuenfte} setTab={setTab} T={T} />}
