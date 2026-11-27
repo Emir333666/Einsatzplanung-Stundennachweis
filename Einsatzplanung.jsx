@@ -2029,6 +2029,201 @@ function FirmencodePanel() {
   );
 }
 
+async function ladeSheetJS() {
+  if (window.XLSX) return window.XLSX;
+  await new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+    s.onload = res; s.onerror = () => rej(new Error("Excel-Bibliothek konnte nicht geladen werden"));
+    document.head.appendChild(s);
+  });
+  return window.XLSX;
+}
+
+const IMPORT_FELDER = {
+  mitarbeiter: [
+    { key:"name", label:"Name", pflicht:true },
+    { key:"rolle", label:"Rolle" },
+    { key:"team", label:"Team" },
+    { key:"tel", label:"Telefon" },
+    { key:"email", label:"E-Mail" },
+    { key:"fuehrerschein", label:"Fuehrerschein", bool:true },
+    { key:"stapler", label:"Stapler", bool:true },
+    { key:"schweisser", label:"Schweisser", bool:true },
+    { key:"urlaub", label:"Urlaubstage", num:true },
+    { key:"stundensatz", label:"Stundensatz", num:true },
+  ],
+  projekte: [
+    { key:"name", label:"Name", pflicht:true },
+    { key:"nummer", label:"Nummer" },
+    { key:"kunde", label:"Kunde" },
+    { key:"auftraggeber", label:"Auftraggeber" },
+    { key:"ort", label:"Ort" },
+    { key:"land", label:"Land" },
+    { key:"ansprechpartner", label:"Ansprechpartner" },
+    { key:"apTel", label:"AP-Telefon" },
+    { key:"apEmail", label:"AP-E-Mail" },
+    { key:"dateStart", label:"Start (JJJJ-MM-TT)", datum:true },
+    { key:"dateEnd", label:"Ende (JJJJ-MM-TT)", datum:true },
+    { key:"auftragssumme", label:"Auftragssumme", num:true },
+    { key:"planStunden", label:"Plan-Stunden", num:true },
+    { key:"bemerkung", label:"Bemerkung" },
+  ],
+};
+
+function ExcelImport({ mitarbeiter, setMitarbeiter, projekte, setProjekte, neueId }) {
+  const [art, setArt] = useState("mitarbeiter");
+  const [zeilen, setZeilen] = useState(null);
+  const [fehler, setFehler] = useState("");
+  const [laedt, setLaedt] = useState(false);
+  const [fertig, setFertig] = useState("");
+  const felder = IMPORT_FELDER[art];
+
+  function vorlageRunterladen() {
+    const XLSX = window.XLSX;
+    const kopf = felder.map(f => f.label);
+    const bsp = art==="mitarbeiter"
+      ? ["Max Mustermann","Monteur","Team A","0151 1234567","max@firma.de","Ja","Nein","Ja","30","45"]
+      : ["Halle Neubau","2026-001","Muster GmbH","Muster GmbH","Musterstadt","Deutschland","Herr Meier","0151 7654321","meier@muster.de","2026-03-01","2026-06-30","150000","1200","Zufahrt ab 7 Uhr"];
+    const ws = XLSX.utils.aoa_to_sheet([kopf, bsp]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, art==="mitarbeiter"?"Mitarbeiter":"Projekte");
+    XLSX.writeFile(wb, "Baufox_Vorlage_" + (art==="mitarbeiter"?"Mitarbeiter":"Projekte") + ".xlsx");
+  }
+
+  async function vorlageKlick() {
+    setFehler(""); setLaedt(true);
+    try { await ladeSheetJS(); vorlageRunterladen(); }
+    catch(e) { setFehler(e.message); }
+    setLaedt(false);
+  }
+
+  async function dateiGewaehlt(file) {
+    if (!file) return;
+    setFehler(""); setFertig(""); setZeilen(null); setLaedt(true);
+    try {
+      const XLSX = await ladeSheetJS();
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type:"array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const roh = XLSX.utils.sheet_to_json(ws, { header:1, blankrows:false, defval:"" });
+      if (!roh.length) { setFehler("Die Datei ist leer."); setLaedt(false); return; }
+      const kopf = roh[0].map(x => String(x||"").trim().toLowerCase());
+      // Spalten den Feldern zuordnen (nach Label, case-insensitiv)
+      const spaltenMap = felder.map(f => {
+        const idx = kopf.findIndex(h => h === f.label.toLowerCase() || h === f.key.toLowerCase());
+        return { feld:f, idx };
+      });
+      const ergebnis = [];
+      for (let r = 1; r < roh.length; r++) {
+        const row = roh[r];
+        if (!row || row.every(c => String(c||"").trim()==="")) continue;
+        const obj = {};
+        spaltenMap.forEach(({ feld, idx }) => {
+          let v = idx>=0 ? row[idx] : "";
+          v = (v==null) ? "" : String(v).trim();
+          if (feld.bool) obj[feld.key] = /^(ja|yes|x|1|true|wahr)$/i.test(v);
+          else if (feld.num) obj[feld.key] = v==="" ? null : Number(String(v).replace(",", ".").replace(/[^0-9.\-]/g,""));
+          else obj[feld.key] = v;
+        });
+        obj.__ok = !!(obj.name && String(obj.name).trim());
+        ergebnis.push(obj);
+      }
+      if (!ergebnis.length) { setFehler("Keine Datenzeilen gefunden. Stimmt die Vorlage?"); setLaedt(false); return; }
+      setZeilen(ergebnis);
+    } catch(e) {
+      setFehler("Datei konnte nicht gelesen werden: " + e.message);
+    }
+    setLaedt(false);
+  }
+
+  function importieren() {
+    const gueltig = (zeilen||[]).filter(z => z.__ok);
+    if (!gueltig.length) { setFehler("Keine gueltigen Zeilen (Name fehlt ueberall)."); return; }
+    if (art==="mitarbeiter") {
+      const neu = gueltig.map(z => ({
+        name:z.name, rolle:z.rolle||"Monteur", team:z.team||null, tel:z.tel||null,
+        email:(z.email||"").trim().toLowerCase()||null,
+        fuehrerschein:!!z.fuehrerschein, stapler:!!z.stapler, schweisser:!!z.schweisser,
+        urlaub:Number(z.urlaub)||0, krank:0,
+        stundensatz:(z.stundensatz==null||z.stundensatz==="")?null:Number(z.stundensatz),
+        rechte:null, id:null,
+      }));
+      setMitarbeiter(prev => [ ...(prev||[]), ...neu ]);
+    } else {
+      setProjekte(prev => {
+        const liste = [ ...(prev||[]) ];
+        gueltig.forEach(z => {
+          liste.push({
+            id:neueId("P", liste), name:z.name, nummer:z.nummer||null, kunde:z.kunde||null,
+            auftraggeber:z.auftraggeber||null, ort:z.ort||null, land:z.land||null,
+            ansprechpartner:z.ansprechpartner||null, apTel:z.apTel||null, apEmail:z.apEmail||null,
+            dateStart:z.dateStart||null, dateEnd:z.dateEnd||null, status:"geplant",
+            auftragssumme:(z.auftragssumme==null||z.auftragssumme==="")?null:Number(z.auftragssumme),
+            planStunden:(z.planStunden==null||z.planStunden==="")?null:Number(z.planStunden),
+            bemerkung:z.bemerkung||null,
+          });
+        });
+        return liste;
+      });
+    }
+    setFertig(gueltig.length + (art==="mitarbeiter"?" Mitarbeiter":" Projekte") + " importiert.");
+    setZeilen(null);
+  }
+
+  const gueltigeAnzahl = (zeilen||[]).filter(z => z.__ok).length;
+
+  return (
+    <div>
+      <h3 style={{ margin:"0 0 6px", fontSize:17, color:TH.text, display:"flex", alignItems:"center", gap:8 }}><FileSpreadsheet size={18}/>{" Excel-Import"}</h3>
+      <div style={{ fontSize:13, color:TH.textMut, marginBottom:14 }}>{"Lade Mitarbeiter oder Baustellen aus einer Excel-Datei (.xlsx) oder CSV hoch. Lade dir zuerst die Vorlage herunter, fuelle sie aus und lade sie wieder hoch."}</div>
+
+      <div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap" }}>
+        <button onClick={()=>{ setArt("mitarbeiter"); setZeilen(null); setFehler(""); setFertig(""); }} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:art==="mitarbeiter"?"#ea580c":TH.panel, color:art==="mitarbeiter"?"#fff":TH.text }}>{"Mitarbeiter"}</button>
+        <button onClick={()=>{ setArt("projekte"); setZeilen(null); setFehler(""); setFertig(""); }} style={{ padding:"7px 14px", borderRadius:8, border:"1.5px solid "+TH.border, cursor:"pointer", fontSize:13, fontWeight:600, background:art==="projekte"?"#ea580c":TH.panel, color:art==="projekte"?"#fff":TH.text }}>{"Projekte / Baustellen"}</button>
+      </div>
+
+      <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"center", marginBottom:14 }}>
+        <button onClick={vorlageKlick} disabled={laedt} style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text, cursor:"pointer", fontWeight:600 }}><FileDown size={16}/>{" Vorlage herunterladen"}</button>
+        <label style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"8px 14px", borderRadius:8, border:"none", background:"#2563eb", color:"#fff", cursor:"pointer", fontWeight:600 }}>
+          <FileSpreadsheet size={16}/> {laedt?"Lese Datei…":"Datei waehlen"}
+          <input type="file" accept=".xlsx,.xls,.csv" style={{ display:"none" }} onChange={ev=>dateiGewaehlt(ev.target.files&&ev.target.files[0])}/>
+        </label>
+      </div>
+
+      {fehler && <div style={{ background:"#fef2f2", border:"1px solid #fca5a5", color:"#b91c1c", borderRadius:8, padding:"10px 12px", fontSize:13, marginBottom:12 }}>{fehler}</div>}
+      {fertig && <div style={{ background:"#f0fdf4", border:"1px solid #86efac", color:"#166534", borderRadius:8, padding:"10px 12px", fontSize:13, marginBottom:12 }}>{fertig}</div>}
+
+      {zeilen && (
+        <div>
+          <div style={{ fontSize:13, color:TH.text, marginBottom:8, fontWeight:600 }}>{"Vorschau: "}{zeilen.length}{" Zeile(n) gefunden, "}{gueltigeAnzahl}{" gueltig"}</div>
+          <div style={{ overflowX:"auto", border:"1px solid "+TH.border, borderRadius:8, marginBottom:12 }}>
+            <table style={{ borderCollapse:"collapse", width:"100%", fontSize:12 }}>
+              <thead><tr>
+                <th style={{ padding:"6px 8px", borderBottom:"1px solid "+TH.border, textAlign:"left", color:TH.textMut }}>{"#"}</th>
+                {felder.map(f=>(<th key={f.key} style={{ padding:"6px 8px", borderBottom:"1px solid "+TH.border, textAlign:"left", color:TH.textMut, whiteSpace:"nowrap" }}>{f.label}</th>))}
+              </tr></thead>
+              <tbody>
+                {zeilen.slice(0,50).map((z,i)=>(
+                  <tr key={i} style={{ background: z.__ok ? "transparent" : "#fef2f2" }}>
+                    <td style={{ padding:"5px 8px", borderBottom:"1px solid "+TH.border, color:TH.textMut }}>{i+1}</td>
+                    {felder.map(f=>(<td key={f.key} style={{ padding:"5px 8px", borderBottom:"1px solid "+TH.border, color:TH.text, whiteSpace:"nowrap" }}>{f.bool?(z[f.key]?"Ja":"–"):(z[f.key]===null||z[f.key]===""?"–":String(z[f.key]))}</td>))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {zeilen.length>50 && <div style={{ fontSize:12, color:TH.textMut, marginBottom:10 }}>{"(nur die ersten 50 Zeilen angezeigt, importiert werden alle gueltigen)"}</div>}
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={importieren} disabled={gueltigeAnzahl===0} style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"9px 18px", borderRadius:8, border:"none", background:gueltigeAnzahl?"#16a34a":"#9ca3af", color:"#fff", fontWeight:700, cursor:gueltigeAnzahl?"pointer":"default" }}><Save size={16}/>{" "}{gueltigeAnzahl}{" importieren"}</button>
+            <button onClick={()=>{ setZeilen(null); setFehler(""); }} style={{ padding:"9px 18px", borderRadius:8, border:"1px solid "+TH.border, background:TH.card, color:TH.text, cursor:"pointer" }}>{"Abbrechen"}</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrzeuge, setFahrzeuge, unterkuenfte, setUnterkuenfte, werkzeuge, setWerkzeuge, sonder, antraege, stunden, berichte, teams, setTeams, onReset }) {
 
   function backupHerunterladen() {
@@ -2366,6 +2561,7 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
     { id:"teams", label:`Teams (${(teams||[]).length})`, Icon:Users },
     { id:"logo", label:"Firmenlogo", Icon:Settings },
     { id:"firmencode", label:"Firmencode", Icon:Settings },
+    { id:"import", label:"Import", Icon:FileSpreadsheet },
   ];
 
   return (
@@ -2554,6 +2750,9 @@ function Verwaltung({ projekte, setProjekte, mitarbeiter, setMitarbeiter, fahrze
 
       {sub==="teams" && (
         <TeamVerwaltung teams={teams} setTeams={setTeams} mitarbeiter={mitarbeiter} projekte={projekte} fahrzeuge={fahrzeuge} />
+          )}
+          {sub==="import" && (
+            <ExcelImport mitarbeiter={mitarbeiter} setMitarbeiter={setMitarbeiter} projekte={projekte} setProjekte={setProjekte} neueId={neueId} />
       )}
 
       {modal?.art==="projekt" && <ProjektForm data={modal.data} />}
