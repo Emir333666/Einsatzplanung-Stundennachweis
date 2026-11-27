@@ -3644,13 +3644,40 @@ function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) 
     return { p, istStunden, lohn, spesen, unterkunft, ist, planK, planStd, summe, ratio, stdRatio, db, ampel, ampelText, anzahl:eintraege.length };
   }),[projekte, stunden, mitarbeiter, unterkuenfte]);
 
+  const gesamt = auswertung.reduce((s,p)=>({
+    summe: s.summe + (Number(p.summe)||0),
+    ist: s.ist + (Number(p.ist)||0),
+    istStunden: s.istStunden + (Number(p.istStunden)||0),
+    planStd: s.planStd + (Number(p.planStd)||0),
+  }), { summe:0, ist:0, istStunden:0, planStd:0 });
+  const gesamtDb = gesamt.summe>0 ? gesamt.summe - gesamt.ist : null;
   const ohneSatz = mitarbeiter.filter(m=>!m.stundensatz);
 
   return (
     <div>
       <div style={{ fontWeight:700, fontSize:14, color:tw, marginBottom:4, textTransform:"uppercase", letterSpacing:0.5 }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><Euro size={15}/>Kosten-Controlling</span></div>
       <div style={{ fontSize:12, color:"#6b7280", marginBottom:14 }}>Ist-Kosten = erfasste Stunden × Stundensatz + Spesen + Unterkunft (Nächte × €/Nacht × Zimmer)</div>
-      {ohneSatz.length>0 && (
+      {projekte.length>0 && (
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))", gap:12, marginBottom:16 }}>
+            <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:"12px 14px" }}>
+              <div style={{ fontSize:11, color:TH.textMut, textTransform:"uppercase", letterSpacing:0.5, marginBottom:4 }}>{"Auftragssumme gesamt"}</div>
+              <div style={{ fontSize:20, fontWeight:800, color:TH.text }}>{fmtEuro(gesamt.summe)}</div>
+            </div>
+            <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:"12px 14px" }}>
+              <div style={{ fontSize:11, color:TH.textMut, textTransform:"uppercase", letterSpacing:0.5, marginBottom:4 }}>{"Ist-Kosten gesamt"}</div>
+              <div style={{ fontSize:20, fontWeight:800, color:TH.text }}>{fmtEuro(gesamt.ist)}</div>
+            </div>
+            <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:"12px 14px" }}>
+              <div style={{ fontSize:11, color:TH.textMut, textTransform:"uppercase", letterSpacing:0.5, marginBottom:4 }}>{"Deckungsbeitrag gesamt"}</div>
+              <div style={{ fontSize:20, fontWeight:800, color: gesamtDb==null?TH.text:(gesamtDb>=0?"#16a34a":"#dc2626") }}>{gesamtDb==null?"–":fmtEuro(gesamtDb)}</div>
+            </div>
+            <div style={{ background:TH.panel2, border:"1px solid "+TH.border, borderRadius:12, padding:"12px 14px" }}>
+              <div style={{ fontSize:11, color:TH.textMut, textTransform:"uppercase", letterSpacing:0.5, marginBottom:4 }}>{"Stunden Ist / Plan"}</div>
+              <div style={{ fontSize:20, fontWeight:800, color:TH.text }}>{gesamt.istStunden.toFixed(0)}{" h"}{gesamt.planStd>0?" / "+gesamt.planStd+" h":""}</div>
+            </div>
+          </div>
+        )}
+        {ohneSatz.length>0 && (
         <div style={{ background:"#fff7ed", border:"1.5px solid #fdba74", borderRadius:8, padding:"8px 14px", marginBottom:14, fontSize:12, color:"#92400e" }}>
           ⚠️ Ohne Stundensatz (zählen mit 0 € in die Lohnkosten): {ohneSatz.map(m=>m.name).join(", ")} → in Verwaltung → Mitarbeiter nachtragen.
         </div>
@@ -3675,11 +3702,8 @@ function KostenControlling({ projekte, stunden, mitarbeiter, unterkuenfte, T }) 
                   {summe>0 && <Info label="Auftragssumme" value={fmtEuro(summe)} />}
                   {db!=null && <Info label="Deckungsbeitrag" value={<b style={{color:db>=0?"#16a34a":"#dc2626"}}>{fmtEuro(db)}</b>} />}
                 </div>
-                {ratio!=null && (
-                  <div style={{ background:"#f1f5f9", borderRadius:99, height:10, overflow:"hidden" }}>
-                    <div style={{ width:Math.min(100,ratio*100)+"%", height:"100%", background:ampel, transition:"width 0.3s" }} />
-                  </div>
-                )}
+                {ratio!==null && (<div style={{ marginTop:8 }}><div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:TH.textMut, marginBottom:3 }}><span>{"Kostenbudget"}</span><span style={{ fontWeight:700, color:ampel }}>{Math.round(ratio*100)}{"%"}</span></div><div style={{ background:"#f1f5f9", borderRadius:99, height:10, overflow:"hidden" }}><div style={{ width:Math.min(100,ratio*100)+"%", height:"100%", background:ampel, transition:"width 0.3s" }}/></div></div>)}
+                  {stdRatio!==null && (<div style={{ marginTop:8 }}><div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:TH.textMut, marginBottom:3 }}><span>{"Stundenbudget"}</span><span style={{ fontWeight:700, color:ampel }}>{Math.round(stdRatio*100)}{"%"}</span></div><div style={{ background:"#f1f5f9", borderRadius:99, height:10, overflow:"hidden" }}><div style={{ width:Math.min(100,stdRatio*100)+"%", height:"100%", background:ampel, transition:"width 0.3s" }}/></div></div>)}
                 {anzahl===0 && <div style={{ fontSize:11, color:"#9ca3af", marginTop:6 }}>Noch keine Stunden für dieses Projekt erfasst (Projektname im Stundenzettel muss übereinstimmen).</div>}
               </div>
             </div>
